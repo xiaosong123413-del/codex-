@@ -1,0 +1,25 @@
+{
+  "knowledgeRoots": {
+    "apta": {
+      "wikiToken": "replace_with_apta_root_token"
+    },
+    "resource": {
+      "wikiToken": "replace_with_resource_root_token"
+    },
+    "archive": {
+      "wikiToken": "replace_with_archive_root_token"
+    }
+  },
+  "aiWiki": {
+    "personalInfoRoot": "replace_with_personal_root_token",
+    "genericInfoRoot": "replace_with_generic_root_token",
+    "allPagesIndex": "replace_with_all_pages_index_token",
+    "timelinePage": "replace_with_timeline_page_token",
+    "maintenanceGuide": "replace_with_maintenance_guide_token",
+    "aiIndexRoot": "replace_with_ai_index_root_token"
+  },
+  "journalInput": {
+    "journalMemoryRootToken": "replace_with_memory_root_token",
+    "journalEntryDepthFromMemoryRoot": 1
+  }
+}

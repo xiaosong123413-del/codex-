@@ -1,0 +1,5 @@
+node_modules/
+.env
+.env.local
+config/wiki.config.json
+npm-debug.log*

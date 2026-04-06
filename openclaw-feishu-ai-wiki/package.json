@@ -1,0 +1,26 @@
+{
+  "name": "openclaw-feishu-ai-wiki",
+  "version": "0.1.0",
+  "description": "Reusable Feishu AI wiki deployment kit for journal splitting and block-level citations",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --import ./tests/test-env.js --test tests/knowledge/ai-wiki.test.js tests/knowledge/ai-wiki-real-chinese.test.js tests/knowledge/graph.test.js tests/knowledge/knowledge-cli-citation.test.js tests/knowledge/knowledge-route.test.js tests/knowledge/knowledge-service.test.js"
+  },
+  "keywords": [
+    "openclaw",
+    "feishu",
+    "lark",
+    "ai-wiki",
+    "journal",
+    "citation"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^4.21.0",
+    "node-fetch": "^3.3.2"
+  }
+}
