@@ -6,6 +6,14 @@ import { FeishuError } from '../core/errors.js';
 export function errorHandler(err, req, res, next) {
   console.error('Error:', err);
 
+  if (err instanceof SyntaxError && err.type === 'entity.parse.failed') {
+    return res.status(400).json({
+      ok: false,
+      error: 'invalid_json',
+      message: 'Invalid JSON body',
+    });
+  }
+
   // Feishu API errors
   if (err instanceof FeishuError) {
     const statusCode = err.code === 'RATE_LIMIT' ? 429 : 502;

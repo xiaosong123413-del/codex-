@@ -1,6 +1,8 @@
 process.env.AI_WIKI_ROOT_APTA ??= 'EH0OwCt6YizIjnkpOe1cWPCHnqd';
 process.env.AI_WIKI_ROOT_RESOURCE ??= 'GuuSw88cTi2b5Qkox9kce0bPnoc';
 process.env.AI_WIKI_ROOT_ARCHIVE ??= 'KVgGwSi37iy75wkxog5ci3QYnmb';
+process.env.AI_WIKI_SYSTEM_ROOT ??= 'JGcmwtH3sic8C7k5Zvdc36KknQb';
+process.env.AI_WIKI_SYSTEM_ROOT_TITLE ??= 'AI知识库（codex）';
 
 process.env.AI_WIKI_PAGE_PERSONAL ??= 'Ne9wwI7T0ie8xJkeDnvc6RR9nuh';
 process.env.AI_WIKI_PAGE_GENERIC ??= 'ZKYew0Ny9imYlYkztATcwJRCnVb';

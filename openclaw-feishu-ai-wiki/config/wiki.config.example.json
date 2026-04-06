@@ -1,4 +1,8 @@
 {
+  "systemRoot": {
+    "wikiToken": "replace_with_system_root_token",
+    "title": "AI知识库（codex）"
+  },
   "knowledgeRoots": {
     "apta": {
       "wikiToken": "replace_with_apta_root_token"

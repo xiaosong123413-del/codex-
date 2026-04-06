@@ -5,7 +5,9 @@ import { promisify } from 'node:util';
 
 import {
   AI_WIKI_PAGE_TOKENS,
+  FIXED_ROOT_PAGE_SPECS,
   JOURNAL_INPUT_RULE,
+  KNOWLEDGE_SYSTEM_ROOT,
 } from '../knowledge/config.js';
 import {
   buildAiAllPagesIndexMarkdown,
@@ -13,8 +15,12 @@ import {
   buildGenericKnowledgeMarkdown,
   buildPersonalKnowledgeMarkdown,
   classifyKnowledgeContent,
+  inferPersonalThemeCandidates,
+  normalizeDatePageTitle,
   resolveKnowledgeTopics,
   segmentKnowledgeBlocks,
+  shouldPromoteGenericTopic,
+  shouldPromotePersonalTopic,
   splitMixedKnowledge,
 } from '../knowledge/aiWiki.js';
 import { buildAiKnowledgePageMarkdown, buildKnowledgeArtifacts } from '../knowledge/graph.js';
@@ -345,6 +351,84 @@ function isGenericRoutingTopic(topic) {
 
 function normalizeTopicValue(topic) {
   return String(topic ?? '').trim();
+}
+
+function sameTitle(left, right) {
+  return normalizeTopicValue(left) === normalizeTopicValue(right);
+}
+
+function matchesAnyTitle(title, candidates = []) {
+  return candidates.some((candidate) => sameTitle(title, candidate));
+}
+
+function buildFixedRootPageMarkdown(spec) {
+  switch (spec?.key) {
+    case 'maintenanceGuide':
+      return [
+        '# AI维基百科运行维护指南',
+        '',
+        '## 页面定位',
+        '',
+        '- 这里只记录系统规则、命名规范、页面写作规范、双链规则、巡检治理规则。',
+        '',
+        '## 固定顶层结构',
+        '',
+        '- AI维基百科运行维护指南',
+        '- AI维基百科维护历史记录',
+        '- AI维基百科所有页面索引',
+        '- AI维基百科',
+        '- 个人信息汇集',
+        '- output',
+        '- 归档',
+      ].join('\n');
+    case 'timelinePage':
+      return [
+        '# AI维基百科维护历史记录',
+        '',
+        '## 使用说明',
+        '',
+        '- 这是 append-only 的系统维护日志页。',
+      ].join('\n');
+    case 'allPagesIndex':
+      return buildAiAllPagesIndexMarkdown({
+        personalEntries: [],
+        genericEntries: [],
+      });
+    case 'genericInfoRoot':
+      return [
+        '# AI维基百科',
+        '',
+        '## 页面定位',
+        '',
+        '- 公共知识主容器，承载概念、模型、论文、公司、产品、方法等结构化知识页。',
+      ].join('\n');
+    case 'personalInfoRoot':
+      return [
+        '# 个人信息汇集',
+        '',
+        '## 页面定位',
+        '',
+        '- 个人知识主容器，承载按日期排列与按主题分类两条长期结构。',
+      ].join('\n');
+    case 'outputRoot':
+      return [
+        '# output',
+        '',
+        '## 页面定位',
+        '',
+        '- 高价值 query-output 的沉淀层，用于综合分析、对比分析、阶段总结和决策依据。',
+      ].join('\n');
+    case 'archiveRoot':
+      return [
+        '# 归档',
+        '',
+        '## 页面定位',
+        '',
+        '- 用于保存已结束但仍有历史价值的页面、旧版结论、已归档 output 与历史专题。',
+      ].join('\n');
+    default:
+      return `# ${spec?.title ?? '未命名页面'}`;
+  }
 }
 
 function mergeRoutingTopics(...groups) {
@@ -978,10 +1062,82 @@ export class KnowledgeCliService {
     ], `list wiki children for ${parentNodeToken}`);
   }
 
+  async ensureKnowledgeBaseRootStructure() {
+    const rootNode = normalizeWikiNode(await this.fetchWikiNode(KNOWLEDGE_SYSTEM_ROOT.wikiToken));
+    if (!rootNode?.space_id || !rootNode?.node_token) {
+      throw new ValidationError('Knowledge system root is not available');
+    }
+
+    const children = await this.fetchWikiChildren({
+      spaceId: rootNode.space_id,
+      parentNodeToken: rootNode.node_token,
+    });
+
+    const context = {
+      systemRoot: {
+        token: rootNode.node_token,
+        node: rootNode,
+        markdown: rootNode?.obj_token ? await this.fetchDocumentMarkdown(rootNode.obj_token) : '',
+      },
+    };
+
+    for (const spec of FIXED_ROOT_PAGE_SPECS) {
+      let node = children.find((item) => sameTitle(item.title, spec.title) && (item.node_type ?? item.nodeType ?? 'origin') === 'origin') ?? null;
+      let reusedAlias = false;
+
+      if (!node && Array.isArray(spec.aliases) && spec.aliases.length > 0) {
+        node = children.find((item) => matchesAnyTitle(item.title, spec.aliases) && (item.node_type ?? item.nodeType ?? 'origin') === 'origin') ?? null;
+        reusedAlias = Boolean(node);
+      }
+
+      if (!node) {
+        node = await this.createWikiNode({
+          spaceId: rootNode.space_id,
+          parentNodeToken: rootNode.node_token,
+          title: spec.title,
+          nodeType: 'origin',
+          objType: 'docx',
+        });
+      }
+
+      let markdown = node?.obj_token ? await this.fetchDocumentMarkdown(node.obj_token) : '';
+      const shouldSeedMarkdown = !cleanText(markdown);
+      const shouldRename = reusedAlias || !sameTitle(node?.title, spec.title);
+
+      if (node?.obj_token && (shouldSeedMarkdown || shouldRename)) {
+        const publishResult = await this.publishAiPage({
+          title: spec.title,
+          markdown: shouldSeedMarkdown ? buildFixedRootPageMarkdown(spec) : markdown,
+          existingDocId: node.obj_token,
+          aiWikiNode: node.node_token,
+        });
+
+        markdown = shouldSeedMarkdown ? buildFixedRootPageMarkdown(spec) : markdown;
+        node = normalizeWikiNode({
+          ...node,
+          title: spec.title,
+          obj_token: publishResult.docId || node.obj_token,
+        });
+      }
+
+      context[spec.key] = {
+        token: node?.node_token ?? '',
+        node,
+        markdown,
+      };
+    }
+
+    return context;
+  }
+
   async fetchAiMaintenanceContext() {
-    const context = {};
+    const context = await this.ensureKnowledgeBaseRootStructure();
 
     for (const [key, token] of Object.entries(AI_WIKI_PAGE_TOKENS)) {
+      if (context[key]) {
+        continue;
+      }
+
       const node = normalizeWikiNode(await this.fetchWikiNode(token));
       const markdown = node?.obj_token ? await this.fetchDocumentMarkdown(node.obj_token) : '';
       context[key] = {
@@ -1361,8 +1517,15 @@ export class KnowledgeCliService {
       };
     }
 
+    if (draft?.pageType === 'personal-date' || /^\d{4}-\d{2}-\d{2}$/u.test(title)) {
+      return {
+        primaryTopic: '按日期排列',
+        secondaryTopics: [],
+      };
+    }
+
     return {
-      primaryTopic,
+      primaryTopic: '按主题分类',
       secondaryTopics: mergeRoutingTopics(explicitSecondaryTopics, resolved.secondaryTopics)
         .filter((topic) => topic !== primaryTopic && !isGenericRoutingTopic(topic)),
     };
@@ -1508,6 +1671,7 @@ export class KnowledgeCliService {
 
     const journalEntries = [];
     const targetDrafts = new Map();
+    const personalThemeDrafts = new Map();
     let sawPersonal = false;
     let sawGeneric = false;
 
@@ -1528,6 +1692,23 @@ export class KnowledgeCliService {
       return targetDrafts.get(key);
     };
 
+    const ensurePersonalThemeDraft = ({ title, pageType, topic }) => {
+      const key = `${pageType}|${title}`;
+      if (!personalThemeDrafts.has(key)) {
+        personalThemeDrafts.set(key, {
+          title,
+          pageType,
+          entries: [],
+          topics: {
+            primaryTopic: topic,
+            secondaryTopics: [],
+          },
+          sources: [],
+        });
+      }
+      return personalThemeDrafts.get(key);
+    };
+
     for (const block of blocks) {
       const blockClassification = classifyKnowledgeContent({
         title: input?.title ?? '',
@@ -1538,25 +1719,31 @@ export class KnowledgeCliService {
       const sourceCitations = dedupeCitations([sourceCitation, ...inheritedCitations]);
 
       if (blockClassification.type === 'personal') {
-        journalEntries.push({
+        const personalEntry = {
           text: block.text,
           citations: inheritedCitations,
           citationLabel: inheritedCitations.length ? '来源' : '',
-        });
+        };
+        journalEntries.push(personalEntry);
+
+        const personalThemeCandidates = inferPersonalThemeCandidates([{
+          text: block.text,
+          citations: sourceCitations,
+        }]);
+
+        for (const candidate of personalThemeCandidates) {
+          const themeDraft = ensurePersonalThemeDraft(candidate);
+          themeDraft.entries.push({
+            text: candidate.text,
+            citations: candidate.citations,
+            citationLabel: '引自',
+          });
+        }
         sawPersonal = true;
         continue;
       }
 
       if (blockClassification.type === 'generic') {
-        sawGeneric = true;
-        if (input?.isJournalSource) {
-          journalEntries.push({
-            text: block.text,
-            citations: inheritedCitations,
-            citationLabel: inheritedCitations.length ? '来源' : '',
-          });
-        }
-
         const topics = resolveKnowledgeTopics({
           title: input?.title ?? '',
           content: block.text,
@@ -1573,6 +1760,19 @@ export class KnowledgeCliService {
           citations: sourceCitations,
           citationLabel: '引自',
         });
+
+        if (!shouldPromoteGenericTopic({ title: target.title, entries: target.entries })) {
+          continue;
+        }
+
+        sawGeneric = true;
+        if (input?.isJournalSource) {
+          journalEntries.push({
+            text: block.text,
+            citations: inheritedCitations,
+            citationLabel: inheritedCitations.length ? '来源' : '',
+          });
+        }
         continue;
       }
 
@@ -1591,11 +1791,26 @@ export class KnowledgeCliService {
       }
 
       for (const text of split.personalSegments) {
-        journalEntries.push({
+        const personalEntry = {
           text,
           citations: inheritedCitations,
           citationLabel: inheritedCitations.length ? '来源' : '',
-        });
+        };
+        journalEntries.push(personalEntry);
+
+        const personalThemeCandidates = inferPersonalThemeCandidates([{
+          text,
+          citations: sourceCitations,
+        }]);
+
+        for (const candidate of personalThemeCandidates) {
+          const themeDraft = ensurePersonalThemeDraft(candidate);
+          themeDraft.entries.push({
+            text: candidate.text,
+            citations: candidate.citations,
+            citationLabel: '引自',
+          });
+        }
       }
 
       for (const text of split.knowledgeSegments) {
@@ -1627,11 +1842,20 @@ export class KnowledgeCliService {
     }
 
     const classification = this.deriveOverallClassification({ sawPersonal, sawGeneric });
+    const promotedTargetDrafts = Array.from(targetDrafts.values())
+      .filter((draft) => shouldPromoteGenericTopic({ title: draft.title, entries: draft.entries }));
+    const promotedPersonalThemeDrafts = Array.from(personalThemeDrafts.values())
+      .filter((draft) => shouldPromotePersonalTopic({
+        topic: draft.topics?.primaryTopic ?? draft.title,
+        entries: draft.entries,
+      }));
+
     return {
       classification,
       blocks,
       journalEntries,
-      targetDrafts: Array.from(targetDrafts.values()),
+      targetDrafts: promotedTargetDrafts,
+      personalThemeDrafts: promotedPersonalThemeDrafts,
     };
   }
 
@@ -1644,7 +1868,12 @@ export class KnowledgeCliService {
     const existing = parseAiAllPagesIndexMarkdownNormalized(context?.allPagesIndex?.markdown ?? '');
     const nextPersonalEntries = mergeIndexEntries(
       existing.personalEntries,
-      pages.personal ? [pageEntryFromMaintainedPage(pages.personal)] : []
+      [
+        ...(pages.personal ? [pageEntryFromMaintainedPage(pages.personal)] : []),
+        ...((Array.isArray(pages.personalThemes) ? pages.personalThemes : [])
+          .map((page) => pageEntryFromMaintainedPage(page))
+          .filter(Boolean)),
+      ]
     );
     const nextGenericEntries = mergeIndexEntries(
       existing.genericEntries,
@@ -1710,7 +1939,12 @@ export class KnowledgeCliService {
       return false;
     }
 
-    const pageLinks = dedupePageLinks([pages.personal, pages.generic, ...(Array.isArray(pages.targets) ? pages.targets : [])])
+    const pageLinks = dedupePageLinks([
+      pages.personal,
+      ...(Array.isArray(pages.personalThemes) ? pages.personalThemes : []),
+      pages.generic,
+      ...(Array.isArray(pages.targets) ? pages.targets : []),
+    ])
       .filter(Boolean)
       .map((page) => ({
         title: page.title,
@@ -1722,6 +1956,7 @@ export class KnowledgeCliService {
       highlights: [personalPage?.title ?? ''],
       adviceItems: input?.adviceItems ?? {
         personal: [personalPage?.title ?? ''],
+        主题同步: (Array.isArray(pages.personalThemes) ? pages.personalThemes : []).map((page) => page.title),
       },
       pageLinks,
     });
@@ -1751,6 +1986,7 @@ export class KnowledgeCliService {
     const plan = this.buildBlockRoutingPlan(input);
     const pages = {
       personal: null,
+      personalThemes: [],
       generic: null,
       targets: [],
     };
@@ -1761,16 +1997,29 @@ export class KnowledgeCliService {
       pages.personal = await this.publishRoutedKnowledgePage({
         privacyScope: 'personal',
         draft: {
-          title: cleanText(input?.title ?? `${input?.date ?? ''} 日记`) || `${input?.date ?? ''} 日记`,
+          title: normalizeDatePageTitle(input?.date, input?.title),
           entries: plan.journalEntries,
           sources: [input?.sourceLabel ?? 'Journal'],
+          pageType: 'personal-date',
           topics: {
-            primaryTopic: '日记',
+            primaryTopic: '按日期排列',
             secondaryTopics: [],
           },
         },
         context,
       });
+    }
+
+    for (const themeDraft of plan.personalThemeDrafts ?? []) {
+      const published = await this.publishRoutedKnowledgePage({
+        privacyScope: 'personal',
+        draft: {
+          ...themeDraft,
+          sources: [input?.sourceLabel ?? 'Journal'],
+        },
+        context,
+      });
+      pages.personalThemes.push(published);
     }
 
     for (const targetDraft of plan.targetDrafts) {
@@ -1791,11 +2040,12 @@ export class KnowledgeCliService {
       pages.personal = await this.publishRoutedKnowledgePage({
         privacyScope: 'personal',
         draft: {
-          title: cleanText(input?.title ?? `${input?.date ?? ''} 日记`) || `${input?.date ?? ''} 日记`,
+          title: normalizeDatePageTitle(input?.date, input?.title),
           entries: plan.journalEntries,
           sources: [input?.sourceLabel ?? 'Journal'],
+          pageType: 'personal-date',
           topics: {
-            primaryTopic: '日记',
+            primaryTopic: '按日期排列',
             secondaryTopics: [],
           },
         },
@@ -1816,6 +2066,7 @@ export class KnowledgeCliService {
       routing: {
         blockCount: plan.blocks.length,
         journalEntryCount: plan.journalEntries.length,
+        personalThemeCount: plan.personalThemeDrafts?.length ?? 0,
         targetCount: plan.targetDrafts.length,
       },
       pages,

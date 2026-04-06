@@ -1,7 +1,20 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const DEFAULT_CONFIG_PATH = path.resolve(process.cwd(), process.env.AI_WIKI_CONFIG_PATH || 'config/wiki.config.json');
+const CONFIG_MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
+const PACKAGE_ROOT_DIR = path.resolve(CONFIG_MODULE_DIR, '..', '..');
+
+function resolveConfigPath() {
+  const configuredPath = process.env.AI_WIKI_CONFIG_PATH || 'config/wiki.config.json';
+  if (path.isAbsolute(configuredPath)) {
+    return configuredPath;
+  }
+
+  return path.resolve(PACKAGE_ROOT_DIR, configuredPath);
+}
+
+const DEFAULT_CONFIG_PATH = resolveConfigPath();
 
 function readJsonConfig(filePath) {
   if (!existsSync(filePath)) {
@@ -89,6 +102,49 @@ export const AI_WIKI_PAGE_TOKENS = Object.freeze({
   maintenanceGuide: configValue(['aiWiki', 'maintenanceGuide'], 'AI_WIKI_PAGE_MAINTENANCE_GUIDE', 'wiki_maintenance_guide'),
   aiIndexRoot: configValue(['aiWiki', 'aiIndexRoot'], 'AI_WIKI_PAGE_INDEX_ROOT', 'wiki_ai_index_root'),
 });
+
+export const KNOWLEDGE_SYSTEM_ROOT = Object.freeze({
+  wikiToken: configValue(['systemRoot', 'wikiToken'], 'AI_WIKI_SYSTEM_ROOT', 'wiki_system_root'),
+  title: configValue(['systemRoot', 'title'], 'AI_WIKI_SYSTEM_ROOT_TITLE', 'AI知识库（codex）'),
+});
+
+export const FIXED_ROOT_PAGE_SPECS = Object.freeze([
+  {
+    key: 'maintenanceGuide',
+    title: 'AI维基百科运行维护指南',
+    aliases: [],
+  },
+  {
+    key: 'timelinePage',
+    title: 'AI维基百科维护历史记录',
+    aliases: [],
+  },
+  {
+    key: 'allPagesIndex',
+    title: 'AI维基百科所有页面索引',
+    aliases: ['AI知识库引页'],
+  },
+  {
+    key: 'genericInfoRoot',
+    title: 'AI维基百科',
+    aliases: [],
+  },
+  {
+    key: 'personalInfoRoot',
+    title: '个人信息汇集',
+    aliases: [],
+  },
+  {
+    key: 'outputRoot',
+    title: 'output',
+    aliases: [],
+  },
+  {
+    key: 'archiveRoot',
+    title: '归档',
+    aliases: [],
+  },
+]);
 
 export const JOURNAL_INPUT_RULE = Object.freeze({
   resourceRootKey: 'resource',
@@ -199,8 +255,11 @@ export function buildKnowledgeRoots(overrides = {}) {
 
 export function getDeploymentConfigSummary() {
   return {
+    packageRoot: PACKAGE_ROOT_DIR,
     configPath: DEFAULT_CONFIG_PATH,
     roots: DEFAULT_KNOWLEDGE_ROOTS,
+    systemRoot: KNOWLEDGE_SYSTEM_ROOT,
+    fixedRootPages: FIXED_ROOT_PAGE_SPECS,
     aiWikiPages: AI_WIKI_PAGE_TOKENS,
     journalInput: JOURNAL_INPUT_RULE,
   };

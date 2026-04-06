@@ -8,8 +8,11 @@ import {
   buildGenericKnowledgeMarkdown,
   buildPersonalKnowledgeMarkdown,
   classifyKnowledgeContent,
+  inferPersonalThemeCandidates,
+  normalizeDatePageTitle,
   resolveKnowledgeTopics,
   segmentKnowledgeBlocks,
+  shouldPromotePersonalTopic,
   splitMixedKnowledge,
 } from '../../src/knowledge/aiWiki.js';
 
@@ -31,7 +34,7 @@ test('混合内容会拆出个人句段和非个人句段', () => {
   assert.equal(result.classification.type, 'mixed');
   assert.deepEqual(result.personalSegments, ['今天我因为飞书记录系统这件事有点烦']);
   assert.deepEqual(result.knowledgeSegments, ['问题不在模板', '而在内容分类和引用机制没有分开设计。']);
-  assert.equal(result.personal.title, '2026-04-06 飞书记录系统');
+  assert.equal(result.personal.title, '2026-04-06');
 });
 
 test('非个人信息会被识别为 generic 并命中主题', () => {
@@ -48,7 +51,7 @@ test('非个人信息会被识别为 generic 并命中主题', () => {
 
 test('按自然段切块时会保留来源块信息', () => {
   const blocks = segmentKnowledgeBlocks({
-    title: '2026-04-06 日记',
+    title: '2026-04-06',
     sourceUrl: 'https://example.com/journal',
     content: `今天晚上有点累，头也有点疼。
 
@@ -66,14 +69,14 @@ test('按自然段切块时会保留来源块信息', () => {
 
 test('目标文档里的段落会在段落旁渲染引自块链接', () => {
   const markdown = buildGenericKnowledgeMarkdown({
-    title: '飞书记录系统项目文档',
+    title: '飞书记录系统',
     entries: [
       {
         text: '当前系统的核心问题不在模板本身，而在内容分类机制与引用机制没有分开设计。',
         citations: [
           {
             label: '引自',
-            title: '2026-04-06 日记 / 块 2',
+            title: '2026-04-06 / 块 2',
             blockUrl: 'https://example.com/journal#blk-2',
           },
         ],
@@ -82,13 +85,14 @@ test('目标文档里的段落会在段落旁渲染引自块链接', () => {
   });
 
   assert.match(markdown, /当前系统的核心问题不在模板本身/);
-  assert.match(markdown, /引自：\[2026-04-06 日记 \/ 块 2\]\(https:\/\/example\.com\/journal#blk-2\)/);
+  assert.match(markdown, /引自：\[2026-04-06 \/ 块 2\]\(https:\/\/example\.com\/journal#blk-2\)/);
   assert.doesNotMatch(markdown, /相关内容见今日日记|另见：/);
 });
 
 test('今日日记中的段落可以引用旧规则文档来源', () => {
   const markdown = buildPersonalKnowledgeMarkdown({
-    title: '2026-04-06 日记',
+    title: '2026-04-06',
+    pageType: 'personal-date',
     entries: [
       {
         text: '今天继续按之前定下来的规则整理记录系统，尤其是混合内容必须拆开处理这一点，确实比原来清晰很多。',
@@ -123,10 +127,10 @@ test('一段话可以对应多个真实来源，并且引用紧贴段落出现',
 test('索引页和每日建议仍然只做维护视图，不承担伪双链职责', () => {
   const indexMarkdown = buildAiAllPagesIndexMarkdown({
     personalEntries: [
-      { topic: '日记', title: '2026-04-06 日记', url: 'https://example.com/journal', summary: '今日个人记录', isShortcut: false },
+      { topic: '按日期排列', title: '2026-04-06', url: 'https://example.com/journal', summary: '今日日记整理页', isShortcut: false },
     ],
     genericEntries: [
-      { topic: '项目', title: '飞书记录系统项目文档', url: 'https://example.com/project', summary: '分类与引用机制', isShortcut: false },
+      { topic: '项目', title: '飞书记录系统', url: 'https://example.com/project', summary: '分类与引用机制', isShortcut: false },
     ],
   });
 
@@ -137,8 +141,8 @@ test('索引页和每日建议仍然只做维护视图，不承担伪双链职�
       工作方法: ['优先按块分类，再决定是否抽取到主题文档'],
     },
     pageLinks: [
-      { title: '2026-04-06 日记', url: 'https://example.com/journal' },
-      { title: '飞书记录系统项目文档', url: 'https://example.com/project' },
+      { title: '2026-04-06', url: 'https://example.com/journal' },
+      { title: '飞书记录系统', url: 'https://example.com/project' },
     ],
   });
 
@@ -147,4 +151,26 @@ test('索引页和每日建议仍然只做维护视图，不承担伪双链职�
   assert.match(adviceBlock, /### 今日建议/);
   assert.doesNotMatch(indexMarkdown, /引自：|来源：/);
   assert.doesNotMatch(adviceBlock, /引自：|来源：/);
+});
+
+test('日期页命名必须固定为 YYYY-MM-DD', () => {
+  assert.equal(normalizeDatePageTitle('2026-04-06', '今天记录'), '2026-04-06');
+  assert.equal(normalizeDatePageTitle('', '2026-04-07'), '2026-04-07');
+});
+
+test('健康信息达到阈值时会产生个人主题同步候选', () => {
+  const candidates = inferPersonalThemeCandidates([
+    {
+      text: '这周连续两天睡眠不足，明显影响学习效率。',
+      citations: [{ title: '2026-04-06 / blk-1', blockUrl: 'https://example.com/journal#blk-1' }],
+    },
+    {
+      text: '今天运动后恢复效果很明显，精力比昨天好很多。',
+      citations: [{ title: '2026-04-06 / blk-2', blockUrl: 'https://example.com/journal#blk-2' }],
+    },
+  ]);
+
+  const healthEntries = candidates.filter((item) => item.title === '健康');
+  assert.equal(healthEntries.length, 2);
+  assert.equal(shouldPromotePersonalTopic({ topic: '健康', entries: healthEntries }), true);
 });

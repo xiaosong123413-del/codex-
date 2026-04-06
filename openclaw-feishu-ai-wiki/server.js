@@ -5,7 +5,6 @@ import dotenv from 'dotenv';
 
 import { OpenclawFeishuAiWikiClient } from './src/core/client.js';
 import { getDeploymentConfigSummary } from './src/knowledge/config.js';
-import { jsonBodyParser } from './src/middleware/jsonParser.js';
 import { errorHandler } from './src/middleware/errorHandler.js';
 import { setupKnowledgeRoutes } from './src/routes/knowledge.js';
 
@@ -17,8 +16,6 @@ const app = express();
 const port = process.env.PORT || 3111;
 
 const client = new OpenclawFeishuAiWikiClient();
-
-app.use(jsonBodyParser);
 app.use(express.json({ limit: '10mb' }));
 
 app.get('/', (_req, res) => {
