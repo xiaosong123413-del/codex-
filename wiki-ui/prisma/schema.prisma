@@ -1,0 +1,43 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model ChatThread {
+  id        String        @id @default(cuid())
+  title     String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  messages  ChatMessage[]
+}
+
+model ChatMessage {
+  id        String     @id @default(cuid())
+  threadId  String
+  role      String
+  content   String
+  createdAt DateTime   @default(now())
+  thread    ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+}
+
+model ReviewItem {
+  id          String   @id @default(cuid())
+  sourcePath  String
+  status      String   @default("open")
+  payloadJson String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ResearchJob {
+  id         String   @id @default(cuid())
+  topic      String
+  status     String   @default("queued")
+  resultJson String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}

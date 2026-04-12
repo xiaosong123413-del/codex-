@@ -1,0 +1,29 @@
+.env.local
+.env.test
+.env.test.local
+node_modules
+wiki-ui/.next/
+wiki-ui/tsconfig.tsbuildinfo
+.tmp-base/
+.worktrees/
+worktrees/
+
+# Local companion repos / downloads
+CLI-WeChat-Bridge-main/
+mobileCodexHelper-main/
+OpenHarness-For-Codex/
+*.zip
+*.msix
+*.exe
+*.tar.gz
+Claude_*.yaml
+
+# One-off scrape / media artifacts
+claude_download_page.html
+weixin_article.html
+top*.png
+bottom*.png
+crop_*.png
+full_upscaled.png
+whiteboard-preview.jpg
+whiteboard-nodes-extract.md

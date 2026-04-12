@@ -1,0 +1,45 @@
+{
+  "name": "feishu-connect",
+  "version": "2.0.0",
+  "description": "Comprehensive Feishu/Lark integration SDK with all major APIs",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node tests/examples/health.js",
+    "wiki:generate": "node scripts/generate-wiki-system.mjs",
+    "wiki:test": "node --test tests/knowledge/wiki-system-*.test.js",
+    "wiki:build-all": "node scripts/generate-wiki-system.mjs && node scripts/sync-wiki-ui-generated.mjs && npm --prefix wiki-ui run build",
+    "test:all": "node tests/examples/all.js",
+    "test:im": "node tests/examples/im.js",
+    "test:integration": "node --test tests/integration/*.test.js",
+    "test:integration:auth": "node --test tests/integration/auth-refresh.test.js",
+    "test:integration:doc": "node --test tests/integration/doc-create.test.js",
+    "test:integration:perm": "node --test tests/integration/permission-share.test.js"
+  },
+  "keywords": [
+    "feishu",
+    "lark",
+    "open-api",
+    "bot",
+    "im",
+    "drive",
+    "calendar",
+    "approval",
+    "tasks",
+    "documents",
+    "contacts"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@larksuiteoapi/node-sdk": "^1.59.0",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.0",
+    "gray-matter": "^4.0.3",
+    "node-fetch": "^3.3.2",
+    "winston": "^3.14.2",
+    "zod": "^4.3.6"
+  }
+}
