@@ -11,3 +11,15 @@ async function readJsonFile(name) {
 export function loadTaxonomy() {
   return readJsonFile('taxonomy.json');
 }
+
+export function loadBacklinks() {
+  return readJsonFile('_backlinks.json');
+}
+
+export function loadPageMeta() {
+  return readJsonFile('page-meta.json');
+}
+
+export function loadAbsorbLog() {
+  return readJsonFile('_absorb_log.json');
+}

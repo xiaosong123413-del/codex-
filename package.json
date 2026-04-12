@@ -10,6 +10,7 @@
     "test": "node tests/examples/health.js",
     "wiki:generate": "node scripts/generate-wiki-system.mjs",
     "wiki:test": "node --test tests/knowledge/wiki-system-*.test.js",
+    "wiki:build-all": "node scripts/generate-wiki-system.mjs && node scripts/sync-wiki-ui-generated.mjs && npm --prefix wiki-ui run build",
     "test:all": "node tests/examples/all.js",
     "test:im": "node tests/examples/im.js",
     "test:integration": "node --test tests/integration/*.test.js",

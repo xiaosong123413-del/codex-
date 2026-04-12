@@ -2,6 +2,8 @@
 .env.test
 .env.test.local
 node_modules
+wiki-ui/.next/
+wiki-ui/tsconfig.tsbuildinfo
 .tmp-base/
 .worktrees/
 worktrees/
