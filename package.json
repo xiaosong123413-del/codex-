@@ -8,6 +8,8 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "test": "node tests/examples/health.js",
+    "wiki:generate": "node scripts/generate-wiki-system.mjs",
+    "wiki:test": "node --test tests/knowledge/wiki-system-*.test.js",
     "test:all": "node tests/examples/all.js",
     "test:im": "node tests/examples/im.js",
     "test:integration": "node --test tests/integration/*.test.js",
@@ -34,6 +36,7 @@
     "@larksuiteoapi/node-sdk": "^1.59.0",
     "dotenv": "^16.6.1",
     "express": "^4.21.0",
+    "gray-matter": "^4.0.3",
     "node-fetch": "^3.3.2",
     "winston": "^3.14.2",
     "zod": "^4.3.6"
