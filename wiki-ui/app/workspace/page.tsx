@@ -19,33 +19,45 @@ import {
   loadSearchIndex,
   loadTaxonomy,
 } from '../../lib/generated/loaders.js';
+import { resolveActivePage, searchKnowledge } from '../../lib/knowledge.js';
 import { resolveWorkspace } from '../../lib/workspaces.js';
 
 type WorkspacePageMeta = {
-  pages?: Array<{ title?: string; path?: string; abstract?: string }>;
+  pages?: Array<{
+    title?: string;
+    path?: string;
+    abstract?: string;
+    category?: string;
+    headings?: string[];
+    tags?: string[];
+    sources?: string[];
+  }>;
 };
 
 type WorkspaceGraph = {
-  nodes?: Array<unknown>;
-  edges?: Array<unknown>;
+  nodes?: Array<{ id?: string; label?: string; category?: string }>;
+  edges?: Array<{ source?: string; target?: string }>;
 };
 
 type WorkspaceLint = {
-  brokenLinks?: Array<unknown>;
-  orphanPages?: Array<unknown>;
+  brokenLinks?: Array<{ from?: string; target?: string }>;
+  orphanPages?: Array<string>;
 };
 
 type WorkspaceSearchIndex = {
-  documents?: Array<{ path?: string; title?: string }>;
+  documents?: Array<{ path?: string; title?: string; category?: string; text?: string; tags?: string[] }>;
 };
 
 type RenderWorkspacePanelArgs = {
   workspace: string;
   pageMeta: WorkspacePageMeta;
-  activePage: { title?: string; path?: string; abstract?: string } | null;
+  activePage: { title?: string; path?: string; abstract?: string; text?: string } | null;
   graph: WorkspaceGraph;
   lint: WorkspaceLint;
   searchIndex: WorkspaceSearchIndex;
+  searchQuery?: string;
+  searchResults: Array<{ path?: string; title?: string; category?: string; score?: number }>;
+  sourcePages: Array<{ path?: string; title?: string; abstract?: string }>;
 };
 
 function renderWorkspacePanel({
@@ -54,13 +66,15 @@ function renderWorkspacePanel({
   activePage,
   graph,
   lint,
-  searchIndex,
+  searchQuery,
+  searchResults,
+  sourcePages,
 }: RenderWorkspacePanelArgs) {
   switch (workspace) {
     case 'sources':
-      return <SourcesPane />;
+      return <SourcesPane sourcePages={sourcePages} selectedPath={activePage?.path} />;
     case 'search':
-      return <SearchPane searchIndex={searchIndex} />;
+      return <SearchPane query={searchQuery} results={searchResults} />;
     case 'graph':
       return <GraphPane graph={graph} />;
     case 'lint':
@@ -70,7 +84,7 @@ function renderWorkspacePanel({
     case 'research':
       return <ResearchPane />;
     case 'chat':
-      return <ChatPane />;
+      return <ChatPane activePagePath={activePage?.path} />;
     case 'wiki':
     default:
       return <WikiPane pageMeta={pageMeta} activePage={activePage} />;
@@ -78,7 +92,7 @@ function renderWorkspacePanel({
 }
 
 type WorkspacePageProps = {
-  searchParams?: Promise<{ workspace?: string }>;
+  searchParams?: Promise<{ workspace?: string; page?: string; q?: string }>;
 };
 
 export default async function WorkspacePage({ searchParams }: WorkspacePageProps) {
@@ -94,7 +108,23 @@ export default async function WorkspacePage({ searchParams }: WorkspacePageProps
     loadSearchIndex(),
   ]);
 
-  const activePage = pageMeta.pages?.[0] ?? null;
+  const activePage = resolveActivePage({
+    pageMeta,
+    searchIndex,
+    requestedPath: resolvedSearchParams?.page,
+    preferredCategory: workspace === 'sources' ? '来源' : undefined,
+  });
+  const searchQuery = resolvedSearchParams?.q?.trim() ?? '';
+  const searchResults = searchKnowledge({
+    searchIndex,
+    query: searchQuery || activePage?.title || '',
+    limit: 16,
+  });
+  const sourcePages = (pageMeta.pages ?? []).filter(
+    (page: NonNullable<WorkspacePageMeta['pages']>[number]) =>
+      page.category === '来源' || page.path?.startsWith('来源/')
+  );
+  const activePagePath = activePage?.path;
 
   return (
     <AppShell
@@ -104,14 +134,25 @@ export default async function WorkspacePage({ searchParams }: WorkspacePageProps
           taxonomy={taxonomy}
           pageMeta={pageMeta}
           selectedWorkspace={workspace}
+          selectedPagePath={activePage?.path ?? null}
         />
       }
-      mainPanel={renderWorkspacePanel({ workspace, pageMeta, activePage, graph, lint, searchIndex })}
+      mainPanel={renderWorkspacePanel({
+        workspace,
+        pageMeta,
+        activePage,
+        graph,
+        lint,
+        searchIndex,
+        searchQuery,
+        searchResults,
+        sourcePages,
+      })}
       rightPanel={
         <RightContextPanel
           activePage={activePage}
-          backlinks={activePage ? backlinks.pages?.[activePage.path] ?? null : null}
-          absorbRecord={activePage ? absorbLog.entries?.[activePage.path] ?? null : null}
+          backlinks={activePagePath ? backlinks.pages?.[activePagePath] ?? null : null}
+          absorbRecord={activePagePath ? absorbLog.entries?.[activePagePath] ?? null : null}
         >
           <PreviewPane activePage={activePage} />
         </RightContextPanel>

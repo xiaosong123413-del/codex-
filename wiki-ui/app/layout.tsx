@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import './globals.css';
 
 export const metadata = {
   title: 'Second Brain Workspace',
@@ -8,7 +9,7 @@ export const metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="zh-CN">
-      <body style={{ margin: 0, fontFamily: 'Georgia, Times New Roman, serif' }}>{children}</body>
+      <body>{children}</body>
     </html>
   );
 }
