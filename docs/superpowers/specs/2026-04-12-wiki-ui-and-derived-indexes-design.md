@@ -1,44 +1,66 @@
-# Second Brain Wiki UI And Derived Indexes Design
+# Second Brain Web Workspace Design
 
 Date: 2026-04-12
-Status: Approved for spec drafting
+Status: Revised after `llm_wiki` alignment
 Owner: Codex
 
 ## Summary
 
-Build a public-hosted but login-protected web UI for the existing second-brain knowledge base, using the current Markdown wiki as the source of truth. Add a derived system layer that generates:
+Build a public-hosted but login-protected web workspace for the existing second-brain knowledge base. The product target is no longer just a Wikipedia-like reader. It is a browser-based knowledge workbench inspired by `llm_wiki`:
 
-- natural-growth taxonomy for UI navigation
-- `_backlinks.json` for reverse-link navigation and related-page graphing
-- `_absorb_log.json` for raw-to-source-to-article absorption tracking
-- supporting metadata indexes for search and page rendering
+- left navigation tree for knowledge and sources
+- center workspace for chat, search, review, and deep research
+- right preview and context panel for page rendering, backlinks, sources, and absorb state
 
-The UI should feel as close to Wikipedia as practical while remaining a private personal wiki. Deployment target is Vercel. Authentication target is Auth.js with Google sign-in and an email allowlist.
+The current Markdown wiki remains the source of truth. A derived system layer generates machine indexes such as taxonomy, backlinks, absorb tracking, page metadata, search corpus, and graph data. The web app consumes those derived artifacts and adds authenticated collaboration state such as chat sessions and review queues.
+
+Deployment target is Vercel. Authentication target is Auth.js with Google sign-in and an email allowlist.
 
 ## Goals
 
 - Keep the current second-brain Markdown corpus as the authoritative knowledge source.
-- Add machine-readable derived indexes without forcing a destructive migration.
-- Support a Wikipedia-style reading experience:
-  - article pages
-  - backlinks
-  - search
-  - category or taxonomy browsing
-  - source references
-  - recent updates
-- Make the site publicly reachable on the internet but usable only after login.
-- Preserve the current maintenance workflow so future curation updates both Markdown and derived indexes.
+- Add a derived system layer that supports a workspace product instead of a plain article viewer.
+- Deliver a web application structurally close to `llm_wiki`, not just visually close to Wikipedia.
+- Include these v1 workbench capabilities:
+  - wiki browsing
+  - source browsing
+  - full-text search
+  - graph view
+  - lint view
+  - review queue
+  - deep research
+  - multi-session chat
+- Make the site publicly reachable on the internet but require login for all content access.
+- Preserve the current maintenance workflow so future curation updates both Markdown content and derived indexes.
 
 ## Non-Goals
 
 - Do not replace the current second-brain directory layout as the primary authoring structure.
 - Do not expose raw or first-brain read-only sources directly to site visitors.
 - Do not make the site publicly readable without authentication.
-- Do not introduce a second manually maintained wiki in parallel with the current one.
+- Do not create a second manually maintained wiki in parallel with the current one.
+- Do not make the web UI the source of truth for knowledge content in v1.
+
+## Alignment With `llm_wiki`
+
+The target product should align with the public description of `llm_wiki` in these ways:
+
+- three-column layout
+- knowledge tree and source tree navigation
+- chat-centered workflow
+- preview pane with context
+- workspace modules such as Wiki, Sources, Search, Graph, Lint, Review, Deep Research, and Settings
+
+The target product should differ from `llm_wiki` in these ways:
+
+- web-first deployment instead of a Tauri desktop shell
+- strict login gate for internet access
+- current second-brain Markdown as the source of truth
+- derived indexes generated from the existing wiki instead of adopting a new authoring filesystem
 
 ## Current State
 
-The current knowledge base already has a stable authoring structure built around:
+The current knowledge base already has a stable authoring structure:
 
 - `人物/`
 - `概念/`
@@ -51,31 +73,32 @@ The current knowledge base already has a stable authoring structure built around
 - `归档/`
 - root entry files such as `README.md`, `index.md`, `log.md`, `AI维护指令.md`
 
-There is also a raw read-only layer and a first-brain read-only layer. The current workflow already distinguishes:
+There is also:
 
-- raw source storage
-- absorbed source summaries in `来源/`
-- compiled knowledge pages in the primary content directories
+- a raw read-only input layer
+- a first-brain read-only layer reachable through `.base` references and linked pages
+- an existing maintenance process that compiles raw material into source pages and then into formal knowledge pages
 
-This is already a functioning knowledge system. The missing pieces are derived system indexes and a web UI.
+This means the knowledge system already works. What is missing is a derived data layer and an app shell.
 
-## Design Decision
+## Product Shape
 
-Use a three-layer model:
+Use a three-layer architecture:
 
 1. Authoring layer
-   - existing Markdown wiki
+   - existing second-brain Markdown corpus
    - human-maintained and AI-maintained
    - source of truth
 2. Derived system layer
-   - generated JSON indexes and normalized page metadata
-   - used for UI features and maintenance visibility
-3. Presentation layer
-   - a separate Next.js application
-   - reads Markdown plus generated indexes
-   - deployed to Vercel with login protection
+   - generated JSON indexes and normalized page artifacts
+   - rebuilt from the authoring layer
+   - powers navigation, search, backlinks, graphing, absorb tracking, linting, and provenance
+3. Presentation and interaction layer
+   - Next.js web application
+   - authenticated app shell
+   - stores chat state, review state, settings, and deep-research jobs
 
-This avoids destructive migration while still enabling the taxonomy and system files requested by the user.
+This keeps the knowledge base authoritative while still allowing application-style behavior.
 
 ## Proposed Directory Layout
 
@@ -102,35 +125,42 @@ ai知识库（第二大脑）/
     _absorb_log.json
     page-meta.json
     search-index.json
+    graph.json
+    lint-report.json
     aliases.json
 ```
 
-### New UI application
+### New web app
 
 ```text
 wiki-ui/
   app/
+    (auth)/
+    workspace/
+    api/
   components/
   lib/
   scripts/
-  public/
   generated/
+  prisma/
+  public/
+  auth.ts
+  middleware.ts
   package.json
   next.config.ts
-  auth.ts
 ```
 
-`generated/` inside the UI app is a deployable copy of the latest derived indexes and normalized page artifacts. It is safe to regenerate from the source knowledge base at any time.
+`generated/` in the web app is a deployment copy of the latest derived artifacts and rendered page payloads.
 
 ## Why The Existing Directory Layout Stays
 
-The current top-level structure remains the primary authoring structure because it already encodes a stable MECE content model for maintenance:
+The current top-level structure remains the authoring structure because it already provides:
 
-- humans and AI can reason about it consistently
-- existing links and indexes already depend on it
-- current maintenance rules are written around it
+- stable content boundaries for maintenance
+- compatibility with existing links and rules
+- a workable MECE model for formal knowledge pages
 
-The requested natural-growth taxonomy will exist as a derived navigation tree, not as a mandatory on-disk folder migration.
+The requested natural-growth taxonomy becomes a derived navigation system, not a mandatory replacement for the underlying filesystem.
 
 ## Derived System Layer
 
@@ -138,18 +168,18 @@ The requested natural-growth taxonomy will exist as a derived navigation tree, n
 
 Purpose:
 
-- expose a Wikipedia-like browse tree that emerges from actual content rather than from a manually frozen filesystem tree
-- support topic navigation without forcing the authoring structure to mirror the display structure
+- provide a natural-growth knowledge tree for the left sidebar
+- support multiple thematic entry points without forcing a filesystem migration
 
 Generation inputs:
 
-- file path and top-level category
-- frontmatter tags
-- frontmatter sources
+- file path and primary category
+- frontmatter tags and sources
 - normalized wikilinks
 - heading structure
-- co-link frequency across pages
-- recent update frequency
+- shared-link clusters
+- source co-occurrence
+- update recency
 
 Output shape:
 
@@ -183,28 +213,25 @@ Output shape:
 
 Rules:
 
-- a page may appear in multiple taxonomy branches
-- taxonomy is display-oriented, not storage-oriented
-- taxonomy can evolve as the corpus evolves
-- taxonomy generation must be deterministic from the current corpus plus explicit overrides if needed
-
-Optional extension:
-
-- support a small manual override file later if auto-grouping needs curation
+- one page may appear in multiple branches
+- taxonomy is display-oriented
+- generation must be deterministic
+- later manual overrides are allowed, but not required for v1
 
 ### 2. `_backlinks.json`
 
 Purpose:
 
-- support Wikipedia-style "What links here"
-- power backlinks sections on article pages
-- support related-page recommendations and graph views
+- power "What links here"
+- power the right-side backlinks panel
+- support related-page ranking
+- feed graph generation
 
 Generation inputs:
 
-- all explicit `[[wikilinks]]`
-- Markdown links that resolve to local pages
-- normalized title and alias resolution
+- explicit `[[wikilinks]]`
+- local Markdown links
+- alias resolution
 - source-to-article and article-to-source relationships
 
 Output shape:
@@ -232,19 +259,14 @@ Output shape:
 }
 ```
 
-Rules:
-
-- backlinks are generated from resolved page identity, not raw string matching
-- aliases must map to canonical pages before the graph is built
-- broken links should be reported separately during generation
-
 ### 3. `_absorb_log.json`
 
 Purpose:
 
-- track ingestion and absorption state from raw material into the wiki
-- make maintenance status queryable instead of relying only on prose logs
-- expose provenance chains for future QA and UI visibility
+- track raw-to-source-to-article absorption state
+- support maintenance QA
+- support review queues
+- support future provenance views inside the UI
 
 Primary states:
 
@@ -269,30 +291,23 @@ Output shape:
         "项目/飞书记录系统.md"
       ],
       "lastAbsorbedAt": "2026-04-12T21:30:00+08:00",
-      "notes": "Already entered source layer and expanded into two formal knowledge pages"
+      "notes": "Already entered source layer and expanded into two formal knowledge pages",
+      "confidence": 0.84
     }
   }
 }
 ```
 
-Data sources for backfill:
+Backfill sources:
 
-- file path mapping from `raw`
-- source pages in `来源/`
+- raw path inventory
+- source pages under `来源/`
 - `sources:` frontmatter in formal pages
-- historical records in `log.md`
+- historical notes from `log.md`
 
-Rules:
+### 4. `page-meta.json`
 
-- raw and first-brain inputs remain read-only
-- the absorb log records interpretation results and mappings, not rewrites of the source materials
-- skipped items must carry a reason
-
-### 4. Supporting Indexes
-
-#### `page-meta.json`
-
-Contains normalized per-page metadata:
+Contains normalized page metadata:
 
 - canonical path
 - title
@@ -303,8 +318,9 @@ Contains normalized per-page metadata:
 - source references
 - abstract
 - headings
+- renderable slug
 
-#### `search-index.json`
+### 5. `search-index.json`
 
 Contains the normalized search corpus:
 
@@ -313,106 +329,231 @@ Contains the normalized search corpus:
 - abstract
 - headings
 - high-value body terms
+- category filters
+- tag filters
+
+### 6. `graph.json`
+
+Purpose:
+
+- power the graph workspace
+
+Contains:
+
+- node metadata
+- edge list
+- edge types such as `wikilink`, `source_ref`, `absorbed_into`, `related`
+
+### 7. `lint-report.json`
+
+Purpose:
+
+- power the lint workspace
+
+Contains:
+
+- broken links
+- orphan pages
+- duplicate candidates
+- weakly connected pages
+- pages with missing source references
+- pages with stale metadata
+
+### 8. `aliases.json`
+
+Maps ambiguous link text and alternative titles to canonical pages.
+
+## Web App Design
+
+## App Shell
+
+The app shell is the default product entry, not a marketing homepage.
+
+Layout:
+
+- left sidebar
+  - workspace switcher
+  - knowledge tree
+  - source tree
+  - taxonomy tree
+- center panel
+  - active workspace
+  - chat, search, review, deep research, or graph controls
+- right panel
+  - preview renderer
+  - page metadata
+  - backlinks
+  - source references
+  - absorb status
+
+The shell must feel like a knowledge workstation rather than a static documentation site.
+
+## Core Workspaces
+
+### 1. Wiki
+
+Responsibilities:
+
+- browse formal knowledge pages
+- render article content
+- navigate by taxonomy, links, and related pages
+
+### 2. Sources
+
+Responsibilities:
+
+- browse absorbed source summaries
+- inspect provenance without exposing raw storage
+- trace which formal pages a source contributes to
+
+### 3. Search
+
+Responsibilities:
+
+- instant keyword search
 - category and tag filters
+- result ranking using metadata and link density
 
-#### `aliases.json`
+### 4. Graph
 
-Maps alternative names and ambiguous link text to canonical pages.
+Responsibilities:
 
-## UI Design
+- visualize relationships between pages
+- pivot by category, source, or selected node
+- inspect graph edges and jump back into preview
 
-### Product Position
+### 5. Lint
 
-The site is not a generic blog and not a raw vault browser. It is a private, Wikipedia-like reader for the curated second brain.
+Responsibilities:
 
-### Primary UX Goals
+- show structural problems in the knowledge base
+- prioritize broken links, orphan pages, stale pages, and duplicate candidates
 
-- immediate article readability
-- dense internal linking
-- strong navigation
-- transparent provenance
-- obvious backlinks
-- fast search
+### 6. Review
 
-### Primary Pages
+Responsibilities:
 
-1. Home
-   - featured entry points
-   - recent updates
-   - major taxonomy roots
-   - maintenance summary
-2. Article page
-   - title
-   - infobox-like metadata block
-   - table of contents
-   - rendered Markdown body
-   - source references
-   - backlinks
-   - related pages
-3. Search
-   - instant results
-   - filters by category, tag, and update date
-4. Taxonomy browse
-   - browse natural-growth topic tree
-5. Recent changes
-   - driven by `log.md` and page metadata
-6. Sources view
-   - browse source summaries without exposing raw read-only files
+- present items that need human or AI review
+- surface uncertain absorb mappings
+- surface pages with weak provenance or ambiguous categorization
 
-### Visual Direction
+### 7. Deep Research
 
-The UI should be strongly inspired by Wikipedia:
+Responsibilities:
 
-- restrained typography
-- left-side navigation and content hierarchy
-- tight reading column
-- blue-link interaction language
-- infobox and metadata affordances
-- dense but controlled internal navigation
+- start focused research jobs for known knowledge gaps
+- fetch external materials
+- summarize into candidate source pages
+- propose insertion into the wiki without writing directly to the authoritative corpus
 
-It should not be a literal trademarked clone, but the interaction model and content density should feel familiar to Wikipedia users.
+### 8. Chat
+
+Responsibilities:
+
+- let the user query the knowledge base conversationally
+- quote or cite relevant pages
+- open selected pages in preview
+- persist chat sessions
+
+### 9. Settings
+
+Responsibilities:
+
+- account and allowlist diagnostics
+- model provider settings
+- index status
+- sync status
+
+## Article Rendering
+
+The preview area should combine two influences:
+
+- `llm_wiki` style workbench preview behavior
+- Wikipedia-style content density and link affordances
+
+Requirements:
+
+- strong typography for long reading
+- table of contents
+- infobox-like metadata panel where useful
+- visible internal links
+- visible source references
+- visible backlinks
+
+## Data Flow
+
+```mermaid
+flowchart LR
+  A["Second-brain Markdown"] --> B["Derived index generator"]
+  B --> C["taxonomy.json"]
+  B --> D["_backlinks.json"]
+  B --> E["_absorb_log.json"]
+  B --> F["page-meta.json"]
+  B --> G["search-index.json"]
+  B --> H["graph.json"]
+  B --> I["lint-report.json"]
+  C --> J["Next.js workspace"]
+  D --> J
+  E --> J
+  F --> J
+  G --> J
+  H --> J
+  I --> J
+  K["Database for app state"] --> J
+```
+
+## Database Boundary
+
+The app needs a database for interactive state. Markdown and derived JSON are not enough for workspace behavior.
+
+Database-backed state in v1:
+
+- user sessions
+- allowlisted user records
+- chat threads and messages
+- review item status
+- deep research job status and outputs
+- saved workspace preferences
+
+Not stored in the database in v1:
+
+- canonical knowledge article content
+- raw source files
+- first-brain read-only materials
 
 ## Authentication And Access Control
 
 Chosen approach:
 
-- deployment on Vercel
+- Vercel deployment
 - Auth.js
 - Google provider
 - email allowlist
 
 Requirements:
 
-- all content routes require authentication
-- only explicitly allowed Google accounts may access the site
-- robots indexing should be disabled
-- unauthenticated users see only the sign-in flow, not article content
-
-Optional extension later:
-
-- multiple roles such as reader and editor, though editor is not required for v1
+- all routes require authentication
+- only explicitly allowlisted Google accounts may access the app
+- robots indexing disabled
+- unauthenticated users cannot see content payloads
 
 ## Deployment Model
 
 Target:
 
-- Vercel-hosted Next.js app
-- private custom domain or Vercel domain
-- accessible from any device over the public internet after login
+- Next.js app hosted on Vercel
+- custom domain or Vercel domain
+- reachable from any device over the public internet after login
 
 Build model:
 
-- the UI app bundles generated indexes at build time
-- optionally, a sync step copies the latest generated artifacts from the second-brain workspace into the UI workspace before deploy
-
-Recommended repository organization:
-
-- keep `wiki-ui/` in the current repo
-- treat the second-brain source path as an external input during local generation
+- generate derived artifacts from the second-brain workspace
+- sync them into `wiki-ui/generated/`
+- deploy the app with those artifacts and app-state database access
 
 ## Maintenance Flow
 
-### Current workflow to preserve
+### Existing workflow to preserve
 
 - raw read-only material is absorbed into `来源/`
 - source summaries are compiled into formal knowledge pages
@@ -427,9 +568,9 @@ Each maintenance cycle should also:
 3. regenerate `.wiki-system/taxonomy.json`
 4. regenerate `.wiki-system/_backlinks.json`
 5. update `.wiki-system/_absorb_log.json`
-6. export or sync generated artifacts to the UI app
-
-This ensures the web UI stays aligned with the wiki without making the UI its own source of truth.
+6. regenerate `.wiki-system/graph.json`
+7. regenerate `.wiki-system/lint-report.json`
+8. sync generated artifacts into the web app
 
 ## Conversion Strategy
 
@@ -443,25 +584,31 @@ Create a generator that scans the current second-brain root and produces:
 - `_backlinks.json`
 - `_absorb_log.json`
 - `search-index.json`
+- `graph.json`
+- `lint-report.json`
 
 ### Phase 2: Historical backfill
 
-Reconstruct existing absorption history from:
+Reconstruct existing absorb state from:
 
-- current `raw` structure
+- current raw inventory
 - source pages in `来源/`
 - existing `sources:` references
 - `log.md`
 
-The first backfill will not be perfect, so the generator should support partial certainty and explicit notes.
+Backfill should support partial certainty and explicit notes.
 
-### Phase 3: UI implementation
+### Phase 3: App shell
 
-Build the Wikipedia-like web reader on top of the generated data.
+Build the authenticated three-column workspace and wire it to generated data.
 
-### Phase 4: Ongoing synchronization
+### Phase 4: Interactive modules
 
-Integrate generator execution into the future maintenance workflow so each curation pass refreshes the site data.
+Add chat, review, graph, lint, and deep research modules.
+
+### Phase 5: Ongoing synchronization
+
+Integrate generator execution into the maintenance workflow so each curation pass refreshes app data.
 
 ## Risks And Mitigations
 
@@ -469,72 +616,86 @@ Integrate generator execution into the future maintenance workflow so each curat
 
 Mitigation:
 
-- start with deterministic heuristics
-- allow later introduction of a manual override layer
+- use deterministic heuristics first
+- allow manual override later
 
 ### Risk: historical absorb mapping is incomplete
 
 Mitigation:
 
-- record confidence and notes in the absorb log when backfilling
-- allow later correction during maintenance
+- record confidence and notes in the absorb log
+- route uncertain items into Review
 
 ### Risk: page identity collisions
 
 Mitigation:
 
-- normalize aliases
 - keep canonical path identity
+- normalize aliases
 - flag ambiguous titles during generation
 
-### Risk: leaking private content through deployment
+### Risk: leaking private content
 
 Mitigation:
 
-- all routes require auth
-- robots disabled
-- no raw layer exposed
+- all routes behind auth
+- no raw exposure
+- no first-brain exposure
 - allowlist enforcement at auth boundary
 
 ### Risk: UI and source wiki drift apart
 
 Mitigation:
 
-- UI remains read-only
-- derived indexes are regenerated from source
-- no editing inside the UI in v1
+- UI stays read-only for canonical content in v1
+- derived indexes regenerate from source
+- review and deep-research outputs remain proposals until promoted into the wiki
+
+### Risk: v1 scope is broad
+
+Mitigation:
+
+- implement each workspace with a thin but complete first pass
+- do not overbuild editors or collaboration features in v1
 
 ## Implementation Boundaries For v1
 
 Must include:
 
+- authenticated app shell
+- three-column layout
+- wiki workspace
+- sources workspace
+- search workspace
+- graph workspace
+- lint workspace
+- review workspace
+- deep research workspace
+- multi-session chat workspace
 - generated taxonomy
 - generated backlinks
 - generated absorb log
-- article rendering
-- search
-- Google login with allowlist
-- public deployment after login
 
 Can wait until later:
 
-- graph visualization
+- inline page editing in the UI
+- multi-user editorial workflow
+- advanced semantic search ranking
 - manual taxonomy editor
-- inline editing
-- multi-user permissions
-- raw-layer diagnostics dashboard
+- graph collaboration tools
 
 ## Acceptance Criteria
 
 - the current second-brain Markdown corpus remains intact and authoritative
 - `.wiki-system/` can be regenerated from the source corpus
-- article pages show backlinks and source references
-- the UI offers a natural-growth taxonomy browser
-- the UI is reachable from other devices over the internet
-- every page requires successful Google sign-in
-- only allowlisted Google accounts can access the site
+- the web app launches into a three-column authenticated workspace
+- the left sidebar exposes knowledge tree, source tree, and taxonomy
+- the center panel supports Wiki, Sources, Search, Graph, Lint, Review, Deep Research, and Chat
+- the right panel renders preview, backlinks, source references, and absorb state
+- the app is reachable from other devices over the public internet
+- every route requires Google sign-in and email allowlist approval
 - future maintenance can update both Markdown content and derived indexes without structural conflict
 
 ## Recommendation
 
-Proceed with the derived-system-layer architecture. It satisfies the user's new requirements without discarding the current knowledge base or forcing a risky full migration to the gist's on-disk model.
+Proceed with a `llm_wiki`-inspired web workspace built on top of the current second-brain Markdown corpus and a generated `.wiki-system` layer. This is the lowest-risk way to satisfy the user's requirements for taxonomy, backlinks, absorb tracking, web deployment, login protection, and workbench-style interaction.
