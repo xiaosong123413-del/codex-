@@ -23,3 +23,15 @@ export function loadPageMeta() {
 export function loadAbsorbLog() {
   return readJsonFile('_absorb_log.json');
 }
+
+export function loadGraph() {
+  return readJsonFile('graph.json');
+}
+
+export function loadLint() {
+  return readJsonFile('lint-report.json');
+}
+
+export function loadSearchIndex() {
+  return readJsonFile('search-index.json');
+}

@@ -1,3 +1,12 @@
-export function SearchPane() {
-  return <section><h1>Search</h1><p>Search workspace placeholder.</p></section>;
+type SearchPaneProps = {
+  searchIndex: { documents?: Array<{ path?: string; title?: string }> };
+};
+
+export function SearchPane({ searchIndex }: SearchPaneProps) {
+  return (
+    <section>
+      <h1>Search</h1>
+      <p>Indexed documents: {searchIndex.documents?.length ?? 0}</p>
+    </section>
+  );
 }

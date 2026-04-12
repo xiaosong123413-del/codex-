@@ -1,5 +1,5 @@
 type WikiPaneProps = {
-  pageMeta: { pages?: Array<{ title: string; path: string }> };
+  pageMeta: { pages?: Array<{ title?: string; path?: string }> };
   activePage: { title?: string; path?: string } | null;
 };
 
