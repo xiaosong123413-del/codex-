@@ -1,0 +1,6126 @@
+{
+  "version": 1,
+  "pages": [
+    {
+      "path": "概念/法律人用Claude.md",
+      "title": "法律人用Claude",
+      "category": "概念",
+      "aliases": [
+        "法律人用Claude"
+      ],
+      "tags": [
+        "概念",
+        "法律",
+        "Claude",
+        "文件读取",
+        "Hooks"
+      ],
+      "sources": [],
+      "headings": [
+        "法律人用Claude",
+        "Compiled Truth",
+        "三个关键能力",
+        "文件读取的常见方式",
+        "为什么法律场景更需要约束",
+        "实操原则",
+        "相关页面",
+        "Timeline",
+        "2026-04-07",
+        "2026-04-12"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/Harness-Engineering",
+          "label": "概念/Harness-Engineering"
+        },
+        {
+          "target": "概念/法律学习备考",
+          "label": "概念/法律学习备考"
+        },
+        {
+          "target": "来源/2026-04-12-Claude文件读取与订阅策略",
+          "label": "来源/2026-04-12-Claude文件读取与订阅策略"
+        }
+      ],
+      "abstract": "# 法律人用Claude",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "概念/法律学习备考.md",
+      "title": "法律学习备考",
+      "category": "概念",
+      "aliases": [
+        "法律学习备考"
+      ],
+      "tags": [
+        "法律",
+        "考研",
+        "法硕",
+        "法律知识",
+        "备考",
+        "考试策略"
+      ],
+      "sources": [],
+      "headings": [
+        "法律学习备考",
+        "Compiled Truth",
+        "核心定义",
+        "核心决策：方向与院校",
+        "法律知识体系框架",
+        "1. 民法（占比最大，35%）",
+        "2. 刑法（占比25%）",
+        "3. 行政法（占比15%）",
+        "4. 宪法（占比12%）",
+        "5. 法理学（占比13%）",
+        "递进式学习计划",
+        "择校与真题理解",
+        "考试形式与策略",
+        "Timeline",
+        "2026-04-08 - 法硕方向选择",
+        "2026-04-12 - 备考启动",
+        "2026-04-12 - 南大资源纳入",
+        "进行中 - 4-6周基础阶段",
+        "2026-06-01 起 - 强化阶段",
+        "相关页面",
+        "学习资源推荐",
+        "我的想法",
+        "考研备考检查清单"
+      ],
+      "outgoingHints": [
+        {
+          "target": "来源/2026-04-12-法硕专业选择与南大备考",
+          "label": "来源/2026-04-12-法硕专业选择与南大备考"
+        },
+        {
+          "target": "概念/个人学习管理",
+          "label": "概念/个人学习管理"
+        },
+        {
+          "target": "概念/Obsidian生产力系统",
+          "label": "概念/Obsidian生产力系统"
+        },
+        {
+          "target": "概念/Claude & LLM应用",
+          "label": "概念/Claude & LLM应用"
+        },
+        {
+          "target": "项目/2027法学学硕备考",
+          "label": "项目/2027法学学硕备考"
+        },
+        {
+          "target": "来源/2026-04-12-法硕专业选择与南大备考",
+          "label": "来源/2026-04-12-法硕专业选择与南大备考"
+        }
+      ],
+      "abstract": "# 法律学习备考",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "概念/个人学习管理.md",
+      "title": "个人学习管理",
+      "category": "概念",
+      "aliases": [
+        "个人学习管理"
+      ],
+      "tags": [
+        "学习方法",
+        "时间管理",
+        "考研",
+        "个人成长",
+        "生物钟"
+      ],
+      "sources": [],
+      "headings": [
+        "个人学习管理",
+        "Compiled Truth",
+        "核心定义",
+        "核心问题与解决方案",
+        "问题1：一学习就困",
+        "问题1.5：为什么明知该做还是拖",
+        "问题2：如何高效记忆",
+        "问题3：考研备考规划",
+        "工具支持",
+        "Timeline",
+        "2026-04-07 - 初次认知",
+        "2026-04-12 - 概念页创建",
+        "2026-04-12 - 状态管理补强",
+        "进行中 - 个人实践验证",
+        "相关页面",
+        "我的想法",
+        "验证清单"
+      ],
+      "outgoingHints": [
+        {
+          "target": "来源/2026-04-12-学习困倦与节能机制",
+          "label": "来源/2026-04-12-学习困倦与节能机制"
+        },
+        {
+          "target": "来源/2026-04-12-学习启动阻力与拖延治理",
+          "label": "来源/2026-04-12-学习启动阻力与拖延治理"
+        },
+        {
+          "target": "来源/2026-04-12-第一大脑拖延应对结构",
+          "label": "来源/2026-04-12-第一大脑拖延应对结构"
+        },
+        {
+          "target": "来源/2026-04-12-考研背单词间隔重复计划",
+          "label": "来源/2026-04-12-考研背单词间隔重复计划"
+        },
+        {
+          "target": "概念/法律学习备考",
+          "label": "概念/法律学习备考"
+        },
+        {
+          "target": "项目/2027法学学硕备考",
+          "label": "项目/2027法学学硕备考"
+        },
+        {
+          "target": "概念/Obsidian生产力系统",
+          "label": "概念/Obsidian生产力系统"
+        },
+        {
+          "target": "概念/Claude & LLM应用",
+          "label": "概念/Claude & LLM应用"
+        },
+        {
+          "target": "概念/LLM知识库方法论",
+          "label": "概念/LLM知识库方法论"
+        },
+        {
+          "target": "概念/思维方法与创意",
+          "label": "概念/思维方法与创意"
+        },
+        {
+          "target": "概念/Obsidian生产力系统",
+          "label": "概念/Obsidian生产力系统"
+        },
+        {
+          "target": "概念/Claude & LLM应用",
+          "label": "概念/Claude & LLM应用"
+        },
+        {
+          "target": "工具/Anki",
+          "label": "工具/Anki"
+        },
+        {
+          "target": "来源/2026-04-12-第一大脑拖延应对结构",
+          "label": "来源/2026-04-12-第一大脑拖延应对结构"
+        },
+        {
+          "target": "项目/2027法学学硕备考",
+          "label": "项目/2027法学学硕备考"
+        }
+      ],
+      "abstract": "# 个人学习管理",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "概念/思维方法与创意.md",
+      "title": "思维方法与创意",
+      "category": "概念",
+      "aliases": [
+        "思维方法与创意"
+      ],
+      "tags": [
+        "思维方法",
+        "系统思考",
+        "创意",
+        "问题解决",
+        "认知",
+        "决策"
+      ],
+      "sources": [],
+      "headings": [
+        "思维方法与创意",
+        "Compiled Truth",
+        "核心定义",
+        "关键方法1：系统思考（Systems Thinking）",
+        "1. 因果关系 vs 系统关系",
+        "2. 反馈循环",
+        "3. 时间延迟（Delay）",
+        "关键方法2：创意框架",
+        "SCAMPER 框架（改进现有想法）",
+        "第一性原理（First Principles）",
+        "关键方法3：决策框架",
+        "2×2 矩阵（优先级判断）",
+        "风险-收益矩阵",
+        "关键方法4：认知工具",
+        "心智模型（Mental Models）",
+        "约束理论（Theory of Constraints）",
+        "Timeline",
+        "2026-04-07 - 初次学习",
+        "2026-04-11 - 框架整合",
+        "2026-04-12 - 概念页创建",
+        "进行中 - 持续应用",
+        "相关页面",
+        "常见思维误区",
+        "我的想法",
+        "学习思维方法的快速指南",
+        "推荐阅读与资源"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/个人学习管理",
+          "label": "概念/个人学习管理"
+        },
+        {
+          "target": "概念/思维方法",
+          "label": "概念/思维方法"
+        },
+        {
+          "target": "来源/系统思考入门",
+          "label": "来源/系统思考入门"
+        },
+        {
+          "target": "概念/个人学习管理",
+          "label": "概念/个人学习管理"
+        },
+        {
+          "target": "概念/AI知识库构建",
+          "label": "概念/AI知识库构建"
+        },
+        {
+          "target": "概念/法律学习备考",
+          "label": "概念/法律学习备考"
+        },
+        {
+          "target": "概念/LLM知识库方法论",
+          "label": "概念/LLM知识库方法论"
+        }
+      ],
+      "abstract": "# 思维方法与创意",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "概念/文献体系化整理.md",
+      "title": "文献体系化整理",
+      "category": "概念",
+      "aliases": [
+        "文献体系化整理"
+      ],
+      "tags": [
+        "概念",
+        "文献",
+        "研究方法",
+        "知识整理"
+      ],
+      "sources": [],
+      "headings": [
+        "文献体系化整理",
+        "Compiled Truth",
+        "两条主线",
+        "四步法",
+        "对你的用途",
+        "相关页面",
+        "Timeline",
+        "2026-04-12"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/AI知识库构建",
+          "label": "概念/AI知识库构建"
+        },
+        {
+          "target": "概念/法律学习备考",
+          "label": "概念/法律学习备考"
+        },
+        {
+          "target": "来源/2026-04-12-文献体系化整理",
+          "label": "来源/2026-04-12-文献体系化整理"
+        }
+      ],
+      "abstract": "# 文献体系化整理",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "概念/AI-Agent规划.md",
+      "title": "AI-Agent规划",
+      "category": "概念",
+      "aliases": [
+        "AI-Agent规划"
+      ],
+      "tags": [
+        "概念",
+        "AI-Agent",
+        "规划",
+        "ReAct",
+        "Plan-and-Execute"
+      ],
+      "sources": [],
+      "headings": [
+        "AI-Agent规划",
+        "Compiled Truth",
+        "三个层级",
+        "为什么不能混为一谈",
+        "Agent 规划真正解决的问题",
+        "工程上的判断标准",
+        "相关页面",
+        "Timeline",
+        "2026-04-12"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/Harness-Engineering",
+          "label": "概念/Harness-Engineering"
+        },
+        {
+          "target": "概念/AI-Agent规划框架",
+          "label": "概念/AI-Agent规划框架"
+        },
+        {
+          "target": "概念/Harness-Engineering",
+          "label": "概念/Harness-Engineering"
+        },
+        {
+          "target": "工具/OpenClaw",
+          "label": "工具/OpenClaw"
+        },
+        {
+          "target": "工具/Hermes Agent",
+          "label": "工具/Hermes Agent"
+        },
+        {
+          "target": "来源/2026-04-12-AI知识库工作流与剪藏体系",
+          "label": "来源/2026-04-12-AI知识库工作流与剪藏体系"
+        }
+      ],
+      "abstract": "# AI-Agent规划",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "概念/AI-Agent规划框架.md",
+      "title": "AI-Agent规划框架",
+      "category": "概念",
+      "aliases": [
+        "AI-Agent规划框架"
+      ],
+      "tags": [],
+      "sources": [],
+      "headings": [
+        "AI-Agent规划框架",
+        "Compiled Truth",
+        "核心定义",
+        "三层架构详解",
+        "层级 1：CoT（Chain of Thought）",
+        "层级 2：ReAct（Reasoning + Acting）",
+        "层级 3：Plan-and-Execute（规划与执行）",
+        "实践选择矩阵",
+        "与其他概念的关系",
+        "我的实践",
+        "Timeline",
+        "2026-04-07 - 初次学习",
+        "2026-04-11 - 实体页补建",
+        "参考资源"
+      ],
+      "outgoingHints": [
+        {
+          "target": "Harness-Engineering",
+          "label": "Harness-Engineering"
+        },
+        {
+          "target": "AI知识库构建",
+          "label": "AI知识库构建"
+        },
+        {
+          "target": "Claude-Code-Hooks",
+          "label": "Claude-Code-Hooks"
+        },
+        {
+          "target": "Claude-Code",
+          "label": "Claude-Code"
+        },
+        {
+          "target": "考研法律备考",
+          "label": "考研法律备考"
+        },
+        {
+          "target": "2026-04-07-AI-Agent规划能力ReAct-CoT-Plan",
+          "label": "2026-04-07-AI-Agent规划能力ReAct-CoT-Plan"
+        },
+        {
+          "target": "2026-04-07-AI-Agent规划能力ReAct-CoT-Plan",
+          "label": "2026-04-07-AI-Agent规划能力ReAct-CoT-Plan"
+        }
+      ],
+      "abstract": "# AI-Agent规划框架",
+      "updated": null
+    },
+    {
+      "path": "概念/AI知识库构建.md",
+      "title": "AI知识库构建",
+      "category": "概念",
+      "aliases": [
+        "AI知识库构建"
+      ],
+      "tags": [
+        "概念",
+        "AI知识库",
+        "LLM-Wiki",
+        "知识管理"
+      ],
+      "sources": [],
+      "headings": [
+        "AI知识库构建",
+        "Compiled Truth",
+        "定义",
+        "与传统 RAG 的区别",
+        "稳定结构",
+        "核心动作",
+        "质量标准",
+        "相关页面",
+        "Timeline",
+        "2026-04-07",
+        "2026-04-12"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/Karpathy知识库方法",
+          "label": "概念/Karpathy知识库方法"
+        },
+        {
+          "target": "概念/LLM知识库方法论",
+          "label": "概念/LLM知识库方法论"
+        },
+        {
+          "target": "概念/Obsidian生产力系统",
+          "label": "概念/Obsidian生产力系统"
+        },
+        {
+          "target": "来源/2026-04-12-AI知识库工作流与剪藏体系",
+          "label": "来源/2026-04-12-AI知识库工作流与剪藏体系"
+        },
+        {
+          "target": "来源/2026-04-12-剩余raw素材吸收索引",
+          "label": "来源/2026-04-12-剩余raw素材吸收索引"
+        }
+      ],
+      "abstract": "# AI知识库构建",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "概念/Claude & LLM应用.md",
+      "title": "Claude & LLM应用",
+      "category": "概念",
+      "aliases": [
+        "Claude & LLM应用"
+      ],
+      "tags": [
+        "Claude",
+        "LLM",
+        "AI应用",
+        "Prompt工程",
+        "知识库",
+        "自动化"
+      ],
+      "sources": [],
+      "headings": [
+        "Claude & LLM应用",
+        "Compiled Truth",
+        "核心定义",
+        "Prompt 与查询层",
+        "自动化维护层",
+        "Agent 运行层",
+        "实用判断",
+        "Timeline",
+        "2026-04-07 - 初次学习",
+        "2026-04-11 - 系统设计",
+        "2026-04-12 - Agent 层补全",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "工具/Hermes Agent",
+          "label": "工具/Hermes Agent"
+        },
+        {
+          "target": "工具/OpenClaw",
+          "label": "工具/OpenClaw"
+        },
+        {
+          "target": "工具/Litter-Codex移动编辑器",
+          "label": "工具/Litter-Codex移动编辑器"
+        },
+        {
+          "target": "工具/Obsidian-CodeX-Agent",
+          "label": "工具/Obsidian-CodeX-Agent"
+        },
+        {
+          "target": "概念/Obsidian生产力系统",
+          "label": "概念/Obsidian生产力系统"
+        },
+        {
+          "target": "工具/OpenClaw",
+          "label": "工具/OpenClaw"
+        },
+        {
+          "target": "工具/Hermes Agent",
+          "label": "工具/Hermes Agent"
+        },
+        {
+          "target": "工具/Litter-Codex移动编辑器",
+          "label": "工具/Litter-Codex移动编辑器"
+        },
+        {
+          "target": "工具/Obsidian-CodeX-Agent",
+          "label": "工具/Obsidian-CodeX-Agent"
+        }
+      ],
+      "abstract": "# Claude & LLM应用",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "概念/CoT.md",
+      "title": "CoT",
+      "category": "概念",
+      "aliases": [
+        "CoT"
+      ],
+      "tags": [
+        "概念",
+        "CoT",
+        "Chain-of-Thought",
+        "AI-Agent"
+      ],
+      "sources": [],
+      "headings": [
+        "CoT",
+        "说明",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/AI-Agent规划",
+          "label": "概念/AI-Agent规划"
+        },
+        {
+          "target": "概念/AI-Agent规划",
+          "label": "概念/AI-Agent规划"
+        },
+        {
+          "target": "来源/2026-04-07-AI-Agent规划能力ReAct-CoT-Plan",
+          "label": "来源/2026-04-07-AI-Agent规划能力ReAct-CoT-Plan"
+        }
+      ],
+      "abstract": "# CoT",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "概念/Graphify.md",
+      "title": "Graphify",
+      "category": "概念",
+      "aliases": [
+        "Graphify"
+      ],
+      "tags": [
+        "概念",
+        "Graphify",
+        "AI知识库",
+        "知识图"
+      ],
+      "sources": [],
+      "headings": [
+        "Graphify",
+        "核心说明",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/AI知识库构建",
+          "label": "概念/AI知识库构建"
+        },
+        {
+          "target": "概念/AI知识库构建",
+          "label": "概念/AI知识库构建"
+        },
+        {
+          "target": "概念/Karpathy知识库方法",
+          "label": "概念/Karpathy知识库方法"
+        },
+        {
+          "target": "来源/2026-04-07-Graphify完全体知识库",
+          "label": "来源/2026-04-07-Graphify完全体知识库"
+        },
+        {
+          "target": "来源/2026-04-12-AI知识库工作流与剪藏体系",
+          "label": "来源/2026-04-12-AI知识库工作流与剪藏体系"
+        }
+      ],
+      "abstract": "# Graphify",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "概念/Harness-Engineering.md",
+      "title": "Harness-Engineering",
+      "category": "概念",
+      "aliases": [
+        "Harness-Engineering"
+      ],
+      "tags": [
+        "概念",
+        "Harness-Engineering",
+        "Claude",
+        "Hooks"
+      ],
+      "sources": [],
+      "headings": [
+        "Harness-Engineering",
+        "Compiled Truth",
+        "定义",
+        "四层结构",
+        "为什么 Hooks 重要",
+        "在你的知识库里的意义",
+        "相关页面",
+        "Timeline",
+        "2026-04-07",
+        "2026-04-12"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/法律人用Claude",
+          "label": "概念/法律人用Claude"
+        },
+        {
+          "target": "工具/Claude-Code-Hooks",
+          "label": "工具/Claude-Code-Hooks"
+        },
+        {
+          "target": "概念/AI-Agent规划",
+          "label": "概念/AI-Agent规划"
+        },
+        {
+          "target": "来源/2026-04-12-Claude文件读取与订阅策略",
+          "label": "来源/2026-04-12-Claude文件读取与订阅策略"
+        }
+      ],
+      "abstract": "# Harness-Engineering",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "概念/inbox优先工作流.md",
+      "title": "inbox优先工作流",
+      "category": "概念",
+      "aliases": [
+        "inbox优先工作流"
+      ],
+      "tags": [
+        "概念",
+        "inbox",
+        "工作流",
+        "知识管理"
+      ],
+      "sources": [],
+      "headings": [
+        "inbox优先工作流",
+        "核心说明",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/AI知识库构建",
+          "label": "概念/AI知识库构建"
+        },
+        {
+          "target": "项目/飞书记录系统",
+          "label": "项目/飞书记录系统"
+        },
+        {
+          "target": "来源/2026-04-12-第一大脑剪藏与记录规则",
+          "label": "来源/2026-04-12-第一大脑剪藏与记录规则"
+        }
+      ],
+      "abstract": "# inbox优先工作流",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "概念/Karpathy知识库方法.md",
+      "title": "Karpathy知识库方法",
+      "category": "概念",
+      "aliases": [
+        "Karpathy知识库方法"
+      ],
+      "tags": [
+        "概念",
+        "Karpathy",
+        "LLM-Wiki",
+        "方法论"
+      ],
+      "sources": [],
+      "headings": [
+        "Karpathy知识库方法",
+        "Compiled Truth",
+        "方法核心",
+        "为什么有效",
+        "对你的知识库意味着什么",
+        "适用场景",
+        "相关页面",
+        "Timeline",
+        "2026-04-07",
+        "2026-04-12"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/AI知识库构建",
+          "label": "概念/AI知识库构建"
+        },
+        {
+          "target": "概念/LLM知识库方法论",
+          "label": "概念/LLM知识库方法论"
+        },
+        {
+          "target": "来源/2026-04-12-AI知识库工作流与剪藏体系",
+          "label": "来源/2026-04-12-AI知识库工作流与剪藏体系"
+        },
+        {
+          "target": "写作/LLM-Wiki不是RAG",
+          "label": "写作/LLM-Wiki不是RAG"
+        }
+      ],
+      "abstract": "# Karpathy知识库方法",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "概念/LLM知识库方法论.md",
+      "title": "LLM知识库方法论",
+      "category": "概念",
+      "aliases": [
+        "LLM知识库方法论"
+      ],
+      "tags": [],
+      "sources": [],
+      "headings": [
+        "LLM知识库方法论",
+        "Compiled Truth",
+        "核心定义",
+        "关键原则",
+        "三层架构",
+        "核心工作流程",
+        "摄入阶段（Ingest）",
+        "查询阶段（Query）",
+        "维护阶段（Maintain）",
+        "与传统方法的对比",
+        "关键优势",
+        "Timeline",
+        "2026-04-07 - 初次学习",
+        "2026-04-11 - 个人知识库应用",
+        "2026-04-12 - 初始吸收",
+        "相关页面",
+        "参考资源",
+        "我的思考"
+      ],
+      "outgoingHints": [
+        {
+          "target": "来源/Karpathy-llm-wiki",
+          "label": "来源/Karpathy-llm-wiki"
+        },
+        {
+          "target": "项目/AI知识库（第二大脑）",
+          "label": "项目/AI知识库（第二大脑）"
+        },
+        {
+          "target": "概念/AI知识库构建",
+          "label": "概念/AI知识库构建"
+        },
+        {
+          "target": "概念/编译系统",
+          "label": "概念/编译系统"
+        },
+        {
+          "target": "工具/Obsidian生产力系统",
+          "label": "工具/Obsidian生产力系统"
+        },
+        {
+          "target": "工具/Claude & LLM应用",
+          "label": "工具/Claude & LLM应用"
+        },
+        {
+          "target": "项目/AI知识库（第二大脑）",
+          "label": "项目/AI知识库（第二大脑）"
+        },
+        {
+          "target": "来源/Karpathy-llm-wiki",
+          "label": "来源/Karpathy-llm-wiki"
+        },
+        {
+          "target": "来源/web-clipper-知识库教程",
+          "label": "来源/web-clipper-知识库教程"
+        },
+        {
+          "target": "KNOWLEDGE_COMPILATION_SYSTEM.md",
+          "label": "KNOWLEDGE_COMPILATION_SYSTEM.md"
+        }
+      ],
+      "abstract": "# LLM知识库方法论",
+      "updated": null
+    },
+    {
+      "path": "概念/Obsidian生产力系统.md",
+      "title": "Obsidian生产力系统",
+      "category": "概念",
+      "aliases": [
+        "Obsidian生产力系统"
+      ],
+      "tags": [
+        "Obsidian",
+        "生产力",
+        "工作流",
+        "工具",
+        "笔记系统",
+        "知识管理"
+      ],
+      "sources": [],
+      "headings": [
+        "Obsidian生产力系统",
+        "Compiled Truth",
+        "核心定义",
+        "模块1：素材捕获",
+        "模块2：双向链接与知识图",
+        "模块3：模板和自动化",
+        "模块5：同步与导出边界",
+        "模块4：Agent 集成",
+        "为什么它有效",
+        "Timeline",
+        "2026-04-07 - 初次配置",
+        "2026-04-11 - 系统优化",
+        "2026-04-12 - Agent 工作流补强",
+        "2026-04-12 - 第一大脑实操规则接入",
+        "2026-04-12 - 同步与附件经验接入",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "工具/Obsidian-CodeX-Agent",
+          "label": "工具/Obsidian-CodeX-Agent"
+        },
+        {
+          "target": "工具/Litter-Codex移动编辑器",
+          "label": "工具/Litter-Codex移动编辑器"
+        },
+        {
+          "target": "工具/Hermes Agent",
+          "label": "工具/Hermes Agent"
+        },
+        {
+          "target": "工具/OpenClaw",
+          "label": "工具/OpenClaw"
+        },
+        {
+          "target": "来源/2026-04-07-obsidian-web-clipper配置指南",
+          "label": "来源/2026-04-07-obsidian-web-clipper配置指南"
+        },
+        {
+          "target": "工具/Obsidian-CodeX-Agent",
+          "label": "工具/Obsidian-CodeX-Agent"
+        },
+        {
+          "target": "工具/Litter-Codex移动编辑器",
+          "label": "工具/Litter-Codex移动编辑器"
+        },
+        {
+          "target": "工具/Hermes Agent",
+          "label": "工具/Hermes Agent"
+        },
+        {
+          "target": "工具/OpenClaw",
+          "label": "工具/OpenClaw"
+        },
+        {
+          "target": "概念/Claude & LLM应用",
+          "label": "概念/Claude & LLM应用"
+        },
+        {
+          "target": "来源/2026-04-12-第一大脑剪藏与记录规则",
+          "label": "来源/2026-04-12-第一大脑剪藏与记录规则"
+        },
+        {
+          "target": "来源/2026-04-12-Obsidian附件同步与导出经验",
+          "label": "来源/2026-04-12-Obsidian附件同步与导出经验"
+        }
+      ],
+      "abstract": "# Obsidian生产力系统",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "概念/ReAct.md",
+      "title": "ReAct",
+      "category": "概念",
+      "aliases": [
+        "ReAct"
+      ],
+      "tags": [
+        "概念",
+        "ReAct",
+        "AI-Agent"
+      ],
+      "sources": [],
+      "headings": [
+        "ReAct",
+        "说明",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/AI-Agent规划",
+          "label": "概念/AI-Agent规划"
+        },
+        {
+          "target": "概念/AI-Agent规划",
+          "label": "概念/AI-Agent规划"
+        },
+        {
+          "target": "来源/2026-04-07-AI-Agent规划能力ReAct-CoT-Plan",
+          "label": "来源/2026-04-07-AI-Agent规划能力ReAct-CoT-Plan"
+        }
+      ],
+      "abstract": "# ReAct",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "概念/README.md",
+      "title": "README",
+      "category": "概念",
+      "aliases": [
+        "README"
+      ],
+      "tags": [],
+      "sources": [],
+      "headings": [
+        "概念 (Concepts)",
+        "这个目录是什么",
+        "包括 ✓",
+        "不包括 ✗",
+        "页面模板",
+        "[概念名称]",
+        "Compiled Truth",
+        "核心定义",
+        "核心要点",
+        "应用场景",
+        "相关概念",
+        "我的实践",
+        "Timeline",
+        "2026-04-07 - 初次学习",
+        "2026-04-11 - 应用体验",
+        "目录状态",
+        "消歧问题",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念1",
+          "label": "概念1"
+        },
+        {
+          "target": "概念2",
+          "label": "概念2"
+        },
+        {
+          "target": "项目名",
+          "label": "项目名"
+        },
+        {
+          "target": "../schema.md#2-概念页-概念",
+          "label": "../schema.md#2-概念页-概念"
+        },
+        {
+          "target": "../RESOLVER.md#2️⃣-概念",
+          "label": "../RESOLVER.md#2️⃣-概念"
+        },
+        {
+          "target": "../schema.md#2-概念页-概念",
+          "label": "../schema.md#2-概念页-概念"
+        }
+      ],
+      "abstract": "# 概念 (Concepts)",
+      "updated": null
+    },
+    {
+      "path": "工具/Anki.md",
+      "title": "Anki",
+      "category": "工具",
+      "aliases": [
+        "Anki"
+      ],
+      "tags": [
+        "工具",
+        "Anki",
+        "间隔重复",
+        "记忆"
+      ],
+      "sources": [],
+      "headings": [
+        "Anki",
+        "核心用途",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/个人学习管理",
+          "label": "概念/个人学习管理"
+        },
+        {
+          "target": "来源/2026-04-12-考研背单词间隔重复计划",
+          "label": "来源/2026-04-12-考研背单词间隔重复计划"
+        }
+      ],
+      "abstract": "# Anki",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "工具/Claude & LLM应用.md",
+      "title": "Claude & LLM应用",
+      "category": "工具",
+      "aliases": [
+        "Claude & LLM应用"
+      ],
+      "tags": [
+        "工具",
+        "Claude",
+        "LLM",
+        "桥接"
+      ],
+      "sources": [],
+      "headings": [
+        "Claude & LLM应用",
+        "跳转",
+        "说明"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/Claude & LLM应用",
+          "label": "概念/Claude & LLM应用"
+        }
+      ],
+      "abstract": "# Claude & LLM应用",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "工具/Claude-Code-Hooks.md",
+      "title": "Claude-Code-Hooks",
+      "category": "工具",
+      "aliases": [
+        "Claude-Code-Hooks"
+      ],
+      "tags": [],
+      "sources": [],
+      "headings": [
+        "Claude Code Hooks",
+        "Compiled Truth",
+        "工具概览",
+        "三层钩子体系",
+        "PreToolUse（工具使用前）",
+        "PostToolUse（工具使用后）",
+        "Stop（会话结束）",
+        "当前配置规范",
+        "安全约束",
+        "工作流约束",
+        "日志约束",
+        "与其他工具的配合",
+        "我的实践",
+        "Timeline",
+        "2026-04-07 - 初次学习",
+        "2026-04-11 - 实体页补建",
+        "参考资源"
+      ],
+      "outgoingHints": [
+        {
+          "target": "Claude Code 配置指南",
+          "label": "Claude Code 配置指南"
+        },
+        {
+          "target": "CLAUDE.md",
+          "label": "CLAUDE.md"
+        },
+        {
+          "target": "Harness-Engineering",
+          "label": "Harness-Engineering"
+        },
+        {
+          "target": "考研法律备考",
+          "label": "考研法律备考"
+        },
+        {
+          "target": "2026-04-07-法律人学Claude第十一期Hooks机制",
+          "label": "2026-04-07-法律人学Claude第十一期Hooks机制"
+        },
+        {
+          "target": "2026-04-07-法律人学Claude第十一期Hooks机制",
+          "label": "2026-04-07-法律人学Claude第十一期Hooks机制"
+        },
+        {
+          "target": "CLAUDE.md#Hooks",
+          "label": "CLAUDE.md#Hooks"
+        }
+      ],
+      "abstract": "# Claude Code Hooks",
+      "updated": null
+    },
+    {
+      "path": "工具/Hermes Agent.md",
+      "title": "Hermes Agent",
+      "category": "工具",
+      "aliases": [
+        "Hermes Agent"
+      ],
+      "tags": [
+        "工具",
+        "Hermes",
+        "Agent",
+        "WSL",
+        "Termux"
+      ],
+      "sources": [
+        "2026-04-12-Hermes-Agent-Termux安装"
+      ],
+      "headings": [
+        "Hermes Agent",
+        "工具定位",
+        "核心能力",
+        "本地与终端环境",
+        "移动端路径",
+        "运行边界",
+        "适用场景",
+        "与其他工具的关系",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "工具/OpenClaw",
+          "label": "工具/OpenClaw"
+        },
+        {
+          "target": "工具/Litter-Codex移动编辑器",
+          "label": "工具/Litter-Codex移动编辑器"
+        },
+        {
+          "target": "概念/Claude & LLM应用",
+          "label": "概念/Claude & LLM应用"
+        },
+        {
+          "target": "来源/2026-04-12-Hermes-Agent-Termux安装",
+          "label": "来源/2026-04-12-Hermes-Agent-Termux安装"
+        },
+        {
+          "target": "工具/OpenClaw",
+          "label": "工具/OpenClaw"
+        },
+        {
+          "target": "工具/Litter-Codex移动编辑器",
+          "label": "工具/Litter-Codex移动编辑器"
+        }
+      ],
+      "abstract": "# Hermes Agent",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "工具/Litter-Codex移动编辑器.md",
+      "title": "Litter-Codex移动编辑器",
+      "category": "工具",
+      "aliases": [
+        "Litter-Codex移动编辑器"
+      ],
+      "tags": [
+        "工具",
+        "编程编辑器",
+        "移动开发",
+        "开源",
+        "Codex"
+      ],
+      "sources": [
+        "2026-04-12-Litter-Beta-Codex工具介绍",
+        "2026-04-12-Litter仓库架构"
+      ],
+      "headings": [
+        "Litter —— Codex 的移动编辑器",
+        "核心定位",
+        "核心特性",
+        "运行模式",
+        "交互能力",
+        "架构层认识",
+        "应用场景",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "来源/2026-04-12-Litter-Beta-Codex工具介绍",
+          "label": "来源/2026-04-12-Litter-Beta-Codex工具介绍"
+        },
+        {
+          "target": "来源/2026-04-12-Litter仓库架构",
+          "label": "来源/2026-04-12-Litter仓库架构"
+        },
+        {
+          "target": "工具/Hermes Agent",
+          "label": "工具/Hermes Agent"
+        },
+        {
+          "target": "工具/Obsidian-CodeX-Agent",
+          "label": "工具/Obsidian-CodeX-Agent"
+        },
+        {
+          "target": "概念/Obsidian生产力系统",
+          "label": "概念/Obsidian生产力系统"
+        }
+      ],
+      "abstract": "# Litter —— Codex 的移动编辑器",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "工具/Obsidian-CodeX-Agent.md",
+      "title": "Obsidian-CodeX-Agent",
+      "category": "工具",
+      "aliases": [
+        "Obsidian-CodeX-Agent"
+      ],
+      "tags": [
+        "工具",
+        "Obsidian",
+        "Codex",
+        "Agent",
+        "工作流"
+      ],
+      "sources": [
+        "2026-04-12-Obsidian-CodeX-Agent插件说明"
+      ],
+      "headings": [
+        "Obsidian-CodeX-Agent",
+        "工具定位",
+        "核心能力",
+        "上下文桥接",
+        "可审计执行",
+        "任务闭环",
+        "适用场景",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "来源/2026-04-12-Obsidian-CodeX-Agent插件说明",
+          "label": "来源/2026-04-12-Obsidian-CodeX-Agent插件说明"
+        },
+        {
+          "target": "概念/Obsidian生产力系统",
+          "label": "概念/Obsidian生产力系统"
+        },
+        {
+          "target": "概念/Claude & LLM应用",
+          "label": "概念/Claude & LLM应用"
+        },
+        {
+          "target": "工具/Litter-Codex移动编辑器",
+          "label": "工具/Litter-Codex移动编辑器"
+        }
+      ],
+      "abstract": "# Obsidian-CodeX-Agent",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "工具/Obsidian-Web-Clipper.md",
+      "title": "Obsidian-Web-Clipper",
+      "category": "工具",
+      "aliases": [
+        "Obsidian-Web-Clipper"
+      ],
+      "tags": [
+        "工具",
+        "Obsidian",
+        "剪藏",
+        "Web Clipper"
+      ],
+      "sources": [],
+      "headings": [
+        "Obsidian-Web-Clipper",
+        "说明"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/Obsidian生产力系统",
+          "label": "概念/Obsidian生产力系统"
+        },
+        {
+          "target": "来源/2026-04-12-AI知识库工作流与剪藏体系",
+          "label": "来源/2026-04-12-AI知识库工作流与剪藏体系"
+        },
+        {
+          "target": "来源/2026-04-12-第一大脑剪藏与记录规则",
+          "label": "来源/2026-04-12-第一大脑剪藏与记录规则"
+        },
+        {
+          "target": "来源/2026-04-07-obsidian-web-clipper配置指南",
+          "label": "来源/2026-04-07-obsidian-web-clipper配置指南"
+        }
+      ],
+      "abstract": "# Obsidian-Web-Clipper",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "工具/Obsidian生产力系统.md",
+      "title": "Obsidian生产力系统",
+      "category": "工具",
+      "aliases": [
+        "Obsidian生产力系统"
+      ],
+      "tags": [
+        "工具",
+        "Obsidian",
+        "桥接"
+      ],
+      "sources": [],
+      "headings": [
+        "Obsidian生产力系统",
+        "跳转",
+        "说明"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/Obsidian生产力系统",
+          "label": "概念/Obsidian生产力系统"
+        }
+      ],
+      "abstract": "# Obsidian生产力系统",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "工具/OpenClaw.md",
+      "title": "OpenClaw",
+      "category": "工具",
+      "aliases": [
+        "OpenClaw"
+      ],
+      "tags": [
+        "工具",
+        "OpenClaw",
+        "AI代理",
+        "Gateway",
+        "多模型"
+      ],
+      "sources": [
+        "2026-04-12-OpenClaw集成OpenAI与Codex认证"
+      ],
+      "headings": [
+        "OpenClaw",
+        "工具定位",
+        "核心能力",
+        "认证与模型路由",
+        "运行层能力",
+        "调优能力",
+        "适用场景",
+        "使用边界",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "来源/2026-04-12-OpenClaw集成OpenAI与Codex认证",
+          "label": "来源/2026-04-12-OpenClaw集成OpenAI与Codex认证"
+        },
+        {
+          "target": "工具/Hermes Agent",
+          "label": "工具/Hermes Agent"
+        },
+        {
+          "target": "工具/Litter-Codex移动编辑器",
+          "label": "工具/Litter-Codex移动编辑器"
+        },
+        {
+          "target": "概念/Claude & LLM应用",
+          "label": "概念/Claude & LLM应用"
+        }
+      ],
+      "abstract": "# OpenClaw",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "工具/README.md",
+      "title": "README",
+      "category": "工具",
+      "aliases": [
+        "README"
+      ],
+      "tags": [],
+      "sources": [],
+      "headings": [
+        "工具 (Tools)",
+        "这个目录是什么",
+        "包括 ✓",
+        "不包括 ✗",
+        "页面模板",
+        "[工具名称]",
+        "Compiled Truth",
+        "工具概览",
+        "当前配置",
+        "核心功能清单",
+        "最佳实践",
+        "我的工作流",
+        "Timeline",
+        "2026-04-07 - 初次配置",
+        "2026-04-11 - 版本更新",
+        "目录状态",
+        "消歧问题",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "工具2",
+          "label": "工具2"
+        },
+        {
+          "target": "工具3",
+          "label": "工具3"
+        },
+        {
+          "target": "项目名",
+          "label": "项目名"
+        },
+        {
+          "target": "../schema.md#3-工具页-工具",
+          "label": "../schema.md#3-工具页-工具"
+        },
+        {
+          "target": "../RESOLVER.md#3️⃣-工具",
+          "label": "../RESOLVER.md#3️⃣-工具"
+        },
+        {
+          "target": "../schema.md#3-工具页-工具",
+          "label": "../schema.md#3-工具页-工具"
+        }
+      ],
+      "abstract": "# 工具 (Tools)",
+      "updated": null
+    },
+    {
+      "path": "归档/.wiki-schema.md",
+      "title": ".wiki-schema",
+      "category": "归档",
+      "aliases": [
+        ".wiki-schema"
+      ],
+      "tags": [],
+      "sources": [],
+      "headings": [
+        "Wiki Schema（知识库配置规范）",
+        "知识库信息",
+        "目录结构",
+        "页面命名规范",
+        "交叉引用规范",
+        "页面格式规范",
+        "页面标题",
+        "正文内容",
+        "相关页面",
+        "Ingest（消化素材）规则",
+        "分级处理",
+        "素材类型路由",
+        "第一大脑集成说明",
+        "Query（查询）规则",
+        "Lint（健康检查）规则"
+      ],
+      "outgoingHints": [
+        {
+          "target": "页面名",
+          "label": "页面名"
+        },
+        {
+          "target": "另一个页面",
+          "label": "另一个页面"
+        },
+        {
+          "target": "又一个页面",
+          "label": "又一个页面"
+        },
+        {
+          "target": "某概念",
+          "label": "某概念"
+        }
+      ],
+      "abstract": "# Wiki Schema（知识库配置规范）",
+      "updated": null
+    },
+    {
+      "path": "归档/实施计划-2026-04-11-人物页试点.md",
+      "title": "实施计划-2026-04-11-人物页试点",
+      "category": "归档",
+      "aliases": [
+        "实施计划-2026-04-11-人物页试点"
+      ],
+      "tags": [],
+      "sources": [],
+      "headings": [
+        "人物页试点实施计划",
+        "模块目标",
+        "实施范围",
+        "小模块 1：人物页模板与样板页",
+        "目标",
+        "影响文件",
+        "变更内容",
+        "风险",
+        "回滚方式",
+        "验证方法",
+        "Dry-Run 顺序",
+        "执行顺序"
+      ],
+      "outgoingHints": [],
+      "abstract": "# 人物页试点实施计划",
+      "updated": null
+    },
+    {
+      "path": "归档/我的知识库架构说明.md",
+      "title": "我的知识库架构说明",
+      "category": "归档",
+      "aliases": [
+        "我的知识库架构说明"
+      ],
+      "tags": [],
+      "sources": [],
+      "headings": [
+        "我的知识库架构说明",
+        "1. 文档定位",
+        "2. 总体目标",
+        "3. 三层架构",
+        "3.1 Obsidian Vault：主知识层",
+        "3.2 检索/索引层：未来的 GBrain 式能力层",
+        "3.3 Agent 行为层",
+        "4. 目录层级与角色分工",
+        "4.1 原始输入层",
+        "4.2 wiki 层",
+        "4.3 CRM 层",
+        "5. 写入边界",
+        "5.1 日记页",
+        "5.2 人物页",
+        "5.3 其他模块",
+        "6. 日记规则",
+        "7. 人物页架构",
+        "7.1 存放位置",
+        "7.2 基本载体",
+        "7.3 最小 frontmatter",
+        "7.4 页面主结构",
+        "7.5 稳定认知的内部结构",
+        "8. 人物页升级规则",
+        "8.1 可直接进入稳定认知的内容",
+        "8.2 必须先进入观察层的内容",
+        "8.3 时间线规则",
+        "8.4 待确认包触发规则",
+        "8.5 自动升级规则",
+        "9. 回链与追溯原则",
+        "10. 人物信息流",
+        "11. 旧 CRM 兼容策略",
+        "12. 主题页",
+        "12.1 定位",
+        "12.2 最小规则",
+        "12.3 主题页统一结构",
+        "12.4 两种 subtype 的差异",
+        "13. 素材摘要页",
+        "14. 对比分析页",
+        "15. 综合分析页",
+        "16. 可视化输出页",
+        "17. 索引与日志",
+        "17.1 index.md",
+        "17.2 log.md",
+        "18. 自动化总原则",
+        "19. Dream Cycle / 周期整理机制",
+        "19.1 每日轻整理",
+        "19.2 每周中整理",
+        "19.3 每月深整理",
+        "20. 验证清单",
+        "21. 实施顺序建议",
+        "22. 当前版本的关键风险"
+      ],
+      "outgoingHints": [],
+      "abstract": "# 我的知识库架构说明",
+      "updated": null
+    },
+    {
+      "path": "归档/README.md",
+      "title": "README",
+      "category": "归档",
+      "aliases": [
+        "README"
+      ],
+      "tags": [],
+      "sources": [],
+      "headings": [
+        "归档 (Archive)",
+        "这个目录是什么",
+        "包括 ✓",
+        "不包括 ✗",
+        "页面模板",
+        "[原始标题] — 已归档",
+        "原始内容",
+        "归档说明",
+        "目录状态",
+        "何时归档",
+        "提取历史的方法",
+        "对于已完成的项目",
+        "[项目名] — 已完成",
+        "最终成果",
+        "关键学习",
+        "完整历史",
+        "对于放弃的想法",
+        "[想法名] — 已放弃",
+        "想法概述",
+        "为什么放弃",
+        "潜在复活条件",
+        "消歧问题",
+        "清理策略",
+        "按优先级",
+        "定期回顾",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "../RESOLVER.md#9️⃣-归档",
+          "label": "../RESOLVER.md#9️⃣-归档"
+        }
+      ],
+      "abstract": "# 归档 (Archive)",
+      "updated": null
+    },
+    {
+      "path": "来源/2026-04-07-法律人学Claude第三期文件读取.md",
+      "title": "2026-04-07-法律人学Claude第三期文件读取",
+      "category": "来源",
+      "aliases": [
+        "2026-04-07-法律人学Claude第三期文件读取"
+      ],
+      "tags": [
+        "法律",
+        "Claude Code",
+        "文件读取",
+        "工作流"
+      ],
+      "sources": [
+        "raw（只读区）/inbox/web clipper/法律人学Claude｜第三期：让Claude更高效读懂你的文件.md"
+      ],
+      "headings": [
+        "法律人学Claude 第三期：让Claude更高效读懂文件",
+        "基本信息",
+        "核心观点",
+        "三种文件读取方式",
+        "`/init` 指令的作用",
+        "文件太大的处理方法",
+        "关联法律场景",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "Claude-Code文件读取",
+          "label": "Claude-Code文件读取"
+        },
+        {
+          "target": "Context-Window",
+          "label": "Context-Window"
+        },
+        {
+          "target": "CLAUDE.md",
+          "label": "CLAUDE.md"
+        },
+        {
+          "target": "法律人用Claude",
+          "label": "法律人用Claude"
+        }
+      ],
+      "abstract": "# 法律人学Claude 第三期：让Claude更高效读懂文件",
+      "updated": "2026-04-07T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-07-法律人学Claude第十一期Hooks机制.md",
+      "title": "2026-04-07-法律人学Claude第十一期Hooks机制",
+      "category": "来源",
+      "aliases": [
+        "2026-04-07-法律人学Claude第十一期Hooks机制"
+      ],
+      "tags": [
+        "法律",
+        "Claude Code",
+        "Hooks",
+        "Harness Engineering"
+      ],
+      "sources": [
+        "raw（只读区）/inbox/web clipper/法律人学Claude｜第十一期：给AI这匹野马套上缰绳——Hooks机制.md"
+      ],
+      "headings": [
+        "法律人学Claude 第十一期：Hooks机制——给AI套上缰绳",
+        "基本信息",
+        "核心概念：[[Harness-Engineering]]",
+        "[[Claude-Code-Hooks]] 原理",
+        "法律实战案例",
+        "案例1：引用法条自动核验",
+        "案例2：修改文书强制git commit",
+        "配置方法",
+        "原文精彩摘录",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "Harness-Engineering",
+          "label": "Harness-Engineering"
+        },
+        {
+          "target": "Claude-Code-Hooks",
+          "label": "Claude-Code-Hooks"
+        },
+        {
+          "target": "Claude-Code-Hooks",
+          "label": "Claude-Code-Hooks"
+        },
+        {
+          "target": "Harness-Engineering",
+          "label": "Harness-Engineering"
+        },
+        {
+          "target": "CLAUDE.md",
+          "label": "CLAUDE.md"
+        },
+        {
+          "target": "法律人用Claude",
+          "label": "法律人用Claude"
+        }
+      ],
+      "abstract": "# 法律人学Claude 第十一期：Hooks机制——给AI套上缰绳",
+      "updated": "2026-04-07T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-07-AI-Agent规划能力ReAct-CoT-Plan.md",
+      "title": "2026-04-07-AI-Agent规划能力ReAct-CoT-Plan",
+      "category": "来源",
+      "aliases": [
+        "2026-04-07-AI-Agent规划能力ReAct-CoT-Plan"
+      ],
+      "tags": [
+        "AI Agent",
+        "ReAct",
+        "CoT",
+        "Plan-and-Execute",
+        "规划框架"
+      ],
+      "sources": [
+        "raw（只读区）/inbox/web clipper/一文看懂 AI Agent 的规划能力：ReAct、CoT、Plan-and-Execute 有什么区别.md"
+      ],
+      "headings": [
+        "AI Agent 规划能力：ReAct、CoT、Plan-and-Execute 的区别",
+        "基本信息",
+        "核心观点",
+        "三者的本质区别在控制粒度",
+        "CoT（思维链）",
+        "ReAct（推理+行动）",
+        "Plan-and-Execute（规划+执行）",
+        "成熟Agent的用法",
+        "如何选择（产品角度）",
+        "原文精彩摘录",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "CoT",
+          "label": "CoT"
+        },
+        {
+          "target": "ReAct",
+          "label": "ReAct"
+        },
+        {
+          "target": "Plan-and-Execute",
+          "label": "Plan-and-Execute"
+        },
+        {
+          "target": "AI-Agent规划框架",
+          "label": "AI-Agent规划框架"
+        },
+        {
+          "target": "CoT",
+          "label": "CoT"
+        },
+        {
+          "target": "ReAct",
+          "label": "ReAct"
+        },
+        {
+          "target": "Plan-and-Execute",
+          "label": "Plan-and-Execute"
+        }
+      ],
+      "abstract": "# AI Agent 规划能力：ReAct、CoT、Plan-and-Execute 的区别",
+      "updated": "2026-04-07T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-07-cloudflare免信用卡付款方式.md",
+      "title": "2026-04-07-cloudflare免信用卡付款方式",
+      "category": "来源",
+      "aliases": [
+        "2026-04-07-cloudflare免信用卡付款方式"
+      ],
+      "tags": [
+        "Cloudflare",
+        "工具",
+        "付款配置"
+      ],
+      "sources": [
+        "raw（只读区）/inbox/web clipper/【教程】免信用卡为cloudflare添加付款方式.md"
+      ],
+      "headings": [
+        "Cloudflare 添加付款方式教程",
+        "基本信息",
+        "背景",
+        "文章描述的方法",
+        "替代建议",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "Cloudflare",
+          "label": "Cloudflare"
+        }
+      ],
+      "abstract": "# Cloudflare 添加付款方式教程",
+      "updated": "2026-04-07T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-07-Graphify完全体知识库.md",
+      "title": "2026-04-07-Graphify完全体知识库",
+      "category": "来源",
+      "aliases": [
+        "2026-04-07-Graphify完全体知识库"
+      ],
+      "tags": [
+        "AI知识库",
+        "Graphify",
+        "知识图谱",
+        "token优化"
+      ],
+      "sources": [
+        "raw（只读区）/inbox/web clipper/卡帕西没做完的，开源社区48小时搞定了！完全体知识库，token省70倍.md"
+      ],
+      "headings": [
+        "Graphify：完全体知识库工具（token省71.5倍）",
+        "基本信息",
+        "Karpathy方法的痛点（Graphify解决的问题）",
+        "核心技术",
+        "双阶段处理流程",
+        "其他特性",
+        "安装",
+        "与[[Karpathy知识库方法]]的对比",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "Karpathy知识库方法",
+          "label": "Karpathy知识库方法"
+        },
+        {
+          "target": "Karpathy知识库方法",
+          "label": "Karpathy知识库方法"
+        },
+        {
+          "target": "AI知识库构建",
+          "label": "AI知识库构建"
+        },
+        {
+          "target": "知识图谱",
+          "label": "知识图谱"
+        }
+      ],
+      "abstract": "# Graphify：完全体知识库工具（token省71.5倍）",
+      "updated": "2026-04-07T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-07-Karpathy大模型AI知识库教程.md",
+      "title": "2026-04-07-Karpathy大模型AI知识库教程",
+      "category": "来源",
+      "aliases": [
+        "2026-04-07-Karpathy大模型AI知识库教程"
+      ],
+      "tags": [
+        "AI知识库",
+        "Karpathy",
+        "llm-wiki",
+        "知识管理"
+      ],
+      "sources": [
+        "raw（只读区）/inbox/web clipper/全网爆火的大模型AI知识库，保姆级教程来了.md"
+      ],
+      "headings": [
+        "Karpathy 大模型AI知识库方法（保姆级教程）",
+        "基本信息",
+        "核心观点",
+        "[[Karpathy知识库方法]] 的核心结构",
+        "关键操作",
+        "Karpathy原话",
+        "与本知识库的关系",
+        "原文精彩摘录",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "Karpathy知识库方法",
+          "label": "Karpathy知识库方法"
+        },
+        {
+          "target": "Karpathy知识库方法",
+          "label": "Karpathy知识库方法"
+        },
+        {
+          "target": "AI知识库构建",
+          "label": "AI知识库构建"
+        },
+        {
+          "target": "Graphify",
+          "label": "Graphify"
+        },
+        {
+          "target": "llm-wiki",
+          "label": "llm-wiki"
+        }
+      ],
+      "abstract": "# Karpathy 大模型AI知识库方法（保姆级教程）",
+      "updated": "2026-04-07T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-07-Memory-obsidian-web-clipper搞定.md",
+      "title": "2026-04-07-Memory-obsidian-web-clipper搞定",
+      "category": "来源",
+      "aliases": [
+        "2026-04-07-Memory-obsidian-web-clipper搞定"
+      ],
+      "tags": [
+        "日记",
+        "obsidian",
+        "web-clipper",
+        "工具配置"
+      ],
+      "sources": [
+        "第一大脑/61的Memory（日记）/2026-04-07"
+      ],
+      "headings": [
+        "2026-04-07 日记：Obsidian Web Clipper 终于配好了",
+        "原文",
+        "核心记录",
+        "关联",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "2026-04-07-obsidian-web-clipper配置指南",
+          "label": "2026-04-07-obsidian-web-clipper配置指南"
+        },
+        {
+          "target": "2026-04-07-obsidian-web-clipper配置指南",
+          "label": "2026-04-07-obsidian-web-clipper配置指南"
+        },
+        {
+          "target": "AI知识库构建",
+          "label": "AI知识库构建"
+        }
+      ],
+      "abstract": "# 2026-04-07 日记：Obsidian Web Clipper 终于配好了",
+      "updated": "2026-04-07T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-07-obsidian-web-clipper配置指南.md",
+      "title": "2026-04-07-obsidian-web-clipper配置指南",
+      "category": "来源",
+      "aliases": [
+        "2026-04-07-obsidian-web-clipper配置指南"
+      ],
+      "tags": [
+        "Obsidian",
+        "知识管理",
+        "工具配置",
+        "剪藏"
+      ],
+      "sources": [
+        "raw（只读区）/inbox/web clipper/3步配置：手机电脑都能用的 Obsidian 剪藏方案.md"
+      ],
+      "headings": [
+        "Obsidian Web Clipper 配置指南",
+        "基本信息",
+        "核心观点",
+        "关键概念",
+        "收件箱模板核心配置",
+        "原文精彩摘录",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "Obsidian-Web-Clipper",
+          "label": "Obsidian-Web-Clipper"
+        },
+        {
+          "target": "inbox优先工作流",
+          "label": "inbox优先工作流"
+        },
+        {
+          "target": "Obsidian-Web-Clipper",
+          "label": "Obsidian-Web-Clipper"
+        },
+        {
+          "target": "AI知识库构建",
+          "label": "AI知识库构建"
+        },
+        {
+          "target": "inbox优先工作流",
+          "label": "inbox优先工作流"
+        }
+      ],
+      "abstract": "# Obsidian Web Clipper 配置指南",
+      "updated": "2026-04-07T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-12-第一大脑剪藏与记录规则.md",
+      "title": "2026-04-12-第一大脑剪藏与记录规则",
+      "category": "来源",
+      "aliases": [
+        "2026-04-12-第一大脑剪藏与记录规则"
+      ],
+      "tags": [
+        "来源",
+        "第一大脑",
+        "Obsidian",
+        "剪藏",
+        "记录系统"
+      ],
+      "sources": [],
+      "headings": [
+        "2026-04-12-第一大脑剪藏与记录规则",
+        "核心结论",
+        "结构吸收",
+        "对 Obsidian 工作流的补充",
+        "对记录系统的补充",
+        "应更新到的知识页",
+        "只读来源",
+        "备注"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/Obsidian生产力系统",
+          "label": "概念/Obsidian生产力系统"
+        },
+        {
+          "target": "项目/飞书记录系统",
+          "label": "项目/飞书记录系统"
+        }
+      ],
+      "abstract": "# 2026-04-12-第一大脑剪藏与记录规则",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-12-第一大脑拖延应对结构.md",
+      "title": "2026-04-12-第一大脑拖延应对结构",
+      "category": "来源",
+      "aliases": [
+        "2026-04-12-第一大脑拖延应对结构"
+      ],
+      "tags": [
+        "来源",
+        "第一大脑",
+        "拖延",
+        "学习"
+      ],
+      "sources": [],
+      "headings": [
+        "2026-04-12-第一大脑拖延应对结构",
+        "核心结论",
+        "应更新到的知识页",
+        "只读来源",
+        "备注"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/个人学习管理",
+          "label": "概念/个人学习管理"
+        },
+        {
+          "target": "来源/2026-04-12-学习启动阻力与拖延治理",
+          "label": "来源/2026-04-12-学习启动阻力与拖延治理"
+        }
+      ],
+      "abstract": "# 2026-04-12-第一大脑拖延应对结构",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-12-法硕专业选择与南大备考.md",
+      "title": "2026-04-12-法硕专业选择与南大备考",
+      "category": "来源",
+      "aliases": [
+        "2026-04-12-法硕专业选择与南大备考"
+      ],
+      "tags": [
+        "来源",
+        "法硕",
+        "南大",
+        "考研",
+        "选专业"
+      ],
+      "sources": [
+        "raw-20260412-134034605-ChatGPT-法硕专业选择建议",
+        "raw-20260412-134034543-南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院",
+        "raw-20260412-134034667-南京大学法学学硕经验贴，奔赴一场无畏的梦",
+        "raw-20260412-134034699-【24状元】对26南大法学学硕真题的分析",
+        "raw-20260412-134034730-【26法学学硕考研】1w字超详细经验帖",
+        "raw-20260412-134034824-25南大法学学硕真题趋向变化分析"
+      ],
+      "headings": [
+        "来源：法硕专业选择与南大备考",
+        "Compiled Truth",
+        "核心结论",
+        "这个主题真正解决的问题",
+        "相关页面",
+        "Timeline",
+        "2026-04-12 - 编译"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/法律学习备考",
+          "label": "概念/法律学习备考"
+        },
+        {
+          "target": "项目/2027法学学硕备考",
+          "label": "项目/2027法学学硕备考"
+        }
+      ],
+      "abstract": "# 来源：法硕专业选择与南大备考",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-12-飞书记录系统设计.md",
+      "title": "2026-04-12-飞书记录系统设计",
+      "category": "来源",
+      "aliases": [
+        "2026-04-12-飞书记录系统设计"
+      ],
+      "tags": [
+        "来源",
+        "飞书",
+        "记录系统",
+        "项目管理"
+      ],
+      "sources": [],
+      "headings": [
+        "2026-04-12-飞书记录系统设计",
+        "核心结论",
+        "应更新到的知识页",
+        "吸收来源"
+      ],
+      "outgoingHints": [
+        {
+          "target": "项目/飞书记录系统",
+          "label": "项目/飞书记录系统"
+        },
+        {
+          "target": "概念/个人学习管理",
+          "label": "概念/个人学习管理"
+        },
+        {
+          "target": "来源/raw-20260412-134034420-ChatGPT-飞书记录系统思考",
+          "label": "来源/raw-20260412-134034420-ChatGPT-飞书记录系统思考"
+        },
+        {
+          "target": "来源/raw-20260412-134034230-Area（领域）_Project（项目）_Task（任务）_Action（行动）",
+          "label": "来源/raw-20260412-134034230-Area（领域）_Project（项目）_Task（任务）_Action（行动）"
+        },
+        {
+          "target": "来源/raw-20260412-134034481-首页",
+          "label": "来源/raw-20260412-134034481-首页"
+        },
+        {
+          "target": "来源/raw-20260412-134034511-资源",
+          "label": "来源/raw-20260412-134034511-资源"
+        },
+        {
+          "target": "来源/raw-20260412-134034451-归档",
+          "label": "来源/raw-20260412-134034451-归档"
+        },
+        {
+          "target": "来源/raw-20260412-134034357-Chrome 浏览器插件「保存到飞书」",
+          "label": "来源/raw-20260412-134034357-Chrome 浏览器插件「保存到飞书」"
+        }
+      ],
+      "abstract": "# 2026-04-12-飞书记录系统设计",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-12-考研背单词间隔重复计划.md",
+      "title": "2026-04-12-考研背单词间隔重复计划",
+      "category": "来源",
+      "aliases": [
+        "2026-04-12-考研背单词间隔重复计划"
+      ],
+      "tags": [
+        "来源",
+        "考研",
+        "背单词",
+        "间隔重复",
+        "英语"
+      ],
+      "sources": [
+        "raw-20260412-134035011-考研背单词计划",
+        "raw-20260412-134034981-艾宾浩斯曲线——刘晓艳"
+      ],
+      "headings": [
+        "来源：考研背单词间隔重复计划",
+        "Compiled Truth",
+        "核心结论",
+        "适用方式",
+        "相关页面",
+        "Timeline",
+        "2026-04-12 - 编译"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/个人学习管理",
+          "label": "概念/个人学习管理"
+        },
+        {
+          "target": "项目/2027法学学硕备考",
+          "label": "项目/2027法学学硕备考"
+        }
+      ],
+      "abstract": "# 来源：考研背单词间隔重复计划",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-12-剩余raw素材吸收索引.md",
+      "title": "2026-04-12-剩余raw素材吸收索引",
+      "category": "来源",
+      "aliases": [
+        "2026-04-12-剩余raw素材吸收索引"
+      ],
+      "tags": [
+        "来源",
+        "吸收索引",
+        "维护"
+      ],
+      "sources": [],
+      "headings": [
+        "2026-04-12-剩余raw素材吸收索引",
+        "主题归并",
+        "AI知识库 / Obsidian / 剪藏工作流",
+        "Claude / Agent / 工具约束",
+        "飞书记录系统",
+        "法学备考",
+        "学习状态 / 拖延 / 复习",
+        "文献与研究方法",
+        "暂存 / 低价值模板",
+        "已检查的非标准格式",
+        "当前结论"
+      ],
+      "outgoingHints": [
+        {
+          "target": "来源/raw-20260411-204714-Obsidian + Claude Code：让 AI 深度融入你的知识库",
+          "label": "来源/raw-20260411-204714-Obsidian + Claude Code：让 AI 深度融入你的知识库"
+        },
+        {
+          "target": "来源/2026-04-12-AI知识库工作流与剪藏体系",
+          "label": "来源/2026-04-12-AI知识库工作流与剪藏体系"
+        },
+        {
+          "target": "工具/Obsidian-CodeX-Agent",
+          "label": "工具/Obsidian-CodeX-Agent"
+        },
+        {
+          "target": "来源/raw-20260412-133857-全网爆火的大模型AI知识库，保姆级教程来了",
+          "label": "来源/raw-20260412-133857-全网爆火的大模型AI知识库，保姆级教程来了"
+        },
+        {
+          "target": "来源/2026-04-12-AI知识库工作流与剪藏体系",
+          "label": "来源/2026-04-12-AI知识库工作流与剪藏体系"
+        },
+        {
+          "target": "概念/AI知识库构建",
+          "label": "概念/AI知识库构建"
+        },
+        {
+          "target": "来源/raw-20260412-134034128-用 LLM + Obsidian 构建个人知识库：基于 Karpathy 的“L",
+          "label": "来源/raw-20260412-134034128-用 LLM + Obsidian 构建个人知识库：基于 Karpathy 的“L"
+        },
+        {
+          "target": "来源/2026-04-12-AI知识库工作流与剪藏体系",
+          "label": "来源/2026-04-12-AI知识库工作流与剪藏体系"
+        },
+        {
+          "target": "概念/Karpathy知识库方法",
+          "label": "概念/Karpathy知识库方法"
+        },
+        {
+          "target": "来源/raw-20260412-134034792-卡帕西没做完的，开源社区48小时搞定了！完全体知识库，token省70倍",
+          "label": "来源/raw-20260412-134034792-卡帕西没做完的，开源社区48小时搞定了！完全体知识库，token省70倍"
+        },
+        {
+          "target": "来源/2026-04-12-AI知识库工作流与剪藏体系",
+          "label": "来源/2026-04-12-AI知识库工作流与剪藏体系"
+        },
+        {
+          "target": "概念/AI知识库构建",
+          "label": "概念/AI知识库构建"
+        },
+        {
+          "target": "来源/raw-20260412-134034855-3步配置：手机电脑都能用的 Obsidian 剪藏方案",
+          "label": "来源/raw-20260412-134034855-3步配置：手机电脑都能用的 Obsidian 剪藏方案"
+        },
+        {
+          "target": "来源/2026-04-12-AI知识库工作流与剪藏体系",
+          "label": "来源/2026-04-12-AI知识库工作流与剪藏体系"
+        },
+        {
+          "target": "概念/Obsidian生产力系统",
+          "label": "概念/Obsidian生产力系统"
+        },
+        {
+          "target": "来源/raw-20260412-134034389-Installation - Chatgpt To Obsidian Docs",
+          "label": "来源/raw-20260412-134034389-Installation - Chatgpt To Obsidian Docs"
+        },
+        {
+          "target": "来源/2026-04-12-AI知识库工作流与剪藏体系",
+          "label": "来源/2026-04-12-AI知识库工作流与剪藏体系"
+        },
+        {
+          "target": "来源/raw-20260412-133858-学习笔记479—解决obsidian无法加载第三方插件",
+          "label": "来源/raw-20260412-133858-学习笔记479—解决obsidian无法加载第三方插件"
+        },
+        {
+          "target": "来源/2026-04-12-AI知识库工作流与剪藏体系",
+          "label": "来源/2026-04-12-AI知识库工作流与剪藏体系"
+        },
+        {
+          "target": "来源/raw-20260412-134034951-来了！Obsidian最好用的思维导图插件！",
+          "label": "来源/raw-20260412-134034951-来了！Obsidian最好用的思维导图插件！"
+        },
+        {
+          "target": "来源/2026-04-12-AI知识库工作流与剪藏体系",
+          "label": "来源/2026-04-12-AI知识库工作流与剪藏体系"
+        },
+        {
+          "target": "来源/raw-20260412-134035042-llm-wiki",
+          "label": "来源/raw-20260412-134035042-llm-wiki"
+        },
+        {
+          "target": "来源/2026-04-12-AI知识库工作流与剪藏体系",
+          "label": "来源/2026-04-12-AI知识库工作流与剪藏体系"
+        },
+        {
+          "target": "概念/Karpathy知识库方法",
+          "label": "概念/Karpathy知识库方法"
+        },
+        {
+          "target": "来源/raw-20260412-134034199-73.视频时间戳笔记生成器_obsidian_obsidian教程_-_抖音",
+          "label": "来源/raw-20260412-134034199-73.视频时间戳笔记生成器_obsidian_obsidian教程_-_抖音"
+        },
+        {
+          "target": "来源/2026-04-12-AI知识库工作流与剪藏体系",
+          "label": "来源/2026-04-12-AI知识库工作流与剪藏体系"
+        },
+        {
+          "target": "来源/raw-20260412-133858-C_Users_Administrator_Desktop_xiaosong的知识库_ai知识库_第二大脑_raw_只读区_inbox_notion_mp_clipper",
+          "label": "来源/raw-20260412-133858-C_Users_Administrator_Desktop_xiaosong的知识库_ai知识库_第二大脑_raw_只读区_inbox_notion_mp_clipper"
+        },
+        {
+          "target": "来源/2026-04-12-AI知识库工作流与剪藏体系",
+          "label": "来源/2026-04-12-AI知识库工作流与剪藏体系"
+        },
+        {
+          "target": "来源/raw-20260412-134034262-AI知识库（codex）",
+          "label": "来源/raw-20260412-134034262-AI知识库（codex）"
+        },
+        {
+          "target": "来源/2026-04-12-AI知识库工作流与剪藏体系",
+          "label": "来源/2026-04-12-AI知识库工作流与剪藏体系"
+        },
+        {
+          "target": "来源/raw-20260412-134034762-搭子必备-ChatGPT内对话内容的存储 1",
+          "label": "来源/raw-20260412-134034762-搭子必备-ChatGPT内对话内容的存储 1"
+        },
+        {
+          "target": "来源/2026-04-12-AI知识库工作流与剪藏体系",
+          "label": "来源/2026-04-12-AI知识库工作流与剪藏体系"
+        },
+        {
+          "target": "来源/raw-20260412-134034887-金知奖_2023知识区年终盛典",
+          "label": "来源/raw-20260412-134034887-金知奖_2023知识区年终盛典"
+        },
+        {
+          "target": "来源/2026-04-12-AI知识库工作流与剪藏体系",
+          "label": "来源/2026-04-12-AI知识库工作流与剪藏体系"
+        },
+        {
+          "target": "来源/raw-20260412-133857-一文看懂 AI Agent 的规划能力：ReAct、CoT、Plan-and-Execute 有什么区别",
+          "label": "来源/raw-20260412-133857-一文看懂 AI Agent 的规划能力：ReAct、CoT、Plan-and-Execute 有什么区别"
+        },
+        {
+          "target": "概念/AI-Agent规划",
+          "label": "概念/AI-Agent规划"
+        },
+        {
+          "target": "来源/raw-20260412-133857-法律人学Claude｜第三期：让Claude更高效读懂你的文件",
+          "label": "来源/raw-20260412-133857-法律人学Claude｜第三期：让Claude更高效读懂你的文件"
+        },
+        {
+          "target": "来源/2026-04-12-Claude文件读取与订阅策略",
+          "label": "来源/2026-04-12-Claude文件读取与订阅策略"
+        },
+        {
+          "target": "概念/法律人用Claude",
+          "label": "概念/法律人用Claude"
+        },
+        {
+          "target": "来源/raw-20260412-133857-法律人学Claude｜第十一期：给AI这匹野马套上缰绳——Hooks机制",
+          "label": "来源/raw-20260412-133857-法律人学Claude｜第十一期：给AI这匹野马套上缰绳——Hooks机制"
+        },
+        {
+          "target": "来源/2026-04-12-Claude文件读取与订阅策略",
+          "label": "来源/2026-04-12-Claude文件读取与订阅策略"
+        },
+        {
+          "target": "概念/Harness-Engineering",
+          "label": "概念/Harness-Engineering"
+        },
+        {
+          "target": "来源/raw-20260412-134034921-《国内开发者必看！Claude API Key获取及使用全攻略》",
+          "label": "来源/raw-20260412-134034921-《国内开发者必看！Claude API Key获取及使用全攻略》"
+        },
+        {
+          "target": "来源/2026-04-12-Claude文件读取与订阅策略",
+          "label": "来源/2026-04-12-Claude文件读取与订阅策略"
+        },
+        {
+          "target": "来源/raw-20260411-204714-别买 200 刀！深扒 Claude「真实额度」，Max 5x 才是性价比之王！",
+          "label": "来源/raw-20260411-204714-别买 200 刀！深扒 Claude「真实额度」，Max 5x 才是性价比之王！"
+        },
+        {
+          "target": "来源/2026-04-12-Claude文件读取与订阅策略",
+          "label": "来源/2026-04-12-Claude文件读取与订阅策略"
+        },
+        {
+          "target": "来源/raw-20260412-134035340-Android - Termux - Hermes Agent",
+          "label": "来源/raw-20260412-134035340-Android - Termux - Hermes Agent"
+        },
+        {
+          "target": "来源/2026-04-12-Hermes-Agent-Termux安装",
+          "label": "来源/2026-04-12-Hermes-Agent-Termux安装"
+        },
+        {
+          "target": "工具/Hermes Agent",
+          "label": "工具/Hermes Agent"
+        },
+        {
+          "target": "来源/raw-20260412-134035372-OpenClaw 中集成 OpenAI：API 密钥与 Codex 订阅双模式详",
+          "label": "来源/raw-20260412-134035372-OpenClaw 中集成 OpenAI：API 密钥与 Codex 订阅双模式详"
+        },
+        {
+          "target": "来源/2026-04-12-OpenClaw集成OpenAI与Codex认证",
+          "label": "来源/2026-04-12-OpenClaw集成OpenAI与Codex认证"
+        },
+        {
+          "target": "工具/OpenClaw",
+          "label": "工具/OpenClaw"
+        },
+        {
+          "target": "来源/raw-20260412-134035403-LfoikCC-Obsidian-CodeX-Agent",
+          "label": "来源/raw-20260412-134035403-LfoikCC-Obsidian-CodeX-Agent"
+        },
+        {
+          "target": "来源/2026-04-12-Obsidian-CodeX-Agent插件说明",
+          "label": "来源/2026-04-12-Obsidian-CodeX-Agent插件说明"
+        },
+        {
+          "target": "工具/Obsidian-CodeX-Agent",
+          "label": "工具/Obsidian-CodeX-Agent"
+        },
+        {
+          "target": "来源/raw-20260412-134035278-dnakov-litter",
+          "label": "来源/raw-20260412-134035278-dnakov-litter"
+        },
+        {
+          "target": "来源/2026-04-12-Litter仓库架构",
+          "label": "来源/2026-04-12-Litter仓库架构"
+        },
+        {
+          "target": "工具/Litter-Codex移动编辑器",
+          "label": "工具/Litter-Codex移动编辑器"
+        },
+        {
+          "target": "来源/raw-20260412-134035309-Thread by @SIGKITTEN@SIGKITTEN @SIGKITTE",
+          "label": "来源/raw-20260412-134035309-Thread by @SIGKITTEN@SIGKITTEN @SIGKITTE"
+        },
+        {
+          "target": "来源/2026-04-12-Litter-Beta-Codex工具介绍",
+          "label": "来源/2026-04-12-Litter-Beta-Codex工具介绍"
+        },
+        {
+          "target": "工具/Litter-Codex移动编辑器",
+          "label": "工具/Litter-Codex移动编辑器"
+        },
+        {
+          "target": "来源/raw-20260412-134034420-ChatGPT-飞书记录系统思考",
+          "label": "来源/raw-20260412-134034420-ChatGPT-飞书记录系统思考"
+        },
+        {
+          "target": "来源/2026-04-12-飞书记录系统设计",
+          "label": "来源/2026-04-12-飞书记录系统设计"
+        },
+        {
+          "target": "项目/飞书记录系统",
+          "label": "项目/飞书记录系统"
+        },
+        {
+          "target": "来源/raw-20260412-134034230-Area（领域）_Project（项目）_Task（任务）_Action（行动）",
+          "label": "来源/raw-20260412-134034230-Area（领域）_Project（项目）_Task（任务）_Action（行动）"
+        },
+        {
+          "target": "来源/2026-04-12-飞书记录系统设计",
+          "label": "来源/2026-04-12-飞书记录系统设计"
+        },
+        {
+          "target": "来源/raw-20260412-134034357-Chrome 浏览器插件「保存到飞书」",
+          "label": "来源/raw-20260412-134034357-Chrome 浏览器插件「保存到飞书」"
+        },
+        {
+          "target": "来源/2026-04-12-飞书记录系统设计",
+          "label": "来源/2026-04-12-飞书记录系统设计"
+        },
+        {
+          "target": "来源/raw-20260412-134034451-归档",
+          "label": "来源/raw-20260412-134034451-归档"
+        },
+        {
+          "target": "来源/2026-04-12-飞书记录系统设计",
+          "label": "来源/2026-04-12-飞书记录系统设计"
+        },
+        {
+          "target": "来源/raw-20260412-134034481-首页",
+          "label": "来源/raw-20260412-134034481-首页"
+        },
+        {
+          "target": "来源/2026-04-12-飞书记录系统设计",
+          "label": "来源/2026-04-12-飞书记录系统设计"
+        },
+        {
+          "target": "来源/raw-20260412-134034511-资源",
+          "label": "来源/raw-20260412-134034511-资源"
+        },
+        {
+          "target": "来源/2026-04-12-飞书记录系统设计",
+          "label": "来源/2026-04-12-飞书记录系统设计"
+        },
+        {
+          "target": "来源/raw-20260412-134034543-南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院",
+          "label": "来源/raw-20260412-134034543-南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院"
+        },
+        {
+          "target": "来源/2026-04-12-法硕专业选择与南大备考",
+          "label": "来源/2026-04-12-法硕专业选择与南大备考"
+        },
+        {
+          "target": "项目/2027法学学硕备考",
+          "label": "项目/2027法学学硕备考"
+        },
+        {
+          "target": "来源/raw-20260412-134034636-南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院 1",
+          "label": "来源/raw-20260412-134034636-南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院 1"
+        },
+        {
+          "target": "来源/2026-04-12-法硕专业选择与南大备考",
+          "label": "来源/2026-04-12-法硕专业选择与南大备考"
+        },
+        {
+          "target": "来源/raw-20260412-134034605-ChatGPT-法硕专业选择建议",
+          "label": "来源/raw-20260412-134034605-ChatGPT-法硕专业选择建议"
+        },
+        {
+          "target": "来源/2026-04-12-法硕专业选择与南大备考",
+          "label": "来源/2026-04-12-法硕专业选择与南大备考"
+        },
+        {
+          "target": "来源/raw-20260412-134034667-南京大学法学学硕经验贴，奔赴一场无畏的梦",
+          "label": "来源/raw-20260412-134034667-南京大学法学学硕经验贴，奔赴一场无畏的梦"
+        },
+        {
+          "target": "来源/2026-04-12-法硕专业选择与南大备考",
+          "label": "来源/2026-04-12-法硕专业选择与南大备考"
+        },
+        {
+          "target": "来源/raw-20260412-134034699-【24状元】对26南大法学学硕真题的分析",
+          "label": "来源/raw-20260412-134034699-【24状元】对26南大法学学硕真题的分析"
+        },
+        {
+          "target": "来源/2026-04-12-法硕专业选择与南大备考",
+          "label": "来源/2026-04-12-法硕专业选择与南大备考"
+        },
+        {
+          "target": "来源/raw-20260412-134034730-【26法学学硕考研】1w字超详细经验帖",
+          "label": "来源/raw-20260412-134034730-【26法学学硕考研】1w字超详细经验帖"
+        },
+        {
+          "target": "来源/2026-04-12-法硕专业选择与南大备考",
+          "label": "来源/2026-04-12-法硕专业选择与南大备考"
+        },
+        {
+          "target": "来源/raw-20260412-134034824-25南大法学学硕真题趋向变化分析",
+          "label": "来源/raw-20260412-134034824-25南大法学学硕真题趋向变化分析"
+        },
+        {
+          "target": "来源/2026-04-12-法硕专业选择与南大备考",
+          "label": "来源/2026-04-12-法硕专业选择与南大备考"
+        },
+        {
+          "target": "来源/raw-20260412-134034574-score_2023311953_1775634965836",
+          "label": "来源/raw-20260412-134034574-score_2023311953_1775634965836"
+        },
+        {
+          "target": "项目/2027法学学硕备考",
+          "label": "项目/2027法学学硕备考"
+        },
+        {
+          "target": "来源/raw-20260411-204714-爱思考的赛门斯",
+          "label": "来源/raw-20260411-204714-爱思考的赛门斯"
+        },
+        {
+          "target": "来源/2026-04-12-学习困倦与节能机制",
+          "label": "来源/2026-04-12-学习困倦与节能机制"
+        },
+        {
+          "target": "来源/2026-04-12-学习启动阻力与拖延治理",
+          "label": "来源/2026-04-12-学习启动阻力与拖延治理"
+        },
+        {
+          "target": "来源/raw-20260412-134035168-如何解决学习犯困？",
+          "label": "来源/raw-20260412-134035168-如何解决学习犯困？"
+        },
+        {
+          "target": "来源/2026-04-12-学习困倦与节能机制",
+          "label": "来源/2026-04-12-学习困倦与节能机制"
+        },
+        {
+          "target": "来源/2026-04-12-学习启动阻力与拖延治理",
+          "label": "来源/2026-04-12-学习启动阻力与拖延治理"
+        },
+        {
+          "target": "来源/raw-20260412-134035137-原来一学习就犯困身体跟不上要这样做 - 小红书",
+          "label": "来源/raw-20260412-134035137-原来一学习就犯困身体跟不上要这样做 - 小红书"
+        },
+        {
+          "target": "来源/2026-04-12-学习困倦与节能机制",
+          "label": "来源/2026-04-12-学习困倦与节能机制"
+        },
+        {
+          "target": "来源/2026-04-12-学习启动阻力与拖延治理",
+          "label": "来源/2026-04-12-学习启动阻力与拖延治理"
+        },
+        {
+          "target": "来源/raw-20260412-134035215-中医人漫谈｜一学习就困，怎么调理？ - 小红书",
+          "label": "来源/raw-20260412-134035215-中医人漫谈｜一学习就困，怎么调理？ - 小红书"
+        },
+        {
+          "target": "来源/2026-04-12-学习困倦与节能机制",
+          "label": "来源/2026-04-12-学习困倦与节能机制"
+        },
+        {
+          "target": "来源/2026-04-12-学习启动阻力与拖延治理",
+          "label": "来源/2026-04-12-学习启动阻力与拖延治理"
+        },
+        {
+          "target": "来源/raw-20260412-134035247-大脑最基本的原理：节能",
+          "label": "来源/raw-20260412-134035247-大脑最基本的原理：节能"
+        },
+        {
+          "target": "来源/2026-04-12-学习困倦与节能机制",
+          "label": "来源/2026-04-12-学习困倦与节能机制"
+        },
+        {
+          "target": "来源/2026-04-12-学习启动阻力与拖延治理",
+          "label": "来源/2026-04-12-学习启动阻力与拖延治理"
+        },
+        {
+          "target": "来源/raw-20260412-134035074-拖延症根治手册(1)",
+          "label": "来源/raw-20260412-134035074-拖延症根治手册(1)"
+        },
+        {
+          "target": "来源/2026-04-12-学习启动阻力与拖延治理",
+          "label": "来源/2026-04-12-学习启动阻力与拖延治理"
+        },
+        {
+          "target": "来源/raw-20260412-134034981-艾宾浩斯曲线——刘晓艳",
+          "label": "来源/raw-20260412-134034981-艾宾浩斯曲线——刘晓艳"
+        },
+        {
+          "target": "来源/2026-04-12-考研背单词间隔重复计划",
+          "label": "来源/2026-04-12-考研背单词间隔重复计划"
+        },
+        {
+          "target": "来源/raw-20260412-134035011-考研背单词计划",
+          "label": "来源/raw-20260412-134035011-考研背单词计划"
+        },
+        {
+          "target": "来源/2026-04-12-考研背单词间隔重复计划",
+          "label": "来源/2026-04-12-考研背单词间隔重复计划"
+        },
+        {
+          "target": "来源/raw-20260412-134035106-如何把文献串起来，搭建出自己的文献体系？ - 小红书",
+          "label": "来源/raw-20260412-134035106-如何把文献串起来，搭建出自己的文献体系？ - 小红书"
+        },
+        {
+          "target": "来源/2026-04-12-文献体系化整理",
+          "label": "来源/2026-04-12-文献体系化整理"
+        },
+        {
+          "target": "概念/文献体系化整理",
+          "label": "概念/文献体系化整理"
+        },
+        {
+          "target": "来源/raw-20260412-134034293-2026-04-02 日记",
+          "label": "来源/raw-20260412-134034293-2026-04-02 日记"
+        },
+        {
+          "target": "来源/2026-04-12-飞书记录系统设计",
+          "label": "来源/2026-04-12-飞书记录系统设计"
+        },
+        {
+          "target": "来源/raw-20260412-134034325-2026-04-03 日记",
+          "label": "来源/raw-20260412-134034325-2026-04-03 日记"
+        },
+        {
+          "target": "来源/2026-04-12-飞书记录系统设计",
+          "label": "来源/2026-04-12-飞书记录系统设计"
+        },
+        {
+          "target": "来源/raw-20260412-133857-【教程】免信用卡为cloudflare添加付款方式",
+          "label": "来源/raw-20260412-133857-【教程】免信用卡为cloudflare添加付款方式"
+        }
+      ],
+      "abstract": "# 2026-04-12-剩余raw素材吸收索引",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-12-文献体系化整理.md",
+      "title": "2026-04-12-文献体系化整理",
+      "category": "来源",
+      "aliases": [
+        "2026-04-12-文献体系化整理"
+      ],
+      "tags": [
+        "来源",
+        "文献",
+        "综述",
+        "研究方法"
+      ],
+      "sources": [],
+      "headings": [
+        "2026-04-12-文献体系化整理",
+        "核心结论",
+        "应更新到的知识页",
+        "吸收来源"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/文献体系化整理",
+          "label": "概念/文献体系化整理"
+        },
+        {
+          "target": "概念/法律学习备考",
+          "label": "概念/法律学习备考"
+        },
+        {
+          "target": "来源/raw-20260412-134035106-如何把文献串起来，搭建出自己的文献体系？ - 小红书",
+          "label": "来源/raw-20260412-134035106-如何把文献串起来，搭建出自己的文献体系？ - 小红书"
+        },
+        {
+          "target": "来源/raw-20260412-134035042-llm-wiki",
+          "label": "来源/raw-20260412-134035042-llm-wiki"
+        },
+        {
+          "target": "来源/raw-20260412-133857-全网爆火的大模型AI知识库，保姆级教程来了",
+          "label": "来源/raw-20260412-133857-全网爆火的大模型AI知识库，保姆级教程来了"
+        }
+      ],
+      "abstract": "# 2026-04-12-文献体系化整理",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-12-学习困倦与节能机制.md",
+      "title": "2026-04-12-学习困倦与节能机制",
+      "category": "来源",
+      "aliases": [
+        "2026-04-12-学习困倦与节能机制"
+      ],
+      "tags": [
+        "来源",
+        "学习",
+        "困倦",
+        "大脑节能",
+        "状态管理"
+      ],
+      "sources": [
+        "raw-20260412-134035168-如何解决学习犯困？",
+        "raw-20260412-134035215-中医人漫谈｜一学习就困，怎么调理？ - 小红书",
+        "raw-20260412-134035247-大脑最基本的原理：节能"
+      ],
+      "headings": [
+        "来源：学习困倦与节能机制",
+        "Compiled Truth",
+        "核心结论",
+        "多来源视角",
+        "相关页面",
+        "Timeline",
+        "2026-04-12 - 编译"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/个人学习管理",
+          "label": "概念/个人学习管理"
+        },
+        {
+          "target": "项目/2027法学学硕备考",
+          "label": "项目/2027法学学硕备考"
+        }
+      ],
+      "abstract": "# 来源：学习困倦与节能机制",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-12-学习启动阻力与拖延治理.md",
+      "title": "2026-04-12-学习启动阻力与拖延治理",
+      "category": "来源",
+      "aliases": [
+        "2026-04-12-学习启动阻力与拖延治理"
+      ],
+      "tags": [
+        "来源",
+        "学习",
+        "拖延",
+        "启动阻力"
+      ],
+      "sources": [],
+      "headings": [
+        "2026-04-12-学习启动阻力与拖延治理",
+        "核心结论",
+        "应更新到的知识页",
+        "吸收来源"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/个人学习管理",
+          "label": "概念/个人学习管理"
+        },
+        {
+          "target": "概念/法律学习备考",
+          "label": "概念/法律学习备考"
+        },
+        {
+          "target": "来源/raw-20260411-204714-爱思考的赛门斯",
+          "label": "来源/raw-20260411-204714-爱思考的赛门斯"
+        },
+        {
+          "target": "来源/raw-20260412-134035168-如何解决学习犯困？",
+          "label": "来源/raw-20260412-134035168-如何解决学习犯困？"
+        },
+        {
+          "target": "来源/raw-20260412-134035137-原来一学习就犯困身体跟不上要这样做 - 小红书",
+          "label": "来源/raw-20260412-134035137-原来一学习就犯困身体跟不上要这样做 - 小红书"
+        },
+        {
+          "target": "来源/raw-20260412-134035215-中医人漫谈｜一学习就困，怎么调理？ - 小红书",
+          "label": "来源/raw-20260412-134035215-中医人漫谈｜一学习就困，怎么调理？ - 小红书"
+        },
+        {
+          "target": "来源/raw-20260412-134035247-大脑最基本的原理：节能",
+          "label": "来源/raw-20260412-134035247-大脑最基本的原理：节能"
+        },
+        {
+          "target": "来源/raw-20260412-134035074-拖延症根治手册(1)",
+          "label": "来源/raw-20260412-134035074-拖延症根治手册(1)"
+        }
+      ],
+      "abstract": "# 2026-04-12-学习启动阻力与拖延治理",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-12-AI知识库工作流与剪藏体系.md",
+      "title": "2026-04-12-AI知识库工作流与剪藏体系",
+      "category": "来源",
+      "aliases": [
+        "2026-04-12-AI知识库工作流与剪藏体系"
+      ],
+      "tags": [
+        "来源",
+        "AI知识库",
+        "Obsidian",
+        "LLM-Wiki",
+        "剪藏"
+      ],
+      "sources": [],
+      "headings": [
+        "2026-04-12-AI知识库工作流与剪藏体系",
+        "核心结论",
+        "结构吸收",
+        "应更新到的知识页",
+        "吸收来源"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/AI知识库构建",
+          "label": "概念/AI知识库构建"
+        },
+        {
+          "target": "概念/Karpathy知识库方法",
+          "label": "概念/Karpathy知识库方法"
+        },
+        {
+          "target": "概念/Obsidian生产力系统",
+          "label": "概念/Obsidian生产力系统"
+        },
+        {
+          "target": "来源/raw-20260412-133857-全网爆火的大模型AI知识库，保姆级教程来了",
+          "label": "来源/raw-20260412-133857-全网爆火的大模型AI知识库，保姆级教程来了"
+        },
+        {
+          "target": "来源/raw-20260412-134034128-用 LLM + Obsidian 构建个人知识库：基于 Karpathy 的“L",
+          "label": "来源/raw-20260412-134034128-用 LLM + Obsidian 构建个人知识库：基于 Karpathy 的“L"
+        },
+        {
+          "target": "来源/raw-20260412-134034792-卡帕西没做完的，开源社区48小时搞定了！完全体知识库，token省70倍",
+          "label": "来源/raw-20260412-134034792-卡帕西没做完的，开源社区48小时搞定了！完全体知识库，token省70倍"
+        },
+        {
+          "target": "来源/raw-20260412-134035042-llm-wiki",
+          "label": "来源/raw-20260412-134035042-llm-wiki"
+        },
+        {
+          "target": "来源/raw-20260412-134034855-3步配置：手机电脑都能用的 Obsidian 剪藏方案",
+          "label": "来源/raw-20260412-134034855-3步配置：手机电脑都能用的 Obsidian 剪藏方案"
+        },
+        {
+          "target": "来源/raw-20260412-134034389-Installation - Chatgpt To Obsidian Docs",
+          "label": "来源/raw-20260412-134034389-Installation - Chatgpt To Obsidian Docs"
+        },
+        {
+          "target": "来源/raw-20260412-133858-学习笔记479—解决obsidian无法加载第三方插件",
+          "label": "来源/raw-20260412-133858-学习笔记479—解决obsidian无法加载第三方插件"
+        },
+        {
+          "target": "来源/raw-20260412-134034951-来了！Obsidian最好用的思维导图插件！",
+          "label": "来源/raw-20260412-134034951-来了！Obsidian最好用的思维导图插件！"
+        },
+        {
+          "target": "来源/raw-20260411-204714-Obsidian + Claude Code：让 AI 深度融入你的知识库",
+          "label": "来源/raw-20260411-204714-Obsidian + Claude Code：让 AI 深度融入你的知识库"
+        }
+      ],
+      "abstract": "# 2026-04-12-AI知识库工作流与剪藏体系",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-12-Claude文件读取与订阅策略.md",
+      "title": "2026-04-12-Claude文件读取与订阅策略",
+      "category": "来源",
+      "aliases": [
+        "2026-04-12-Claude文件读取与订阅策略"
+      ],
+      "tags": [
+        "来源",
+        "Claude",
+        "文件读取",
+        "Hooks",
+        "订阅策略"
+      ],
+      "sources": [],
+      "headings": [
+        "2026-04-12-Claude文件读取与订阅策略",
+        "核心结论",
+        "结构吸收",
+        "应更新到的知识页",
+        "吸收来源"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/法律人用Claude",
+          "label": "概念/法律人用Claude"
+        },
+        {
+          "target": "概念/Harness-Engineering",
+          "label": "概念/Harness-Engineering"
+        },
+        {
+          "target": "概念/Claude & LLM应用",
+          "label": "概念/Claude & LLM应用"
+        },
+        {
+          "target": "来源/raw-20260412-133857-法律人学Claude｜第三期：让Claude更高效读懂你的文件",
+          "label": "来源/raw-20260412-133857-法律人学Claude｜第三期：让Claude更高效读懂你的文件"
+        },
+        {
+          "target": "来源/raw-20260412-133857-法律人学Claude｜第十一期：给AI这匹野马套上缰绳——Hooks机制",
+          "label": "来源/raw-20260412-133857-法律人学Claude｜第十一期：给AI这匹野马套上缰绳——Hooks机制"
+        },
+        {
+          "target": "来源/raw-20260412-134034921-《国内开发者必看！Claude API Key获取及使用全攻略》",
+          "label": "来源/raw-20260412-134034921-《国内开发者必看！Claude API Key获取及使用全攻略》"
+        },
+        {
+          "target": "来源/raw-20260411-204714-别买 200 刀！深扒 Claude「真实额度」，Max 5x 才是性价比之王！",
+          "label": "来源/raw-20260411-204714-别买 200 刀！深扒 Claude「真实额度」，Max 5x 才是性价比之王！"
+        }
+      ],
+      "abstract": "# 2026-04-12-Claude文件读取与订阅策略",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-12-Hermes-Agent-Termux安装.md",
+      "title": "2026-04-12-Hermes-Agent-Termux安装",
+      "category": "来源",
+      "aliases": [
+        "2026-04-12-Hermes-Agent-Termux安装"
+      ],
+      "tags": [
+        "来源",
+        "Hermes",
+        "Termux",
+        "安卓",
+        "安装"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：Hermes Agent 的 Termux 安装路径",
+        "Compiled Truth",
+        "核心要点",
+        "适用场景",
+        "相关页面",
+        "Timeline",
+        "2026-04-12 - 编译"
+      ],
+      "outgoingHints": [
+        {
+          "target": "工具/Hermes Agent",
+          "label": "工具/Hermes Agent"
+        },
+        {
+          "target": "工具/Litter-Codex移动编辑器",
+          "label": "工具/Litter-Codex移动编辑器"
+        },
+        {
+          "target": "概念/Claude & LLM应用",
+          "label": "概念/Claude & LLM应用"
+        }
+      ],
+      "abstract": "# 来源：Hermes Agent 的 Termux 安装路径",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-12-Litter-Beta-Codex工具介绍.md",
+      "title": "2026-04-12-Litter-Beta-Codex工具介绍",
+      "category": "来源",
+      "aliases": [
+        "2026-04-12-Litter-Beta-Codex工具介绍"
+      ],
+      "tags": [
+        "来源",
+        "Twitter",
+        "工具介绍",
+        "Codex"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：Litter Beta - Codex 移动应用介绍",
+        "原始内容摘录",
+        "英文版本",
+        "中文版本",
+        "核心观点提取",
+        "关键数据",
+        "信息分类",
+        "待补充"
+      ],
+      "outgoingHints": [
+        {
+          "target": "工具/Litter-Codex移动编辑器\\",
+          "label": "Litter"
+        },
+        {
+          "target": "工具/Litter-Codex移动编辑器\\",
+          "label": "Litter"
+        },
+        {
+          "target": "工具/Litter-Codex移动编辑器\\",
+          "label": "Litter"
+        },
+        {
+          "target": "工具/Litter-Codex移动编辑器\\",
+          "label": "Litter"
+        },
+        {
+          "target": "概念/Claude-LLM应用场景",
+          "label": "概念/Claude-LLM应用场景"
+        },
+        {
+          "target": "工具/Litter-Codex移动编辑器\\",
+          "label": "Litter"
+        },
+        {
+          "target": "工具/Litter-Codex移动编辑器",
+          "label": "工具/Litter-Codex移动编辑器"
+        }
+      ],
+      "abstract": "# 来源：Litter Beta - Codex 移动应用介绍",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-12-Litter仓库架构.md",
+      "title": "2026-04-12-Litter仓库架构",
+      "category": "来源",
+      "aliases": [
+        "2026-04-12-Litter仓库架构"
+      ],
+      "tags": [
+        "来源",
+        "Litter",
+        "Codex",
+        "移动端",
+        "GitHub"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：Litter 仓库与架构说明",
+        "Compiled Truth",
+        "核心要点",
+        "相关页面",
+        "Timeline",
+        "2026-04-12 - 编译"
+      ],
+      "outgoingHints": [
+        {
+          "target": "工具/Litter-Codex移动编辑器",
+          "label": "工具/Litter-Codex移动编辑器"
+        },
+        {
+          "target": "工具/Obsidian-CodeX-Agent",
+          "label": "工具/Obsidian-CodeX-Agent"
+        },
+        {
+          "target": "概念/Obsidian生产力系统",
+          "label": "概念/Obsidian生产力系统"
+        }
+      ],
+      "abstract": "# 来源：Litter 仓库与架构说明",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-12-Obsidian-CodeX-Agent插件说明.md",
+      "title": "2026-04-12-Obsidian-CodeX-Agent插件说明",
+      "category": "来源",
+      "aliases": [
+        "2026-04-12-Obsidian-CodeX-Agent插件说明"
+      ],
+      "tags": [
+        "来源",
+        "Obsidian",
+        "Codex",
+        "Agent",
+        "插件"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：Obsidian-CodeX-Agent 插件说明",
+        "Compiled Truth",
+        "核心要点",
+        "适用场景",
+        "相关页面",
+        "Timeline",
+        "2026-04-12 - 编译"
+      ],
+      "outgoingHints": [
+        {
+          "target": "工具/Obsidian-CodeX-Agent",
+          "label": "工具/Obsidian-CodeX-Agent"
+        },
+        {
+          "target": "概念/Obsidian生产力系统",
+          "label": "概念/Obsidian生产力系统"
+        },
+        {
+          "target": "概念/Claude & LLM应用",
+          "label": "概念/Claude & LLM应用"
+        }
+      ],
+      "abstract": "# 来源：Obsidian-CodeX-Agent 插件说明",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-12-Obsidian附件同步与导出经验.md",
+      "title": "2026-04-12-Obsidian附件同步与导出经验",
+      "category": "来源",
+      "aliases": [
+        "2026-04-12-Obsidian附件同步与导出经验"
+      ],
+      "tags": [
+        "来源",
+        "Obsidian",
+        "附件管理",
+        "同步",
+        "飞书"
+      ],
+      "sources": [],
+      "headings": [
+        "2026-04-12-Obsidian附件同步与导出经验",
+        "核心结论",
+        "可执行规则",
+        "应更新到的知识页",
+        "只读来源",
+        "备注"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/Obsidian生产力系统",
+          "label": "概念/Obsidian生产力系统"
+        },
+        {
+          "target": "项目/飞书记录系统",
+          "label": "项目/飞书记录系统"
+        }
+      ],
+      "abstract": "# 2026-04-12-Obsidian附件同步与导出经验",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/2026-04-12-OpenClaw集成OpenAI与Codex认证.md",
+      "title": "2026-04-12-OpenClaw集成OpenAI与Codex认证",
+      "category": "来源",
+      "aliases": [
+        "2026-04-12-OpenClaw集成OpenAI与Codex认证"
+      ],
+      "tags": [
+        "来源",
+        "OpenClaw",
+        "OpenAI",
+        "Codex",
+        "配置"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：OpenClaw 集成 OpenAI 与 Codex 认证",
+        "Compiled Truth",
+        "核心要点",
+        "适用场景",
+        "相关页面",
+        "Timeline",
+        "2026-04-12 - 编译"
+      ],
+      "outgoingHints": [
+        {
+          "target": "工具/OpenClaw",
+          "label": "工具/OpenClaw"
+        },
+        {
+          "target": "概念/Claude & LLM应用",
+          "label": "概念/Claude & LLM应用"
+        },
+        {
+          "target": "工具/Litter-Codex移动编辑器",
+          "label": "工具/Litter-Codex移动编辑器"
+        }
+      ],
+      "abstract": "# 来源：OpenClaw 集成 OpenAI 与 Codex 认证",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/ChatGPT-学习困难.md",
+      "title": "ChatGPT-学习困难",
+      "category": "来源",
+      "aliases": [
+        "ChatGPT-学习困难"
+      ],
+      "tags": [
+        "来源",
+        "学习",
+        "桥接"
+      ],
+      "sources": [],
+      "headings": [
+        "ChatGPT-学习困难",
+        "跳转"
+      ],
+      "outgoingHints": [
+        {
+          "target": "来源/2026-04-12-学习困倦与节能机制",
+          "label": "来源/2026-04-12-学习困倦与节能机制"
+        }
+      ],
+      "abstract": "# ChatGPT-学习困难",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/Karpathy-llm-wiki.md",
+      "title": "Karpathy-llm-wiki",
+      "category": "来源",
+      "aliases": [
+        "Karpathy-llm-wiki"
+      ],
+      "tags": [
+        "来源",
+        "Karpathy",
+        "llm-wiki"
+      ],
+      "sources": [],
+      "headings": [
+        "Karpathy-llm-wiki",
+        "说明"
+      ],
+      "outgoingHints": [
+        {
+          "target": "来源/2026-04-07-Karpathy大模型AI知识库教程",
+          "label": "来源/2026-04-07-Karpathy大模型AI知识库教程"
+        },
+        {
+          "target": "来源/2026-04-12-AI知识库工作流与剪藏体系",
+          "label": "来源/2026-04-12-AI知识库工作流与剪藏体系"
+        },
+        {
+          "target": "概念/Karpathy知识库方法",
+          "label": "概念/Karpathy知识库方法"
+        }
+      ],
+      "abstract": "# Karpathy-llm-wiki",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260411-204714-爱思考的赛门斯.md",
+      "title": "raw-20260411-204714-爱思考的赛门斯",
+      "category": "来源",
+      "aliases": [
+        "raw-20260411-204714-爱思考的赛门斯"
+      ],
+      "tags": [],
+      "sources": [],
+      "headings": [
+        "爱思考的赛门斯",
+        "Compiled Truth",
+        "原始内容摘录",
+        "核心要点（待补充）",
+        "为什么值得保留",
+        "相关链接",
+        "Timeline",
+        "2026-04-11 - 自动导入",
+        "元数据"
+      ],
+      "outgoingHints": [
+        {
+          "target": "如何解决学习犯困？.txt",
+          "label": "如何解决学习犯困？.txt"
+        },
+        {
+          "target": "Pasted image 20260411140833.png",
+          "label": "Pasted image 20260411140833.png"
+        },
+        {
+          "target": "相关概念",
+          "label": "相关概念"
+        },
+        {
+          "target": "相关项目",
+          "label": "相关项目"
+        }
+      ],
+      "abstract": "# 爱思考的赛门斯",
+      "updated": null
+    },
+    {
+      "path": "来源/raw-20260411-204714-别买 200 刀！深扒 Claude「真实额度」，Max 5x 才是性价比之王！.md",
+      "title": "raw-20260411-204714-别买 200 刀！深扒 Claude「真实额度」，Max 5x 才是性价比之王！",
+      "category": "来源",
+      "aliases": [
+        "raw-20260411-204714-别买 200 刀！深扒 Claude「真实额度」，Max 5x 才是性价比之王！"
+      ],
+      "tags": [],
+      "sources": [],
+      "headings": [
+        "别买 200 刀！深扒 Claude「真实额度」，Max 5x 才是性价比之王！",
+        "Compiled Truth",
+        "原始内容摘录",
+        "核心要点（待补充）",
+        "为什么值得保留",
+        "相关链接",
+        "Timeline",
+        "2026-04-11 - 自动导入",
+        "元数据"
+      ],
+      "outgoingHints": [
+        {
+          "target": "相关概念",
+          "label": "相关概念"
+        },
+        {
+          "target": "相关项目",
+          "label": "相关项目"
+        }
+      ],
+      "abstract": "# 别买 200 刀！深扒 Claude「真实额度」，Max 5x 才是性价比之王！",
+      "updated": null
+    },
+    {
+      "path": "来源/raw-20260411-204714-Obsidian + Claude Code：让 AI 深度融入你的知识库.md",
+      "title": "raw-20260411-204714-Obsidian + Claude Code：让 AI 深度融入你的知识库",
+      "category": "来源",
+      "aliases": [
+        "raw-20260411-204714-Obsidian + Claude Code：让 AI 深度融入你的知识库"
+      ],
+      "tags": [],
+      "sources": [],
+      "headings": [
+        "Obsidian + Claude Code：让 AI 深度融入你的知识库",
+        "Compiled Truth",
+        "原始内容摘录",
+        "核心要点（待补充）",
+        "为什么值得保留",
+        "相关链接",
+        "Timeline",
+        "2026-04-11 - 自动导入",
+        "元数据"
+      ],
+      "outgoingHints": [
+        {
+          "target": "相关概念",
+          "label": "相关概念"
+        },
+        {
+          "target": "相关项目",
+          "label": "相关项目"
+        }
+      ],
+      "abstract": "# Obsidian + Claude Code：让 AI 深度融入你的知识库",
+      "updated": null
+    },
+    {
+      "path": "来源/raw-20260412-133857-【教程】免信用卡为cloudflare添加付款方式.md",
+      "title": "raw-20260412-133857-【教程】免信用卡为cloudflare添加付款方式",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-133857-【教程】免信用卡为cloudflare添加付款方式"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：【教程】免信用卡为cloudflare添加付款方式",
+        "原始信息",
+        "核心摘录",
+        "需要准备：",
+        "原理：",
+        "操作步骤：",
+        "a.开始添加",
+        "b.账号生成",
+        "c.信用卡验证",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：【教程】免信用卡为cloudflare添加付款方式",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-133857-法律人学Claude｜第三期：让Claude更高效读懂你的文件.md",
+      "title": "raw-20260412-133857-法律人学Claude｜第三期：让Claude更高效读懂你的文件",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-133857-法律人学Claude｜第三期：让Claude更高效读懂你的文件"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：法律人学Claude｜第三期：让Claude更高效读懂你的文件",
+        "原始信息",
+        "核心摘录",
+        "法律人用不好Claude辅助自己工作，很大程度上是因为没有让Claude读好文件造成的，一股脑塞给他，当然不行。",
+        "一、一个让人崩溃的场景",
+        "二、Claude 是怎么\"读文件\"的",
+        "三、三种文件读取方式",
+        "方式一：打开整个案件文件夹",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "吕盈辉",
+          "label": "吕盈辉"
+        },
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：法律人学Claude｜第三期：让Claude更高效读懂你的文件",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-133857-法律人学Claude｜第十一期：给AI这匹野马套上缰绳——Hooks机制.md",
+      "title": "raw-20260412-133857-法律人学Claude｜第十一期：给AI这匹野马套上缰绳——Hooks机制",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-133857-法律人学Claude｜第十一期：给AI这匹野马套上缰绳——Hooks机制"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：法律人学Claude｜第十一期：给AI这匹野马套上缰绳——Hooks机制",
+        "原始信息",
+        "核心摘录",
+        "一、先说一个概念：Harness Engineering",
+        "二、Hooks是什么",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "吕盈辉",
+          "label": "吕盈辉"
+        },
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：法律人学Claude｜第十一期：给AI这匹野马套上缰绳——Hooks机制",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-133857-全网爆火的大模型AI知识库，保姆级教程来了.md",
+      "title": "raw-20260412-133857-全网爆火的大模型AI知识库，保姆级教程来了",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-133857-全网爆火的大模型AI知识库，保姆级教程来了"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：全网爆火的大模型AI知识库，保姆级教程来了",
+        "原始信息",
+        "核心摘录",
+        "Datawhale干货 编辑：Datawhale团队",
+        "第二步：不用整理，什么都往里扔",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "Datawhale",
+          "label": "Datawhale"
+        },
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：全网爆火的大模型AI知识库，保姆级教程来了",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-133857-一文看懂 AI Agent 的规划能力：ReAct、CoT、Plan-and-Execute 有什么区别.md",
+      "title": "raw-20260412-133857-一文看懂 AI Agent 的规划能力：ReAct、CoT、Plan-and-Execute 有什么区别",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-133857-一文看懂 AI Agent 的规划能力：ReAct、CoT、Plan-and-Execute 有什么区别"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：一文看懂 AI Agent 的规划能力：ReAct、CoT、Plan-and-Execute 有什么区别",
+        "原始信息",
+        "核心摘录",
+        "很多人一聊 AI Agent 的“规划能力”，就会把 ReAct、CoT、Plan-and-Execute 放在一起讲，仿佛它们只是同一件事的不同叫法。",
+        "CoT 不等于规划",
+        "为什么 Agent 一定会走到“规划”这一步",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "关注前沿AI发展的",
+          "label": "关注前沿AI发展的"
+        },
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：一文看懂 AI Agent 的规划能力：ReAct、CoT、Plan-and-Execute 有什么区别",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-133858-学习笔记479—解决obsidian无法加载第三方插件.md",
+      "title": "raw-20260412-133858-学习笔记479—解决obsidian无法加载第三方插件",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-133858-学习笔记479—解决obsidian无法加载第三方插件"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：学习笔记479—解决obsidian无法加载第三方插件",
+        "原始信息",
+        "核心摘录",
+        "1.windows系统参考以下方案：",
+        "2.以下是参考window系统的操作方法介绍的macOS解决方案",
+        "在这里非常感谢： @奕风 @M12J10两位知友给提供的操作思路",
+        "1.插件下载",
+        "2.插件使用",
+        "以下为具体操作步骤：",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "何弈",
+          "label": "何弈"
+        },
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：学习笔记479—解决obsidian无法加载第三方插件",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-133858-C_Users_Administrator_Desktop_xiaosong的知识库_ai知识库_第二大脑_raw_只读区_inbox_notion_mp_clipper.md",
+      "title": "raw-20260412-133858-C_Users_Administrator_Desktop_xiaosong的知识库_ai知识库_第二大脑_raw_只读区_inbox_notion_mp_clipper",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-133858-C_Users_Administrator_Desktop_xiaosong的知识库_ai知识库_第二大脑_raw_只读区_inbox_notion_mp_clipper"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：C_Users_Administrator_Desktop_xiaosong的知识库_ai知识库_第二大脑_raw_只读区_inbox_notion_mp_clipper",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：C_Users_Administrator_Desktop_xiaosong的知识库_ai知识库_第二大脑_raw_只读区_inbox_notion_mp_clipper",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034128-用 LLM + Obsidian 构建个人知识库：基于 Karpathy 的“L.md",
+      "title": "raw-20260412-134034128-用 LLM + Obsidian 构建个人知识库：基于 Karpathy 的“L",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034128-用 LLM + Obsidian 构建个人知识库：基于 Karpathy 的“L"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：用 LLM + Obsidian 构建个人知识库：基于 Karpathy 的“L",
+        "原始信息",
+        "核心摘录",
+        "你的笔记库在腐烂你的笔记库在腐烂 你的笔记库在腐烂",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "@yanhua1010",
+          "label": "@yanhua1010"
+        },
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：用 LLM + Obsidian 构建个人知识库：基于 Karpathy 的“L",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034199-73.视频时间戳笔记生成器_obsidian_obsidian教程_-_抖音.md",
+      "title": "raw-20260412-134034199-73.视频时间戳笔记生成器_obsidian_obsidian教程_-_抖音",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034199-73.视频时间戳笔记生成器_obsidian_obsidian教程_-_抖音"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：73.视频时间戳笔记生成器_obsidian_obsidian教程_-_抖音",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：73.视频时间戳笔记生成器_obsidian_obsidian教程_-_抖音",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034230-Area（领域）_Project（项目）_Task（任务）_Action（行动）.md",
+      "title": "raw-20260412-134034230-Area（领域）_Project（项目）_Task（任务）_Action（行动）",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034230-Area（领域）_Project（项目）_Task（任务）_Action（行动）"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：Area（领域）_Project（项目）_Task（任务）_Action（行动）",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：Area（领域）_Project（项目）_Task（任务）_Action（行动）",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034262-AI知识库（codex）.md",
+      "title": "raw-20260412-134034262-AI知识库（codex）",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034262-AI知识库（codex）"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：AI知识库（codex）",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：AI知识库（codex）",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034293-2026-04-02 日记.md",
+      "title": "raw-20260412-134034293-2026-04-02 日记",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034293-2026-04-02 日记"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：2026-04-02 日记",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：2026-04-02 日记",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034325-2026-04-03 日记.md",
+      "title": "raw-20260412-134034325-2026-04-03 日记",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034325-2026-04-03 日记"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：2026-04-03 日记",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：2026-04-03 日记",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034357-Chrome 浏览器插件「保存到飞书」.md",
+      "title": "raw-20260412-134034357-Chrome 浏览器插件「保存到飞书」",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034357-Chrome 浏览器插件「保存到飞书」"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：Chrome 浏览器插件「保存到飞书」",
+        "原始信息",
+        "核心摘录",
+        "如何使用？",
+        "创建飞书应用并设置凭证",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：Chrome 浏览器插件「保存到飞书」",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034389-Installation - Chatgpt To Obsidian Docs.md",
+      "title": "raw-20260412-134034389-Installation - Chatgpt To Obsidian Docs",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034389-Installation - Chatgpt To Obsidian Docs"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：Installation - Chatgpt To Obsidian Docs",
+        "原始信息",
+        "核心摘录",
+        "Installation 安装",
+        "Install from Chrome Web Store 从 Chrome 应用商店安装",
+        "Verify Installation 验证安装",
+        "Initial Configuration 初始配置",
+        "Next Steps 后续步骤",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：Installation - Chatgpt To Obsidian Docs",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034420-ChatGPT-飞书记录系统思考.md",
+      "title": "raw-20260412-134034420-ChatGPT-飞书记录系统思考",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034420-ChatGPT-飞书记录系统思考"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：ChatGPT-飞书记录系统思考",
+        "原始信息",
+        "核心摘录",
+        "飞书记录系统思考",
+        "Prompt:",
+        "Response:",
+        "Prompt:",
+        "Response:",
+        "Prompt:",
+        "Response:",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：ChatGPT-飞书记录系统思考",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034451-归档.md",
+      "title": "raw-20260412-134034451-归档",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034451-归档"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：归档",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：归档",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034481-首页.md",
+      "title": "raw-20260412-134034481-首页",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034481-首页"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：首页",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：首页",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034511-资源.md",
+      "title": "raw-20260412-134034511-资源",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034511-资源"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：资源",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：资源",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034543-南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院.md",
+      "title": "raw-20260412-134034543-南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034543-南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院",
+        "原始信息",
+        "核心摘录",
+        "招生信息",
+        "鼓楼校区",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034574-score_2023311953_1775634965836.md",
+      "title": "raw-20260412-134034574-score_2023311953_1775634965836",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034574-score_2023311953_1775634965836"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：score_2023311953_1775634965836",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：score_2023311953_1775634965836",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034605-ChatGPT-法硕专业选择建议.md",
+      "title": "raw-20260412-134034605-ChatGPT-法硕专业选择建议",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034605-ChatGPT-法硕专业选择建议"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：ChatGPT-法硕专业选择建议",
+        "原始信息",
+        "核心摘录",
+        "法硕专业选择建议",
+        "Prompt:",
+        "Response:",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：ChatGPT-法硕专业选择建议",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034636-南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院 1.md",
+      "title": "raw-20260412-134034636-南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院 1",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034636-南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院 1"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院 1",
+        "原始信息",
+        "核心摘录",
+        "招生信息",
+        "鼓楼校区",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院 1",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034667-南京大学法学学硕经验贴，奔赴一场无畏的梦.md",
+      "title": "raw-20260412-134034667-南京大学法学学硕经验贴，奔赴一场无畏的梦",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034667-南京大学法学学硕经验贴，奔赴一场无畏的梦"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：南京大学法学学硕经验贴，奔赴一场无畏的梦",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：南京大学法学学硕经验贴，奔赴一场无畏的梦",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034699-【24状元】对26南大法学学硕真题的分析.md",
+      "title": "raw-20260412-134034699-【24状元】对26南大法学学硕真题的分析",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034699-【24状元】对26南大法学学硕真题的分析"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：【24状元】对26南大法学学硕真题的分析",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：【24状元】对26南大法学学硕真题的分析",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034730-【26法学学硕考研】1w字超详细经验帖.md",
+      "title": "raw-20260412-134034730-【26法学学硕考研】1w字超详细经验帖",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034730-【26法学学硕考研】1w字超详细经验帖"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：【26法学学硕考研】1w字超详细经验帖",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：【26法学学硕考研】1w字超详细经验帖",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034762-搭子必备-ChatGPT内对话内容的存储 1.md",
+      "title": "raw-20260412-134034762-搭子必备-ChatGPT内对话内容的存储 1",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034762-搭子必备-ChatGPT内对话内容的存储 1"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：搭子必备-ChatGPT内对话内容的存储 1",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：搭子必备-ChatGPT内对话内容的存储 1",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034792-卡帕西没做完的，开源社区48小时搞定了！完全体知识库，token省70倍.md",
+      "title": "raw-20260412-134034792-卡帕西没做完的，开源社区48小时搞定了！完全体知识库，token省70倍",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034792-卡帕西没做完的，开源社区48小时搞定了！完全体知识库，token省70倍"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：卡帕西没做完的，开源社区48小时搞定了！完全体知识库，token省70倍",
+        "原始信息",
+        "核心摘录",
+        "闻乐 发自 凹非寺量子位 | 公众号 QbitAI",
+        "万物皆可图谱化",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "关注前沿科技",
+          "label": "关注前沿科技"
+        },
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：卡帕西没做完的，开源社区48小时搞定了！完全体知识库，token省70倍",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034824-25南大法学学硕真题趋向变化分析.md",
+      "title": "raw-20260412-134034824-25南大法学学硕真题趋向变化分析",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034824-25南大法学学硕真题趋向变化分析"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：25南大法学学硕真题趋向变化分析",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：25南大法学学硕真题趋向变化分析",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034855-3步配置：手机电脑都能用的 Obsidian 剪藏方案.md",
+      "title": "raw-20260412-134034855-3步配置：手机电脑都能用的 Obsidian 剪藏方案",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034855-3步配置：手机电脑都能用的 Obsidian 剪藏方案"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：3步配置：手机电脑都能用的 Obsidian 剪藏方案",
+        "原始信息",
+        "核心摘录",
+        "Obsidian 剪藏软件手机端+电脑端 一键配置指南",
+        "为什么需要剪藏插件？",
+        "什么是 Obsidian Web Clipper？",
+        "核心理念：插件负责收，AI 负责理",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：3步配置：手机电脑都能用的 Obsidian 剪藏方案",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034887-金知奖_2023知识区年终盛典.md",
+      "title": "raw-20260412-134034887-金知奖_2023知识区年终盛典",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034887-金知奖_2023知识区年终盛典"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：金知奖_2023知识区年终盛典",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：金知奖_2023知识区年终盛典",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034921-《国内开发者必看！Claude API Key获取及使用全攻略》.md",
+      "title": "raw-20260412-134034921-《国内开发者必看！Claude API Key获取及使用全攻略》",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034921-《国内开发者必看！Claude API Key获取及使用全攻略》"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：《国内开发者必看！Claude API Key获取及使用全攻略》",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：《国内开发者必看！Claude API Key获取及使用全攻略》",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034951-来了！Obsidian最好用的思维导图插件！.md",
+      "title": "raw-20260412-134034951-来了！Obsidian最好用的思维导图插件！",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034951-来了！Obsidian最好用的思维导图插件！"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：来了！Obsidian最好用的思维导图插件！",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：来了！Obsidian最好用的思维导图插件！",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134034981-艾宾浩斯曲线——刘晓艳.md",
+      "title": "raw-20260412-134034981-艾宾浩斯曲线——刘晓艳",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134034981-艾宾浩斯曲线——刘晓艳"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：艾宾浩斯曲线——刘晓艳",
+        "原始信息",
+        "核心摘录",
+        "总结摘要",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：艾宾浩斯曲线——刘晓艳",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134035011-考研背单词计划.md",
+      "title": "raw-20260412-134035011-考研背单词计划",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134035011-考研背单词计划"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：考研背单词计划",
+        "原始信息",
+        "核心摘录",
+        "考研初期",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：考研背单词计划",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134035042-llm-wiki.md",
+      "title": "raw-20260412-134035042-llm-wiki",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134035042-llm-wiki"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：llm-wiki",
+        "原始信息",
+        "核心摘录",
+        "LLM Wiki LLM 维基",
+        "The core idea 核心思路",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：llm-wiki",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134035074-拖延症根治手册(1).md",
+      "title": "raw-20260412-134035074-拖延症根治手册(1)",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134035074-拖延症根治手册(1)"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：拖延症根治手册(1)",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：拖延症根治手册(1)",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134035106-如何把文献串起来，搭建出自己的文献体系？ - 小红书.md",
+      "title": "raw-20260412-134035106-如何把文献串起来，搭建出自己的文献体系？ - 小红书",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134035106-如何把文献串起来，搭建出自己的文献体系？ - 小红书"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：如何把文献串起来，搭建出自己的文献体系？ - 小红书",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：如何把文献串起来，搭建出自己的文献体系？ - 小红书",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134035137-原来一学习就犯困身体跟不上要这样做 - 小红书.md",
+      "title": "raw-20260412-134035137-原来一学习就犯困身体跟不上要这样做 - 小红书",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134035137-原来一学习就犯困身体跟不上要这样做 - 小红书"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：原来一学习就犯困身体跟不上要这样做 - 小红书",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：原来一学习就犯困身体跟不上要这样做 - 小红书",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134035168-如何解决学习犯困？.md",
+      "title": "raw-20260412-134035168-如何解决学习犯困？",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134035168-如何解决学习犯困？"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：如何解决学习犯困？",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：如何解决学习犯困？",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134035215-中医人漫谈｜一学习就困，怎么调理？ - 小红书.md",
+      "title": "raw-20260412-134035215-中医人漫谈｜一学习就困，怎么调理？ - 小红书",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134035215-中医人漫谈｜一学习就困，怎么调理？ - 小红书"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：中医人漫谈｜一学习就困，怎么调理？ - 小红书",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：中医人漫谈｜一学习就困，怎么调理？ - 小红书",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134035247-大脑最基本的原理：节能.md",
+      "title": "raw-20260412-134035247-大脑最基本的原理：节能",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134035247-大脑最基本的原理：节能"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：大脑最基本的原理：节能",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：大脑最基本的原理：节能",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134035278-dnakov-litter.md",
+      "title": "raw-20260412-134035278-dnakov-litter",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134035278-dnakov-litter"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：dnakov-litter",
+        "原始信息",
+        "核心摘录",
+        "litter",
+        "Screenshots (iOS)",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：dnakov-litter",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134035309-Thread by @SIGKITTEN@SIGKITTEN @SIGKITTE.md",
+      "title": "raw-20260412-134035309-Thread by @SIGKITTEN@SIGKITTEN @SIGKITTE",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134035309-Thread by @SIGKITTEN@SIGKITTEN @SIGKITTE"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：Thread by @SIGKITTEN@SIGKITTEN @SIGKITTE",
+        "原始信息",
+        "核心摘录",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：Thread by @SIGKITTEN@SIGKITTEN @SIGKITTE",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134035340-Android - Termux - Hermes Agent.md",
+      "title": "raw-20260412-134035340-Android - Termux - Hermes Agent",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134035340-Android - Termux - Hermes Agent"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：Android - Termux - Hermes Agent",
+        "原始信息",
+        "核心摘录",
+        "What is supported in the tested path?该测试路径支持哪些功能？",
+        "What is not part of the tested path yet?",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：Android - Termux - Hermes Agent",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134035372-OpenClaw 中集成 OpenAI：API 密钥与 Codex 订阅双模式详.md",
+      "title": "raw-20260412-134035372-OpenClaw 中集成 OpenAI：API 密钥与 Codex 订阅双模式详",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134035372-OpenClaw 中集成 OpenAI：API 密钥与 Codex 订阅双模式详"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：OpenClaw 中集成 OpenAI：API 密钥与 Codex 订阅双模式详",
+        "原始信息",
+        "核心摘录",
+        "OpenClaw 中集成 OpenAI：API 密钥与 Codex 订阅双模式详解",
+        "OpenClaw 中集成 OpenAI：API 密钥与 Codex 订阅双模式详解",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：OpenClaw 中集成 OpenAI：API 密钥与 Codex 订阅双模式详",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/raw-20260412-134035403-LfoikCC-Obsidian-CodeX-Agent.md",
+      "title": "raw-20260412-134035403-LfoikCC-Obsidian-CodeX-Agent",
+      "category": "来源",
+      "aliases": [
+        "raw-20260412-134035403-LfoikCC-Obsidian-CodeX-Agent"
+      ],
+      "tags": [
+        "来源",
+        "自动导入",
+        "待整理"
+      ],
+      "sources": [],
+      "headings": [
+        "来源：LfoikCC-Obsidian-CodeX-Agent",
+        "原始信息",
+        "核心摘录",
+        "CodeX Agent README CodeX 代理自述文件",
+        "简介",
+        "功能亮点",
+        "系统架构",
+        "环境要求",
+        "安装与初始化",
+        "常用命令速查",
+        "待整理要点",
+        "可能关联",
+        "Timeline",
+        "2026-04-12 - 自动导入"
+      ],
+      "outgoingHints": [
+        {
+          "target": "收件箱/README",
+          "label": "收件箱/README"
+        },
+        {
+          "target": "来源/README",
+          "label": "来源/README"
+        }
+      ],
+      "abstract": "# 来源：LfoikCC-Obsidian-CodeX-Agent",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "来源/README.md",
+      "title": "README",
+      "category": "来源",
+      "aliases": [
+        "README"
+      ],
+      "tags": [],
+      "sources": [],
+      "headings": [
+        "来源 (Sources)",
+        "这个目录是什么",
+        "包括 ✓",
+        "不包括 ✗",
+        "页面模板",
+        "[来源标题]",
+        "Compiled Truth",
+        "核心要点",
+        "关键摘录",
+        "应用价值",
+        "Timeline",
+        "2026-04-07 - 消化",
+        "2026-04-11 - 整理",
+        "原始资源",
+        "目录状态",
+        "消化流程",
+        "消歧问题",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念1",
+          "label": "概念1"
+        },
+        {
+          "target": "项目1",
+          "label": "项目1"
+        },
+        {
+          "target": "../schema.md#7-来源页-来源",
+          "label": "../schema.md#7-来源页-来源"
+        },
+        {
+          "target": "../RESOLVER.md#7️⃣-来源",
+          "label": "../RESOLVER.md#7️⃣-来源"
+        },
+        {
+          "target": "../schema.md#7-来源页-来源",
+          "label": "../schema.md#7-来源页-来源"
+        }
+      ],
+      "abstract": "# 来源 (Sources)",
+      "updated": null
+    },
+    {
+      "path": "人物/马一清.md",
+      "title": "马一清",
+      "category": "人物",
+      "aliases": [
+        "马一清"
+      ],
+      "tags": [],
+      "sources": [],
+      "headings": [
+        "马一清",
+        "稳定认知",
+        "关系定位",
+        "稳定事实",
+        "长期约定",
+        "已验证判断",
+        "待确认包",
+        "时间线",
+        "来源与回链",
+        "原始日记",
+        "历史材料"
+      ],
+      "outgoingHints": [],
+      "abstract": "# 马一清",
+      "updated": "2026-04-11T00:00:00.000Z"
+    },
+    {
+      "path": "人物/你.md",
+      "title": "你",
+      "category": "人物",
+      "aliases": [
+        "你"
+      ],
+      "tags": [
+        "人物",
+        "知识库构建者",
+        "策展人",
+        "学习者",
+        "法律备考"
+      ],
+      "sources": [],
+      "headings": [
+        "你（知识库构建者）",
+        "身份定义",
+        "核心身份：知识策展人",
+        "什么是策展？",
+        "你在这个系统中的工作（30%）",
+        "你在这个系统中的特殊价值",
+        "你的学习之旅",
+        "当前焦点",
+        "你的核心信念",
+        "信念1：学习不是囤积，而是编织",
+        "信念2：AI应该做簿记，人应该做策展",
+        "信念3：知识应该是活的，不是死的",
+        "你的核心竞争力",
+        "1. 系统思维",
+        "2. 学习能力",
+        "3. 自我管理能力",
+        "4. 工具整合能力",
+        "你面临的挑战",
+        "挑战1：知识库的可持续维护",
+        "挑战2：知识库规模与质量的平衡",
+        "挑战3：从理论到实践的转化",
+        "你的30天目标",
+        "你对这个项目的意义",
+        "Timeline",
+        "2026-04-07 - 启蒙期",
+        "2026-04-11 - 设计期",
+        "2026-04-12 - 启动期（现在）",
+        "2026-04-20左右 - 补充期",
+        "2026-05-01 - 运维期",
+        "2026年6月-2027年3月 - 实践期",
+        "2027年3月后 - 总结期",
+        "相关页面",
+        "给自己的话"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/法律学习备考",
+          "label": "概念/法律学习备考"
+        },
+        {
+          "target": "概念/AI知识库构建",
+          "label": "概念/AI知识库构建"
+        },
+        {
+          "target": "概念/个人学习管理",
+          "label": "概念/个人学习管理"
+        },
+        {
+          "target": "概念/思维方法与创意",
+          "label": "概念/思维方法与创意"
+        },
+        {
+          "target": "项目/AI知识库（第二大脑）",
+          "label": "项目/AI知识库（第二大脑）"
+        },
+        {
+          "target": "COLLABORATE_WITH_CLAUDE.md",
+          "label": "COLLABORATE_WITH_CLAUDE.md"
+        },
+        {
+          "target": "概念/LLM知识库方法论",
+          "label": "概念/LLM知识库方法论"
+        },
+        {
+          "target": "概念/思维方法与创意",
+          "label": "概念/思维方法与创意"
+        },
+        {
+          "target": "概念/个人学习管理",
+          "label": "概念/个人学习管理"
+        },
+        {
+          "target": "工具/Obsidian生产力系统",
+          "label": "工具/Obsidian生产力系统"
+        },
+        {
+          "target": "工具/Claude & LLM应用",
+          "label": "工具/Claude & LLM应用"
+        },
+        {
+          "target": "RESOLVER.md",
+          "label": "RESOLVER.md"
+        },
+        {
+          "target": "RESOLVER.md",
+          "label": "RESOLVER.md"
+        },
+        {
+          "target": "schema.md",
+          "label": "schema.md"
+        },
+        {
+          "target": "概念/法律学习备考",
+          "label": "概念/法律学习备考"
+        },
+        {
+          "target": "概念/个人学习管理",
+          "label": "概念/个人学习管理"
+        },
+        {
+          "target": "项目/考研法律备考",
+          "label": "项目/考研法律备考"
+        },
+        {
+          "target": "概念/LLM知识库方法论",
+          "label": "概念/LLM知识库方法论"
+        },
+        {
+          "target": "概念/AI知识库构建",
+          "label": "概念/AI知识库构建"
+        },
+        {
+          "target": "项目/AI知识库（第二大脑）",
+          "label": "项目/AI知识库（第二大脑）"
+        },
+        {
+          "target": "概念/思维方法与创意",
+          "label": "概念/思维方法与创意"
+        },
+        {
+          "target": "KNOWLEDGE_COMPILATION_SYSTEM.md",
+          "label": "KNOWLEDGE_COMPILATION_SYSTEM.md"
+        }
+      ],
+      "abstract": "# 你（知识库构建者）",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "人物/赵宇馨/4.2生日小作文.md",
+      "title": "4.2生日小作文",
+      "category": "人物",
+      "aliases": [
+        "4.2生日小作文"
+      ],
+      "tags": [],
+      "sources": [],
+      "headings": [],
+      "outgoingHints": [],
+      "abstract": "小天使：",
+      "updated": null
+    },
+    {
+      "path": "人物/Andrej Karpathy.md",
+      "title": "Andrej Karpathy",
+      "category": "人物",
+      "aliases": [
+        "Andrej Karpathy"
+      ],
+      "tags": [
+        "人物",
+        "AI研究者",
+        "Tesla",
+        "LLM-Wiki",
+        "知识库"
+      ],
+      "sources": [],
+      "headings": [
+        "Andrej Karpathy",
+        "个人简介",
+        "主要贡献",
+        "1. 计算机视觉领域（2012-2020）",
+        "2. LLM-Wiki 知识库方法论（2023年）",
+        "3. 三代知识库演进的观察者",
+        "对个人知识库的影响",
+        "思想的核心洞察",
+        "观点1：知识=编译，不是存储",
+        "观点2：AI的真正用处在于簿记",
+        "观点3：知识库应该有\"自生长\"能力",
+        "Timeline",
+        "2012-2020：计算机视觉时代",
+        "2023：LLM-Wiki 概念提出",
+        "2023-2024：llm-wiki 实现和推广",
+        "2024-2025：Graphify 等升级方案",
+        "2026-04-12：我的采用与改编",
+        "我对他的理解",
+        "相关资源",
+        "相关页面",
+        "值得思考的问题"
+      ],
+      "outgoingHints": [
+        {
+          "target": "来源/Karpathy-llm-wiki",
+          "label": "来源/Karpathy-llm-wiki"
+        },
+        {
+          "target": "项目/AI知识库（第二大脑）",
+          "label": "项目/AI知识库（第二大脑）"
+        },
+        {
+          "target": "KNOWLEDGE_COMPILATION_SYSTEM.md",
+          "label": "KNOWLEDGE_COMPILATION_SYSTEM.md"
+        },
+        {
+          "target": "概念/LLM知识库方法论",
+          "label": "概念/LLM知识库方法论"
+        },
+        {
+          "target": "概念/AI知识库构建",
+          "label": "概念/AI知识库构建"
+        },
+        {
+          "target": "概念/Claude & LLM应用",
+          "label": "概念/Claude & LLM应用"
+        },
+        {
+          "target": "来源/Karpathy-llm-wiki",
+          "label": "来源/Karpathy-llm-wiki"
+        },
+        {
+          "target": "项目/AI知识库（第二大脑）",
+          "label": "项目/AI知识库（第二大脑）"
+        },
+        {
+          "target": "来源/Karpathy-llm-wiki",
+          "label": "来源/Karpathy-llm-wiki"
+        },
+        {
+          "target": "来源/Karpathy知识库教程",
+          "label": "来源/Karpathy知识库教程"
+        },
+        {
+          "target": "概念/LLM知识库方法论",
+          "label": "概念/LLM知识库方法论"
+        },
+        {
+          "target": "项目/AI知识库（第二大脑）",
+          "label": "项目/AI知识库（第二大脑）"
+        },
+        {
+          "target": "人物/Dario Amodei",
+          "label": "人物/Dario Amodei"
+        },
+        {
+          "target": "概念/AI知识库构建",
+          "label": "概念/AI知识库构建"
+        },
+        {
+          "target": "概念/LLM知识库方法论",
+          "label": "概念/LLM知识库方法论"
+        },
+        {
+          "target": "工具/Claude & LLM应用",
+          "label": "工具/Claude & LLM应用"
+        }
+      ],
+      "abstract": "# Andrej Karpathy",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "人物/Dario Amodei.md",
+      "title": "Dario Amodei",
+      "category": "人物",
+      "aliases": [
+        "Dario Amodei"
+      ],
+      "tags": [
+        "人物",
+        "AI企业家",
+        "Anthropic",
+        "Claude",
+        "AI安全"
+      ],
+      "sources": [],
+      "headings": [
+        "Dario Amodei",
+        "个人简介",
+        "主要贡献",
+        "1. Anthropic 公司创立（2021）",
+        "2. Claude 系列模型",
+        "3. AI应用于知识工作的倡导",
+        "对个人知识库的影响",
+        "Claude在知识库中的具体用途",
+        "为什么Claude特别适合这个应用",
+        "AI 安全的思想",
+        "Constitutional AI 方法",
+        "可靠性 vs 规模",
+        "Timeline",
+        "2018-2021：OpenAI 时期",
+        "2021年3月：创立Anthropic",
+        "2023年：Claude 1.0 和 2.0 发布",
+        "2024年：Claude 3 系列发布",
+        "2024年末：Claude 3.5 系列",
+        "2026-04-12：在我的项目中的应用",
+        "我对他的理解",
+        "相关资源",
+        "相关页面",
+        "Dario 的洞察值得思考"
+      ],
+      "outgoingHints": [
+        {
+          "target": "工具/Claude & LLM应用",
+          "label": "工具/Claude & LLM应用"
+        },
+        {
+          "target": "COLLABORATE_WITH_CLAUDE.md",
+          "label": "COLLABORATE_WITH_CLAUDE.md"
+        },
+        {
+          "target": "项目/AI知识库（第二大脑）",
+          "label": "项目/AI知识库（第二大脑）"
+        },
+        {
+          "target": "概念/法律学习备考",
+          "label": "概念/法律学习备考"
+        },
+        {
+          "target": "来源/...",
+          "label": "来源/..."
+        },
+        {
+          "target": "概念/个人学习管理",
+          "label": "概念/个人学习管理"
+        },
+        {
+          "target": "来源/ChatGPT-学习困难",
+          "label": "来源/ChatGPT-学习困难"
+        },
+        {
+          "target": "项目/AI知识库（第二大脑）",
+          "label": "项目/AI知识库（第二大脑）"
+        },
+        {
+          "target": "来源/Claude对话记录",
+          "label": "来源/Claude对话记录"
+        },
+        {
+          "target": "工具/Claude & LLM应用",
+          "label": "工具/Claude & LLM应用"
+        },
+        {
+          "target": "人物/Andrej Karpathy",
+          "label": "人物/Andrej Karpathy"
+        },
+        {
+          "target": "工具/Claude & LLM应用",
+          "label": "工具/Claude & LLM应用"
+        },
+        {
+          "target": "COLLABORATE_WITH_CLAUDE.md",
+          "label": "COLLABORATE_WITH_CLAUDE.md"
+        },
+        {
+          "target": "项目/AI知识库（第二大脑）",
+          "label": "项目/AI知识库（第二大脑）"
+        }
+      ],
+      "abstract": "# Dario Amodei",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "人物/README.md",
+      "title": "README",
+      "category": "人物",
+      "aliases": [
+        "README"
+      ],
+      "tags": [],
+      "sources": [],
+      "headings": [
+        "人物 (People)",
+        "这个目录是什么",
+        "包括 ✓",
+        "不包括 ✗",
+        "页面模板",
+        "[人物名字]",
+        "Compiled Truth",
+        "身份与背景",
+        "对此人的判断",
+        "当前状态",
+        "Timeline",
+        "2026-04-11 - [互动标题]",
+        "目录状态",
+        "消歧问题",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "../schema.md",
+          "label": "schema.md - 人物页模板"
+        },
+        {
+          "target": "../RESOLVER.md#2️⃣-人物",
+          "label": "../RESOLVER.md#2️⃣-人物"
+        },
+        {
+          "target": "../schema.md#1-人物页-人物",
+          "label": "../schema.md#1-人物页-人物"
+        }
+      ],
+      "abstract": "# 人物 (People)",
+      "updated": null
+    },
+    {
+      "path": "收件箱/README.md",
+      "title": "README",
+      "category": "收件箱",
+      "aliases": [
+        "README"
+      ],
+      "tags": [],
+      "sources": [],
+      "headings": [
+        "收件箱 (Inbox)",
+        "这个目录是什么",
+        "包括 ✓",
+        "规则 ⚠️",
+        "1. 时限：最长 2 周",
+        "2. 审查频率",
+        "3. 分类规则",
+        "页面模板",
+        "[临时标题]",
+        "原始内容",
+        "处理计划",
+        "目录状态",
+        "处理工作流",
+        "消歧问题",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "../RESOLVER.md#8️⃣-收件箱",
+          "label": "../RESOLVER.md#8️⃣-收件箱"
+        }
+      ],
+      "abstract": "# 收件箱 (Inbox)",
+      "updated": null
+    },
+    {
+      "path": "想法/飞书作为执行中枢.md",
+      "title": "飞书作为执行中枢",
+      "category": "想法",
+      "aliases": [
+        "飞书作为执行中枢"
+      ],
+      "tags": [
+        "想法",
+        "飞书",
+        "执行系统",
+        "AI协作"
+      ],
+      "sources": [],
+      "headings": [
+        "飞书作为执行中枢",
+        "核心想法",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "项目/飞书记录系统",
+          "label": "项目/飞书记录系统"
+        },
+        {
+          "target": "来源/2026-04-12-飞书记录系统设计",
+          "label": "来源/2026-04-12-飞书记录系统设计"
+        }
+      ],
+      "abstract": "# 飞书作为执行中枢",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "想法/README.md",
+      "title": "README",
+      "category": "想法",
+      "aliases": [
+        "README"
+      ],
+      "tags": [],
+      "sources": [],
+      "headings": [
+        "想法 (Ideas)",
+        "这个目录是什么",
+        "包括 ✓",
+        "不包括 ✗",
+        "页面模板",
+        "[想法标题]",
+        "Compiled Truth",
+        "想法概述",
+        "为什么值得做",
+        "需要的资源",
+        "潜在的障碍",
+        "后续行动",
+        "Timeline",
+        "2026-04-11 - 想法捕获",
+        "目录状态",
+        "流程",
+        "消歧问题",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "../schema.md#5-想法页-想法",
+          "label": "../schema.md#5-想法页-想法"
+        },
+        {
+          "target": "../RESOLVER.md#5️⃣-想法",
+          "label": "../RESOLVER.md#5️⃣-想法"
+        },
+        {
+          "target": "../schema.md#5-想法页-想法",
+          "label": "../schema.md#5-想法页-想法"
+        }
+      ],
+      "abstract": "# 想法 (Ideas)",
+      "updated": null
+    },
+    {
+      "path": "项目/2027法学学硕备考.md",
+      "title": "2027法学学硕备考",
+      "category": "项目",
+      "aliases": [
+        "2027法学学硕备考"
+      ],
+      "tags": [
+        "项目",
+        "考研",
+        "法学学硕",
+        "南大",
+        "学习计划"
+      ],
+      "sources": [],
+      "headings": [
+        "2027法学学硕备考",
+        "Compiled Truth",
+        "项目定义",
+        "项目目标",
+        "当前进展",
+        "下一步",
+        "关键资源",
+        "Timeline",
+        "2026-04-08 - 方向选择启动",
+        "2026-04-12 - 项目建页"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/法律学习备考",
+          "label": "概念/法律学习备考"
+        },
+        {
+          "target": "概念/个人学习管理",
+          "label": "概念/个人学习管理"
+        },
+        {
+          "target": "来源/2026-04-12-法硕专业选择与南大备考",
+          "label": "来源/2026-04-12-法硕专业选择与南大备考"
+        },
+        {
+          "target": "来源/2026-04-12-考研背单词间隔重复计划",
+          "label": "来源/2026-04-12-考研背单词间隔重复计划"
+        },
+        {
+          "target": "来源/2026-04-12-学习困倦与节能机制",
+          "label": "来源/2026-04-12-学习困倦与节能机制"
+        }
+      ],
+      "abstract": "# 2027法学学硕备考",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "项目/飞书记录系统.md",
+      "title": "飞书记录系统",
+      "category": "项目",
+      "aliases": [
+        "飞书记录系统"
+      ],
+      "tags": [
+        "项目",
+        "飞书",
+        "记录系统",
+        "AI协作"
+      ],
+      "sources": [],
+      "headings": [
+        "飞书记录系统",
+        "Compiled Truth",
+        "项目目标",
+        "当前设计原则",
+        "推荐结构",
+        "命名与日志规则",
+        "当前价值",
+        "相关页面",
+        "Timeline",
+        "2026-04-08",
+        "2026-04-12"
+      ],
+      "outgoingHints": [
+        {
+          "target": "想法/飞书作为执行中枢",
+          "label": "想法/飞书作为执行中枢"
+        },
+        {
+          "target": "来源/2026-04-12-飞书记录系统设计",
+          "label": "来源/2026-04-12-飞书记录系统设计"
+        },
+        {
+          "target": "来源/2026-04-12-第一大脑剪藏与记录规则",
+          "label": "来源/2026-04-12-第一大脑剪藏与记录规则"
+        },
+        {
+          "target": "概念/个人学习管理",
+          "label": "概念/个人学习管理"
+        }
+      ],
+      "abstract": "# 飞书记录系统",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "项目/考研法律备考.md",
+      "title": "考研法律备考",
+      "category": "项目",
+      "aliases": [
+        "考研法律备考"
+      ],
+      "tags": [
+        "项目",
+        "考研",
+        "桥接"
+      ],
+      "sources": [],
+      "headings": [
+        "考研法律备考",
+        "跳转"
+      ],
+      "outgoingHints": [
+        {
+          "target": "项目/2027法学学硕备考",
+          "label": "项目/2027法学学硕备考"
+        }
+      ],
+      "abstract": "# 考研法律备考",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "项目/AI知识库（第二大脑）.md",
+      "title": "AI知识库（第二大脑）",
+      "category": "项目",
+      "aliases": [
+        "AI知识库（第二大脑）"
+      ],
+      "tags": [
+        "项目",
+        "AI知识库",
+        "第二大脑"
+      ],
+      "sources": [],
+      "headings": [
+        "AI知识库（第二大脑）",
+        "项目说明",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/AI知识库构建",
+          "label": "概念/AI知识库构建"
+        },
+        {
+          "target": "概念/Karpathy知识库方法",
+          "label": "概念/Karpathy知识库方法"
+        },
+        {
+          "target": "来源/2026-04-12-剩余raw素材吸收索引",
+          "label": "来源/2026-04-12-剩余raw素材吸收索引"
+        },
+        {
+          "target": "log",
+          "label": "log"
+        }
+      ],
+      "abstract": "# AI知识库（第二大脑）",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "项目/README.md",
+      "title": "README",
+      "category": "项目",
+      "aliases": [
+        "README"
+      ],
+      "tags": [],
+      "sources": [],
+      "headings": [
+        "项目 (Projects)",
+        "这个目录是什么",
+        "包括 ✓",
+        "不包括 ✗",
+        "页面模板",
+        "[项目名称]",
+        "Compiled Truth",
+        "项目定义",
+        "目标",
+        "当前进展",
+        "关键资源",
+        "Timeline",
+        "2026-04-07 - 项目启动",
+        "2026-04-11 - 进展更新",
+        "目录状态",
+        "消歧问题",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "所用工具1",
+          "label": "所用工具1"
+        },
+        {
+          "target": "相关概念1",
+          "label": "相关概念1"
+        },
+        {
+          "target": "../schema.md#4-项目页-项目",
+          "label": "../schema.md#4-项目页-项目"
+        },
+        {
+          "target": "../RESOLVER.md#4️⃣-项目",
+          "label": "../RESOLVER.md#4️⃣-项目"
+        },
+        {
+          "target": "../schema.md#4-项目页-项目",
+          "label": "../schema.md#4-项目页-项目"
+        }
+      ],
+      "abstract": "# 项目 (Projects)",
+      "updated": null
+    },
+    {
+      "path": "写作/LLM-Wiki不是RAG.md",
+      "title": "LLM-Wiki不是RAG",
+      "category": "写作",
+      "aliases": [
+        "LLM-Wiki不是RAG"
+      ],
+      "tags": [
+        "写作",
+        "LLM-Wiki",
+        "RAG",
+        "知识管理"
+      ],
+      "sources": [],
+      "headings": [
+        "LLM-Wiki不是RAG",
+        "核心论点",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "概念/AI知识库构建",
+          "label": "概念/AI知识库构建"
+        },
+        {
+          "target": "概念/Karpathy知识库方法",
+          "label": "概念/Karpathy知识库方法"
+        },
+        {
+          "target": "来源/2026-04-12-AI知识库工作流与剪藏体系",
+          "label": "来源/2026-04-12-AI知识库工作流与剪藏体系"
+        }
+      ],
+      "abstract": "# LLM-Wiki不是RAG",
+      "updated": "2026-04-12T00:00:00.000Z"
+    },
+    {
+      "path": "写作/README.md",
+      "title": "README",
+      "category": "写作",
+      "aliases": [
+        "README"
+      ],
+      "tags": [],
+      "sources": [],
+      "headings": [
+        "写作 (Writing)",
+        "这个目录是什么",
+        "包括 ✓",
+        "不包括 ✗",
+        "页面模板",
+        "[文章标题]",
+        "Compiled Truth",
+        "文章概述",
+        "主要章节",
+        "核心观点",
+        "目标读者",
+        "Timeline",
+        "2026-04-07 - 初稿完成",
+        "2026-04-11 - 修订",
+        "目录状态",
+        "编写工作流",
+        "消歧问题",
+        "相关页面"
+      ],
+      "outgoingHints": [
+        {
+          "target": "../schema.md#6-写作页-写作",
+          "label": "../schema.md#6-写作页-写作"
+        },
+        {
+          "target": "../RESOLVER.md#6️⃣-写作",
+          "label": "../RESOLVER.md#6️⃣-写作"
+        },
+        {
+          "target": "../schema.md#6-写作页-写作",
+          "label": "../schema.md#6-写作页-写作"
+        }
+      ],
+      "abstract": "# 写作 (Writing)",
+      "updated": null
+    }
+  ]
+}

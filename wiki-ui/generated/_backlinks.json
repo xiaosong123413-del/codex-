@@ -1,0 +1,2077 @@
+{
+  "version": 1,
+  "pages": {
+    "概念/法律人用Claude.md": {
+      "title": "法律人用Claude",
+      "incoming": [
+        "概念/Harness-Engineering.md",
+        "来源/2026-04-07-法律人学Claude第三期文件读取.md",
+        "来源/2026-04-07-法律人学Claude第十一期Hooks机制.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-Claude文件读取与订阅策略.md"
+      ],
+      "outgoing": [
+        "概念/Harness-Engineering.md",
+        "概念/法律学习备考.md",
+        "来源/2026-04-12-Claude文件读取与订阅策略.md"
+      ],
+      "related": []
+    },
+    "概念/法律学习备考.md": {
+      "title": "法律学习备考",
+      "incoming": [
+        "概念/法律人用Claude.md",
+        "概念/个人学习管理.md",
+        "概念/思维方法与创意.md",
+        "概念/文献体系化整理.md",
+        "来源/2026-04-12-法硕专业选择与南大备考.md",
+        "来源/2026-04-12-文献体系化整理.md",
+        "来源/2026-04-12-学习启动阻力与拖延治理.md",
+        "人物/你.md",
+        "人物/你.md",
+        "人物/Dario Amodei.md",
+        "项目/2027法学学硕备考.md"
+      ],
+      "outgoing": [
+        "来源/2026-04-12-法硕专业选择与南大备考.md",
+        "概念/个人学习管理.md",
+        "概念/Obsidian生产力系统.md",
+        "概念/Claude & LLM应用.md",
+        "项目/2027法学学硕备考.md",
+        "来源/2026-04-12-法硕专业选择与南大备考.md"
+      ],
+      "related": []
+    },
+    "概念/个人学习管理.md": {
+      "title": "个人学习管理",
+      "incoming": [
+        "概念/法律学习备考.md",
+        "概念/思维方法与创意.md",
+        "概念/思维方法与创意.md",
+        "工具/Anki.md",
+        "来源/2026-04-12-第一大脑拖延应对结构.md",
+        "来源/2026-04-12-飞书记录系统设计.md",
+        "来源/2026-04-12-考研背单词间隔重复计划.md",
+        "来源/2026-04-12-学习困倦与节能机制.md",
+        "来源/2026-04-12-学习启动阻力与拖延治理.md",
+        "人物/你.md",
+        "人物/你.md",
+        "人物/你.md",
+        "人物/Dario Amodei.md",
+        "项目/2027法学学硕备考.md",
+        "项目/飞书记录系统.md"
+      ],
+      "outgoing": [
+        "来源/2026-04-12-学习困倦与节能机制.md",
+        "来源/2026-04-12-学习启动阻力与拖延治理.md",
+        "来源/2026-04-12-第一大脑拖延应对结构.md",
+        "来源/2026-04-12-考研背单词间隔重复计划.md",
+        "概念/法律学习备考.md",
+        "项目/2027法学学硕备考.md",
+        "概念/Obsidian生产力系统.md",
+        "概念/Claude & LLM应用.md",
+        "概念/LLM知识库方法论.md",
+        "概念/思维方法与创意.md",
+        "概念/Obsidian生产力系统.md",
+        "概念/Claude & LLM应用.md",
+        "工具/Anki.md",
+        "来源/2026-04-12-第一大脑拖延应对结构.md",
+        "项目/2027法学学硕备考.md"
+      ],
+      "related": []
+    },
+    "概念/思维方法与创意.md": {
+      "title": "思维方法与创意",
+      "incoming": [
+        "概念/个人学习管理.md",
+        "人物/你.md",
+        "人物/你.md",
+        "人物/你.md"
+      ],
+      "outgoing": [
+        "概念/个人学习管理.md",
+        "BROKEN:概念/思维方法",
+        "BROKEN:来源/系统思考入门",
+        "概念/个人学习管理.md",
+        "概念/AI知识库构建.md",
+        "概念/法律学习备考.md",
+        "概念/LLM知识库方法论.md"
+      ],
+      "related": []
+    },
+    "概念/文献体系化整理.md": {
+      "title": "文献体系化整理",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-文献体系化整理.md"
+      ],
+      "outgoing": [
+        "概念/AI知识库构建.md",
+        "概念/法律学习备考.md",
+        "来源/2026-04-12-文献体系化整理.md"
+      ],
+      "related": []
+    },
+    "概念/AI-Agent规划.md": {
+      "title": "AI-Agent规划",
+      "incoming": [
+        "概念/CoT.md",
+        "概念/CoT.md",
+        "概念/Harness-Engineering.md",
+        "概念/ReAct.md",
+        "概念/ReAct.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "概念/Harness-Engineering.md",
+        "概念/AI-Agent规划框架.md",
+        "概念/Harness-Engineering.md",
+        "工具/OpenClaw.md",
+        "工具/Hermes Agent.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md"
+      ],
+      "related": []
+    },
+    "概念/AI-Agent规划框架.md": {
+      "title": "AI-Agent规划框架",
+      "incoming": [
+        "概念/AI-Agent规划.md",
+        "来源/2026-04-07-AI-Agent规划能力ReAct-CoT-Plan.md"
+      ],
+      "outgoing": [
+        "概念/Harness-Engineering.md",
+        "概念/AI知识库构建.md",
+        "工具/Claude-Code-Hooks.md",
+        "BROKEN:Claude-Code",
+        "项目/考研法律备考.md",
+        "来源/2026-04-07-AI-Agent规划能力ReAct-CoT-Plan.md",
+        "来源/2026-04-07-AI-Agent规划能力ReAct-CoT-Plan.md"
+      ],
+      "related": []
+    },
+    "概念/AI知识库构建.md": {
+      "title": "AI知识库构建",
+      "incoming": [
+        "概念/思维方法与创意.md",
+        "概念/文献体系化整理.md",
+        "概念/AI-Agent规划框架.md",
+        "概念/Graphify.md",
+        "概念/Graphify.md",
+        "概念/inbox优先工作流.md",
+        "概念/Karpathy知识库方法.md",
+        "概念/LLM知识库方法论.md",
+        "来源/2026-04-07-Graphify完全体知识库.md",
+        "来源/2026-04-07-Karpathy大模型AI知识库教程.md",
+        "来源/2026-04-07-Memory-obsidian-web-clipper搞定.md",
+        "来源/2026-04-07-obsidian-web-clipper配置指南.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md",
+        "人物/你.md",
+        "人物/你.md",
+        "人物/Andrej Karpathy.md",
+        "人物/Andrej Karpathy.md",
+        "项目/AI知识库（第二大脑）.md",
+        "写作/LLM-Wiki不是RAG.md"
+      ],
+      "outgoing": [
+        "概念/Karpathy知识库方法.md",
+        "概念/LLM知识库方法论.md",
+        "概念/Obsidian生产力系统.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "related": []
+    },
+    "概念/Claude & LLM应用.md": {
+      "title": "Claude & LLM应用",
+      "incoming": [
+        "概念/法律学习备考.md",
+        "概念/个人学习管理.md",
+        "概念/个人学习管理.md",
+        "概念/Obsidian生产力系统.md",
+        "工具/Claude & LLM应用.md",
+        "工具/Hermes Agent.md",
+        "工具/Obsidian-CodeX-Agent.md",
+        "工具/OpenClaw.md",
+        "来源/2026-04-12-Claude文件读取与订阅策略.md",
+        "来源/2026-04-12-Hermes-Agent-Termux安装.md",
+        "来源/2026-04-12-Obsidian-CodeX-Agent插件说明.md",
+        "来源/2026-04-12-OpenClaw集成OpenAI与Codex认证.md",
+        "人物/Andrej Karpathy.md"
+      ],
+      "outgoing": [
+        "工具/Hermes Agent.md",
+        "工具/OpenClaw.md",
+        "工具/Litter-Codex移动编辑器.md",
+        "工具/Obsidian-CodeX-Agent.md",
+        "概念/Obsidian生产力系统.md",
+        "工具/OpenClaw.md",
+        "工具/Hermes Agent.md",
+        "工具/Litter-Codex移动编辑器.md",
+        "工具/Obsidian-CodeX-Agent.md"
+      ],
+      "related": []
+    },
+    "概念/CoT.md": {
+      "title": "CoT",
+      "incoming": [
+        "来源/2026-04-07-AI-Agent规划能力ReAct-CoT-Plan.md",
+        "来源/2026-04-07-AI-Agent规划能力ReAct-CoT-Plan.md"
+      ],
+      "outgoing": [
+        "概念/AI-Agent规划.md",
+        "概念/AI-Agent规划.md",
+        "来源/2026-04-07-AI-Agent规划能力ReAct-CoT-Plan.md"
+      ],
+      "related": []
+    },
+    "概念/Graphify.md": {
+      "title": "Graphify",
+      "incoming": [
+        "来源/2026-04-07-Karpathy大模型AI知识库教程.md"
+      ],
+      "outgoing": [
+        "概念/AI知识库构建.md",
+        "概念/AI知识库构建.md",
+        "概念/Karpathy知识库方法.md",
+        "来源/2026-04-07-Graphify完全体知识库.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md"
+      ],
+      "related": []
+    },
+    "概念/Harness-Engineering.md": {
+      "title": "Harness-Engineering",
+      "incoming": [
+        "概念/法律人用Claude.md",
+        "概念/AI-Agent规划.md",
+        "概念/AI-Agent规划.md",
+        "概念/AI-Agent规划框架.md",
+        "工具/Claude-Code-Hooks.md",
+        "来源/2026-04-07-法律人学Claude第十一期Hooks机制.md",
+        "来源/2026-04-07-法律人学Claude第十一期Hooks机制.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-Claude文件读取与订阅策略.md"
+      ],
+      "outgoing": [
+        "概念/法律人用Claude.md",
+        "工具/Claude-Code-Hooks.md",
+        "概念/AI-Agent规划.md",
+        "来源/2026-04-12-Claude文件读取与订阅策略.md"
+      ],
+      "related": []
+    },
+    "概念/inbox优先工作流.md": {
+      "title": "inbox优先工作流",
+      "incoming": [
+        "来源/2026-04-07-obsidian-web-clipper配置指南.md",
+        "来源/2026-04-07-obsidian-web-clipper配置指南.md"
+      ],
+      "outgoing": [
+        "概念/AI知识库构建.md",
+        "项目/飞书记录系统.md",
+        "来源/2026-04-12-第一大脑剪藏与记录规则.md"
+      ],
+      "related": []
+    },
+    "概念/Karpathy知识库方法.md": {
+      "title": "Karpathy知识库方法",
+      "incoming": [
+        "概念/AI知识库构建.md",
+        "概念/Graphify.md",
+        "来源/2026-04-07-Graphify完全体知识库.md",
+        "来源/2026-04-07-Graphify完全体知识库.md",
+        "来源/2026-04-07-Karpathy大模型AI知识库教程.md",
+        "来源/2026-04-07-Karpathy大模型AI知识库教程.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md",
+        "来源/Karpathy-llm-wiki.md",
+        "项目/AI知识库（第二大脑）.md",
+        "写作/LLM-Wiki不是RAG.md"
+      ],
+      "outgoing": [
+        "概念/AI知识库构建.md",
+        "概念/LLM知识库方法论.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md",
+        "写作/LLM-Wiki不是RAG.md"
+      ],
+      "related": []
+    },
+    "概念/LLM知识库方法论.md": {
+      "title": "LLM知识库方法论",
+      "incoming": [
+        "概念/个人学习管理.md",
+        "概念/思维方法与创意.md",
+        "概念/AI知识库构建.md",
+        "概念/Karpathy知识库方法.md",
+        "人物/你.md",
+        "人物/你.md",
+        "人物/Andrej Karpathy.md",
+        "人物/Andrej Karpathy.md",
+        "人物/Andrej Karpathy.md"
+      ],
+      "outgoing": [
+        "来源/Karpathy-llm-wiki.md",
+        "项目/AI知识库（第二大脑）.md",
+        "概念/AI知识库构建.md",
+        "BROKEN:概念/编译系统",
+        "工具/Obsidian生产力系统.md",
+        "工具/Claude & LLM应用.md",
+        "项目/AI知识库（第二大脑）.md",
+        "来源/Karpathy-llm-wiki.md",
+        "BROKEN:来源/web-clipper-知识库教程",
+        "BROKEN:KNOWLEDGE_COMPILATION_SYSTEM.md"
+      ],
+      "related": []
+    },
+    "概念/Obsidian生产力系统.md": {
+      "title": "Obsidian生产力系统",
+      "incoming": [
+        "概念/法律学习备考.md",
+        "概念/个人学习管理.md",
+        "概念/个人学习管理.md",
+        "概念/AI知识库构建.md",
+        "概念/Claude & LLM应用.md",
+        "工具/Litter-Codex移动编辑器.md",
+        "工具/Obsidian-CodeX-Agent.md",
+        "工具/Obsidian-Web-Clipper.md",
+        "工具/Obsidian生产力系统.md",
+        "来源/2026-04-12-第一大脑剪藏与记录规则.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md",
+        "来源/2026-04-12-Litter仓库架构.md",
+        "来源/2026-04-12-Obsidian-CodeX-Agent插件说明.md",
+        "来源/2026-04-12-Obsidian附件同步与导出经验.md"
+      ],
+      "outgoing": [
+        "工具/Obsidian-CodeX-Agent.md",
+        "工具/Litter-Codex移动编辑器.md",
+        "工具/Hermes Agent.md",
+        "工具/OpenClaw.md",
+        "来源/2026-04-07-obsidian-web-clipper配置指南.md",
+        "工具/Obsidian-CodeX-Agent.md",
+        "工具/Litter-Codex移动编辑器.md",
+        "工具/Hermes Agent.md",
+        "工具/OpenClaw.md",
+        "概念/Claude & LLM应用.md",
+        "来源/2026-04-12-第一大脑剪藏与记录规则.md",
+        "来源/2026-04-12-Obsidian附件同步与导出经验.md"
+      ],
+      "related": []
+    },
+    "概念/ReAct.md": {
+      "title": "ReAct",
+      "incoming": [
+        "来源/2026-04-07-AI-Agent规划能力ReAct-CoT-Plan.md",
+        "来源/2026-04-07-AI-Agent规划能力ReAct-CoT-Plan.md"
+      ],
+      "outgoing": [
+        "概念/AI-Agent规划.md",
+        "概念/AI-Agent规划.md",
+        "来源/2026-04-07-AI-Agent规划能力ReAct-CoT-Plan.md"
+      ],
+      "related": []
+    },
+    "概念/README.md": {
+      "title": "README",
+      "incoming": [],
+      "outgoing": [
+        "BROKEN:概念1",
+        "BROKEN:概念2",
+        "BROKEN:项目名",
+        "BROKEN:../schema.md#2-概念页-概念",
+        "BROKEN:../RESOLVER.md#2️⃣-概念",
+        "BROKEN:../schema.md#2-概念页-概念"
+      ],
+      "related": []
+    },
+    "工具/Anki.md": {
+      "title": "Anki",
+      "incoming": [
+        "概念/个人学习管理.md"
+      ],
+      "outgoing": [
+        "概念/个人学习管理.md",
+        "来源/2026-04-12-考研背单词间隔重复计划.md"
+      ],
+      "related": []
+    },
+    "工具/Claude & LLM应用.md": {
+      "title": "Claude & LLM应用",
+      "incoming": [
+        "概念/LLM知识库方法论.md",
+        "人物/你.md",
+        "人物/Andrej Karpathy.md",
+        "人物/Dario Amodei.md",
+        "人物/Dario Amodei.md",
+        "人物/Dario Amodei.md"
+      ],
+      "outgoing": [
+        "概念/Claude & LLM应用.md"
+      ],
+      "related": []
+    },
+    "工具/Claude-Code-Hooks.md": {
+      "title": "Claude-Code-Hooks",
+      "incoming": [
+        "概念/AI-Agent规划框架.md",
+        "概念/Harness-Engineering.md",
+        "来源/2026-04-07-法律人学Claude第十一期Hooks机制.md",
+        "来源/2026-04-07-法律人学Claude第十一期Hooks机制.md"
+      ],
+      "outgoing": [
+        "BROKEN:Claude Code 配置指南",
+        "BROKEN:CLAUDE.md",
+        "概念/Harness-Engineering.md",
+        "项目/考研法律备考.md",
+        "来源/2026-04-07-法律人学Claude第十一期Hooks机制.md",
+        "来源/2026-04-07-法律人学Claude第十一期Hooks机制.md",
+        "BROKEN:CLAUDE.md#Hooks"
+      ],
+      "related": []
+    },
+    "工具/Hermes Agent.md": {
+      "title": "Hermes Agent",
+      "incoming": [
+        "概念/AI-Agent规划.md",
+        "概念/Claude & LLM应用.md",
+        "概念/Claude & LLM应用.md",
+        "概念/Obsidian生产力系统.md",
+        "概念/Obsidian生产力系统.md",
+        "工具/Litter-Codex移动编辑器.md",
+        "工具/OpenClaw.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-Hermes-Agent-Termux安装.md"
+      ],
+      "outgoing": [
+        "工具/OpenClaw.md",
+        "工具/Litter-Codex移动编辑器.md",
+        "概念/Claude & LLM应用.md",
+        "来源/2026-04-12-Hermes-Agent-Termux安装.md",
+        "工具/OpenClaw.md",
+        "工具/Litter-Codex移动编辑器.md"
+      ],
+      "related": []
+    },
+    "工具/Litter-Codex移动编辑器.md": {
+      "title": "Litter-Codex移动编辑器",
+      "incoming": [
+        "概念/Claude & LLM应用.md",
+        "概念/Claude & LLM应用.md",
+        "概念/Obsidian生产力系统.md",
+        "概念/Obsidian生产力系统.md",
+        "工具/Hermes Agent.md",
+        "工具/Hermes Agent.md",
+        "工具/Obsidian-CodeX-Agent.md",
+        "工具/OpenClaw.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-Hermes-Agent-Termux安装.md",
+        "来源/2026-04-12-Litter-Beta-Codex工具介绍.md",
+        "来源/2026-04-12-Litter仓库架构.md",
+        "来源/2026-04-12-OpenClaw集成OpenAI与Codex认证.md"
+      ],
+      "outgoing": [
+        "来源/2026-04-12-Litter-Beta-Codex工具介绍.md",
+        "来源/2026-04-12-Litter仓库架构.md",
+        "工具/Hermes Agent.md",
+        "工具/Obsidian-CodeX-Agent.md",
+        "概念/Obsidian生产力系统.md"
+      ],
+      "related": []
+    },
+    "工具/Obsidian-CodeX-Agent.md": {
+      "title": "Obsidian-CodeX-Agent",
+      "incoming": [
+        "概念/Claude & LLM应用.md",
+        "概念/Claude & LLM应用.md",
+        "概念/Obsidian生产力系统.md",
+        "概念/Obsidian生产力系统.md",
+        "工具/Litter-Codex移动编辑器.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-Litter仓库架构.md",
+        "来源/2026-04-12-Obsidian-CodeX-Agent插件说明.md"
+      ],
+      "outgoing": [
+        "来源/2026-04-12-Obsidian-CodeX-Agent插件说明.md",
+        "概念/Obsidian生产力系统.md",
+        "概念/Claude & LLM应用.md",
+        "工具/Litter-Codex移动编辑器.md"
+      ],
+      "related": []
+    },
+    "工具/Obsidian-Web-Clipper.md": {
+      "title": "Obsidian-Web-Clipper",
+      "incoming": [
+        "来源/2026-04-07-obsidian-web-clipper配置指南.md",
+        "来源/2026-04-07-obsidian-web-clipper配置指南.md"
+      ],
+      "outgoing": [
+        "概念/Obsidian生产力系统.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md",
+        "来源/2026-04-12-第一大脑剪藏与记录规则.md",
+        "来源/2026-04-07-obsidian-web-clipper配置指南.md"
+      ],
+      "related": []
+    },
+    "工具/Obsidian生产力系统.md": {
+      "title": "Obsidian生产力系统",
+      "incoming": [
+        "概念/LLM知识库方法论.md",
+        "人物/你.md"
+      ],
+      "outgoing": [
+        "概念/Obsidian生产力系统.md"
+      ],
+      "related": []
+    },
+    "工具/OpenClaw.md": {
+      "title": "OpenClaw",
+      "incoming": [
+        "概念/AI-Agent规划.md",
+        "概念/Claude & LLM应用.md",
+        "概念/Claude & LLM应用.md",
+        "概念/Obsidian生产力系统.md",
+        "概念/Obsidian生产力系统.md",
+        "工具/Hermes Agent.md",
+        "工具/Hermes Agent.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-OpenClaw集成OpenAI与Codex认证.md"
+      ],
+      "outgoing": [
+        "来源/2026-04-12-OpenClaw集成OpenAI与Codex认证.md",
+        "工具/Hermes Agent.md",
+        "工具/Litter-Codex移动编辑器.md",
+        "概念/Claude & LLM应用.md"
+      ],
+      "related": []
+    },
+    "工具/README.md": {
+      "title": "README",
+      "incoming": [],
+      "outgoing": [
+        "BROKEN:工具2",
+        "BROKEN:工具3",
+        "BROKEN:项目名",
+        "BROKEN:../schema.md#3-工具页-工具",
+        "BROKEN:../RESOLVER.md#3️⃣-工具",
+        "BROKEN:../schema.md#3-工具页-工具"
+      ],
+      "related": []
+    },
+    "归档/.wiki-schema.md": {
+      "title": ".wiki-schema",
+      "incoming": [],
+      "outgoing": [
+        "BROKEN:页面名",
+        "BROKEN:另一个页面",
+        "BROKEN:又一个页面",
+        "BROKEN:某概念"
+      ],
+      "related": []
+    },
+    "归档/实施计划-2026-04-11-人物页试点.md": {
+      "title": "实施计划-2026-04-11-人物页试点",
+      "incoming": [],
+      "outgoing": [],
+      "related": []
+    },
+    "归档/我的知识库架构说明.md": {
+      "title": "我的知识库架构说明",
+      "incoming": [],
+      "outgoing": [],
+      "related": []
+    },
+    "归档/README.md": {
+      "title": "README",
+      "incoming": [],
+      "outgoing": [
+        "BROKEN:../RESOLVER.md#9️⃣-归档"
+      ],
+      "related": []
+    },
+    "来源/2026-04-07-法律人学Claude第三期文件读取.md": {
+      "title": "2026-04-07-法律人学Claude第三期文件读取",
+      "incoming": [],
+      "outgoing": [
+        "BROKEN:Claude-Code文件读取",
+        "BROKEN:Context-Window",
+        "BROKEN:CLAUDE.md",
+        "概念/法律人用Claude.md"
+      ],
+      "related": []
+    },
+    "来源/2026-04-07-法律人学Claude第十一期Hooks机制.md": {
+      "title": "2026-04-07-法律人学Claude第十一期Hooks机制",
+      "incoming": [
+        "工具/Claude-Code-Hooks.md",
+        "工具/Claude-Code-Hooks.md"
+      ],
+      "outgoing": [
+        "概念/Harness-Engineering.md",
+        "工具/Claude-Code-Hooks.md",
+        "工具/Claude-Code-Hooks.md",
+        "概念/Harness-Engineering.md",
+        "BROKEN:CLAUDE.md",
+        "概念/法律人用Claude.md"
+      ],
+      "related": []
+    },
+    "来源/2026-04-07-AI-Agent规划能力ReAct-CoT-Plan.md": {
+      "title": "2026-04-07-AI-Agent规划能力ReAct-CoT-Plan",
+      "incoming": [
+        "概念/AI-Agent规划框架.md",
+        "概念/AI-Agent规划框架.md",
+        "概念/CoT.md",
+        "概念/ReAct.md"
+      ],
+      "outgoing": [
+        "概念/CoT.md",
+        "概念/ReAct.md",
+        "BROKEN:Plan-and-Execute",
+        "概念/AI-Agent规划框架.md",
+        "概念/CoT.md",
+        "概念/ReAct.md",
+        "BROKEN:Plan-and-Execute"
+      ],
+      "related": []
+    },
+    "来源/2026-04-07-cloudflare免信用卡付款方式.md": {
+      "title": "2026-04-07-cloudflare免信用卡付款方式",
+      "incoming": [],
+      "outgoing": [
+        "BROKEN:Cloudflare"
+      ],
+      "related": []
+    },
+    "来源/2026-04-07-Graphify完全体知识库.md": {
+      "title": "2026-04-07-Graphify完全体知识库",
+      "incoming": [
+        "概念/Graphify.md"
+      ],
+      "outgoing": [
+        "概念/Karpathy知识库方法.md",
+        "概念/Karpathy知识库方法.md",
+        "概念/AI知识库构建.md",
+        "BROKEN:知识图谱"
+      ],
+      "related": []
+    },
+    "来源/2026-04-07-Karpathy大模型AI知识库教程.md": {
+      "title": "2026-04-07-Karpathy大模型AI知识库教程",
+      "incoming": [
+        "来源/Karpathy-llm-wiki.md"
+      ],
+      "outgoing": [
+        "概念/Karpathy知识库方法.md",
+        "概念/Karpathy知识库方法.md",
+        "概念/AI知识库构建.md",
+        "概念/Graphify.md",
+        "BROKEN:llm-wiki"
+      ],
+      "related": []
+    },
+    "来源/2026-04-07-Memory-obsidian-web-clipper搞定.md": {
+      "title": "2026-04-07-Memory-obsidian-web-clipper搞定",
+      "incoming": [],
+      "outgoing": [
+        "来源/2026-04-07-obsidian-web-clipper配置指南.md",
+        "来源/2026-04-07-obsidian-web-clipper配置指南.md",
+        "概念/AI知识库构建.md"
+      ],
+      "related": []
+    },
+    "来源/2026-04-07-obsidian-web-clipper配置指南.md": {
+      "title": "2026-04-07-obsidian-web-clipper配置指南",
+      "incoming": [
+        "概念/Obsidian生产力系统.md",
+        "工具/Obsidian-Web-Clipper.md",
+        "来源/2026-04-07-Memory-obsidian-web-clipper搞定.md",
+        "来源/2026-04-07-Memory-obsidian-web-clipper搞定.md"
+      ],
+      "outgoing": [
+        "工具/Obsidian-Web-Clipper.md",
+        "概念/inbox优先工作流.md",
+        "工具/Obsidian-Web-Clipper.md",
+        "概念/AI知识库构建.md",
+        "概念/inbox优先工作流.md"
+      ],
+      "related": []
+    },
+    "来源/2026-04-12-第一大脑剪藏与记录规则.md": {
+      "title": "2026-04-12-第一大脑剪藏与记录规则",
+      "incoming": [
+        "概念/inbox优先工作流.md",
+        "概念/Obsidian生产力系统.md",
+        "工具/Obsidian-Web-Clipper.md",
+        "项目/飞书记录系统.md"
+      ],
+      "outgoing": [
+        "概念/Obsidian生产力系统.md",
+        "项目/飞书记录系统.md"
+      ],
+      "related": []
+    },
+    "来源/2026-04-12-第一大脑拖延应对结构.md": {
+      "title": "2026-04-12-第一大脑拖延应对结构",
+      "incoming": [
+        "概念/个人学习管理.md",
+        "概念/个人学习管理.md"
+      ],
+      "outgoing": [
+        "概念/个人学习管理.md",
+        "来源/2026-04-12-学习启动阻力与拖延治理.md"
+      ],
+      "related": []
+    },
+    "来源/2026-04-12-法硕专业选择与南大备考.md": {
+      "title": "2026-04-12-法硕专业选择与南大备考",
+      "incoming": [
+        "概念/法律学习备考.md",
+        "概念/法律学习备考.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "项目/2027法学学硕备考.md"
+      ],
+      "outgoing": [
+        "概念/法律学习备考.md",
+        "项目/2027法学学硕备考.md"
+      ],
+      "related": []
+    },
+    "来源/2026-04-12-飞书记录系统设计.md": {
+      "title": "2026-04-12-飞书记录系统设计",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "想法/飞书作为执行中枢.md",
+        "项目/飞书记录系统.md"
+      ],
+      "outgoing": [
+        "项目/飞书记录系统.md",
+        "概念/个人学习管理.md",
+        "来源/raw-20260412-134034420-ChatGPT-飞书记录系统思考.md",
+        "来源/raw-20260412-134034230-Area（领域）_Project（项目）_Task（任务）_Action（行动）.md",
+        "来源/raw-20260412-134034481-首页.md",
+        "来源/raw-20260412-134034511-资源.md",
+        "来源/raw-20260412-134034451-归档.md",
+        "来源/raw-20260412-134034357-Chrome 浏览器插件「保存到飞书」.md"
+      ],
+      "related": []
+    },
+    "来源/2026-04-12-考研背单词间隔重复计划.md": {
+      "title": "2026-04-12-考研背单词间隔重复计划",
+      "incoming": [
+        "概念/个人学习管理.md",
+        "工具/Anki.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "项目/2027法学学硕备考.md"
+      ],
+      "outgoing": [
+        "概念/个人学习管理.md",
+        "项目/2027法学学硕备考.md"
+      ],
+      "related": []
+    },
+    "来源/2026-04-12-剩余raw素材吸收索引.md": {
+      "title": "2026-04-12-剩余raw素材吸收索引",
+      "incoming": [
+        "概念/AI知识库构建.md",
+        "项目/AI知识库（第二大脑）.md"
+      ],
+      "outgoing": [
+        "来源/raw-20260411-204714-Obsidian + Claude Code：让 AI 深度融入你的知识库.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md",
+        "工具/Obsidian-CodeX-Agent.md",
+        "来源/raw-20260412-133857-全网爆火的大模型AI知识库，保姆级教程来了.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md",
+        "概念/AI知识库构建.md",
+        "来源/raw-20260412-134034128-用 LLM + Obsidian 构建个人知识库：基于 Karpathy 的“L.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md",
+        "概念/Karpathy知识库方法.md",
+        "来源/raw-20260412-134034792-卡帕西没做完的，开源社区48小时搞定了！完全体知识库，token省70倍.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md",
+        "概念/AI知识库构建.md",
+        "来源/raw-20260412-134034855-3步配置：手机电脑都能用的 Obsidian 剪藏方案.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md",
+        "概念/Obsidian生产力系统.md",
+        "来源/raw-20260412-134034389-Installation - Chatgpt To Obsidian Docs.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md",
+        "来源/raw-20260412-133858-学习笔记479—解决obsidian无法加载第三方插件.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md",
+        "来源/raw-20260412-134034951-来了！Obsidian最好用的思维导图插件！.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md",
+        "来源/raw-20260412-134035042-llm-wiki.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md",
+        "概念/Karpathy知识库方法.md",
+        "来源/raw-20260412-134034199-73.视频时间戳笔记生成器_obsidian_obsidian教程_-_抖音.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md",
+        "来源/raw-20260412-133858-C_Users_Administrator_Desktop_xiaosong的知识库_ai知识库_第二大脑_raw_只读区_inbox_notion_mp_clipper.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md",
+        "来源/raw-20260412-134034262-AI知识库（codex）.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md",
+        "来源/raw-20260412-134034762-搭子必备-ChatGPT内对话内容的存储 1.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md",
+        "来源/raw-20260412-134034887-金知奖_2023知识区年终盛典.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md",
+        "来源/raw-20260412-133857-一文看懂 AI Agent 的规划能力：ReAct、CoT、Plan-and-Execute 有什么区别.md",
+        "概念/AI-Agent规划.md",
+        "来源/raw-20260412-133857-法律人学Claude｜第三期：让Claude更高效读懂你的文件.md",
+        "来源/2026-04-12-Claude文件读取与订阅策略.md",
+        "概念/法律人用Claude.md",
+        "来源/raw-20260412-133857-法律人学Claude｜第十一期：给AI这匹野马套上缰绳——Hooks机制.md",
+        "来源/2026-04-12-Claude文件读取与订阅策略.md",
+        "概念/Harness-Engineering.md",
+        "来源/raw-20260412-134034921-《国内开发者必看！Claude API Key获取及使用全攻略》.md",
+        "来源/2026-04-12-Claude文件读取与订阅策略.md",
+        "来源/raw-20260411-204714-别买 200 刀！深扒 Claude「真实额度」，Max 5x 才是性价比之王！.md",
+        "来源/2026-04-12-Claude文件读取与订阅策略.md",
+        "来源/raw-20260412-134035340-Android - Termux - Hermes Agent.md",
+        "来源/2026-04-12-Hermes-Agent-Termux安装.md",
+        "工具/Hermes Agent.md",
+        "来源/raw-20260412-134035372-OpenClaw 中集成 OpenAI：API 密钥与 Codex 订阅双模式详.md",
+        "来源/2026-04-12-OpenClaw集成OpenAI与Codex认证.md",
+        "工具/OpenClaw.md",
+        "来源/raw-20260412-134035403-LfoikCC-Obsidian-CodeX-Agent.md",
+        "来源/2026-04-12-Obsidian-CodeX-Agent插件说明.md",
+        "工具/Obsidian-CodeX-Agent.md",
+        "来源/raw-20260412-134035278-dnakov-litter.md",
+        "来源/2026-04-12-Litter仓库架构.md",
+        "工具/Litter-Codex移动编辑器.md",
+        "来源/raw-20260412-134035309-Thread by @SIGKITTEN@SIGKITTEN @SIGKITTE.md",
+        "来源/2026-04-12-Litter-Beta-Codex工具介绍.md",
+        "工具/Litter-Codex移动编辑器.md",
+        "来源/raw-20260412-134034420-ChatGPT-飞书记录系统思考.md",
+        "来源/2026-04-12-飞书记录系统设计.md",
+        "项目/飞书记录系统.md",
+        "来源/raw-20260412-134034230-Area（领域）_Project（项目）_Task（任务）_Action（行动）.md",
+        "来源/2026-04-12-飞书记录系统设计.md",
+        "来源/raw-20260412-134034357-Chrome 浏览器插件「保存到飞书」.md",
+        "来源/2026-04-12-飞书记录系统设计.md",
+        "来源/raw-20260412-134034451-归档.md",
+        "来源/2026-04-12-飞书记录系统设计.md",
+        "来源/raw-20260412-134034481-首页.md",
+        "来源/2026-04-12-飞书记录系统设计.md",
+        "来源/raw-20260412-134034511-资源.md",
+        "来源/2026-04-12-飞书记录系统设计.md",
+        "来源/raw-20260412-134034543-南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院.md",
+        "来源/2026-04-12-法硕专业选择与南大备考.md",
+        "项目/2027法学学硕备考.md",
+        "来源/raw-20260412-134034636-南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院 1.md",
+        "来源/2026-04-12-法硕专业选择与南大备考.md",
+        "来源/raw-20260412-134034605-ChatGPT-法硕专业选择建议.md",
+        "来源/2026-04-12-法硕专业选择与南大备考.md",
+        "来源/raw-20260412-134034667-南京大学法学学硕经验贴，奔赴一场无畏的梦.md",
+        "来源/2026-04-12-法硕专业选择与南大备考.md",
+        "来源/raw-20260412-134034699-【24状元】对26南大法学学硕真题的分析.md",
+        "来源/2026-04-12-法硕专业选择与南大备考.md",
+        "来源/raw-20260412-134034730-【26法学学硕考研】1w字超详细经验帖.md",
+        "来源/2026-04-12-法硕专业选择与南大备考.md",
+        "来源/raw-20260412-134034824-25南大法学学硕真题趋向变化分析.md",
+        "来源/2026-04-12-法硕专业选择与南大备考.md",
+        "来源/raw-20260412-134034574-score_2023311953_1775634965836.md",
+        "项目/2027法学学硕备考.md",
+        "来源/raw-20260411-204714-爱思考的赛门斯.md",
+        "来源/2026-04-12-学习困倦与节能机制.md",
+        "来源/2026-04-12-学习启动阻力与拖延治理.md",
+        "来源/raw-20260412-134035168-如何解决学习犯困？.md",
+        "来源/2026-04-12-学习困倦与节能机制.md",
+        "来源/2026-04-12-学习启动阻力与拖延治理.md",
+        "来源/raw-20260412-134035137-原来一学习就犯困身体跟不上要这样做 - 小红书.md",
+        "来源/2026-04-12-学习困倦与节能机制.md",
+        "来源/2026-04-12-学习启动阻力与拖延治理.md",
+        "来源/raw-20260412-134035215-中医人漫谈｜一学习就困，怎么调理？ - 小红书.md",
+        "来源/2026-04-12-学习困倦与节能机制.md",
+        "来源/2026-04-12-学习启动阻力与拖延治理.md",
+        "来源/raw-20260412-134035247-大脑最基本的原理：节能.md",
+        "来源/2026-04-12-学习困倦与节能机制.md",
+        "来源/2026-04-12-学习启动阻力与拖延治理.md",
+        "来源/raw-20260412-134035074-拖延症根治手册(1).md",
+        "来源/2026-04-12-学习启动阻力与拖延治理.md",
+        "来源/raw-20260412-134034981-艾宾浩斯曲线——刘晓艳.md",
+        "来源/2026-04-12-考研背单词间隔重复计划.md",
+        "来源/raw-20260412-134035011-考研背单词计划.md",
+        "来源/2026-04-12-考研背单词间隔重复计划.md",
+        "来源/raw-20260412-134035106-如何把文献串起来，搭建出自己的文献体系？ - 小红书.md",
+        "来源/2026-04-12-文献体系化整理.md",
+        "概念/文献体系化整理.md",
+        "来源/raw-20260412-134034293-2026-04-02 日记.md",
+        "来源/2026-04-12-飞书记录系统设计.md",
+        "来源/raw-20260412-134034325-2026-04-03 日记.md",
+        "来源/2026-04-12-飞书记录系统设计.md",
+        "来源/raw-20260412-133857-【教程】免信用卡为cloudflare添加付款方式.md"
+      ],
+      "related": []
+    },
+    "来源/2026-04-12-文献体系化整理.md": {
+      "title": "2026-04-12-文献体系化整理",
+      "incoming": [
+        "概念/文献体系化整理.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "概念/文献体系化整理.md",
+        "概念/法律学习备考.md",
+        "来源/raw-20260412-134035106-如何把文献串起来，搭建出自己的文献体系？ - 小红书.md",
+        "来源/raw-20260412-134035042-llm-wiki.md",
+        "来源/raw-20260412-133857-全网爆火的大模型AI知识库，保姆级教程来了.md"
+      ],
+      "related": []
+    },
+    "来源/2026-04-12-学习困倦与节能机制.md": {
+      "title": "2026-04-12-学习困倦与节能机制",
+      "incoming": [
+        "概念/个人学习管理.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/ChatGPT-学习困难.md",
+        "项目/2027法学学硕备考.md"
+      ],
+      "outgoing": [
+        "概念/个人学习管理.md",
+        "项目/2027法学学硕备考.md"
+      ],
+      "related": []
+    },
+    "来源/2026-04-12-学习启动阻力与拖延治理.md": {
+      "title": "2026-04-12-学习启动阻力与拖延治理",
+      "incoming": [
+        "概念/个人学习管理.md",
+        "来源/2026-04-12-第一大脑拖延应对结构.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "概念/个人学习管理.md",
+        "概念/法律学习备考.md",
+        "来源/raw-20260411-204714-爱思考的赛门斯.md",
+        "来源/raw-20260412-134035168-如何解决学习犯困？.md",
+        "来源/raw-20260412-134035137-原来一学习就犯困身体跟不上要这样做 - 小红书.md",
+        "来源/raw-20260412-134035215-中医人漫谈｜一学习就困，怎么调理？ - 小红书.md",
+        "来源/raw-20260412-134035247-大脑最基本的原理：节能.md",
+        "来源/raw-20260412-134035074-拖延症根治手册(1).md"
+      ],
+      "related": []
+    },
+    "来源/2026-04-12-AI知识库工作流与剪藏体系.md": {
+      "title": "2026-04-12-AI知识库工作流与剪藏体系",
+      "incoming": [
+        "概念/AI-Agent规划.md",
+        "概念/AI知识库构建.md",
+        "概念/Graphify.md",
+        "概念/Karpathy知识库方法.md",
+        "工具/Obsidian-Web-Clipper.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/Karpathy-llm-wiki.md",
+        "写作/LLM-Wiki不是RAG.md"
+      ],
+      "outgoing": [
+        "概念/AI知识库构建.md",
+        "概念/Karpathy知识库方法.md",
+        "概念/Obsidian生产力系统.md",
+        "来源/raw-20260412-133857-全网爆火的大模型AI知识库，保姆级教程来了.md",
+        "来源/raw-20260412-134034128-用 LLM + Obsidian 构建个人知识库：基于 Karpathy 的“L.md",
+        "来源/raw-20260412-134034792-卡帕西没做完的，开源社区48小时搞定了！完全体知识库，token省70倍.md",
+        "来源/raw-20260412-134035042-llm-wiki.md",
+        "来源/raw-20260412-134034855-3步配置：手机电脑都能用的 Obsidian 剪藏方案.md",
+        "来源/raw-20260412-134034389-Installation - Chatgpt To Obsidian Docs.md",
+        "来源/raw-20260412-133858-学习笔记479—解决obsidian无法加载第三方插件.md",
+        "来源/raw-20260412-134034951-来了！Obsidian最好用的思维导图插件！.md",
+        "来源/raw-20260411-204714-Obsidian + Claude Code：让 AI 深度融入你的知识库.md"
+      ],
+      "related": []
+    },
+    "来源/2026-04-12-Claude文件读取与订阅策略.md": {
+      "title": "2026-04-12-Claude文件读取与订阅策略",
+      "incoming": [
+        "概念/法律人用Claude.md",
+        "概念/Harness-Engineering.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "概念/法律人用Claude.md",
+        "概念/Harness-Engineering.md",
+        "概念/Claude & LLM应用.md",
+        "来源/raw-20260412-133857-法律人学Claude｜第三期：让Claude更高效读懂你的文件.md",
+        "来源/raw-20260412-133857-法律人学Claude｜第十一期：给AI这匹野马套上缰绳——Hooks机制.md",
+        "来源/raw-20260412-134034921-《国内开发者必看！Claude API Key获取及使用全攻略》.md",
+        "来源/raw-20260411-204714-别买 200 刀！深扒 Claude「真实额度」，Max 5x 才是性价比之王！.md"
+      ],
+      "related": []
+    },
+    "来源/2026-04-12-Hermes-Agent-Termux安装.md": {
+      "title": "2026-04-12-Hermes-Agent-Termux安装",
+      "incoming": [
+        "工具/Hermes Agent.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "工具/Hermes Agent.md",
+        "工具/Litter-Codex移动编辑器.md",
+        "概念/Claude & LLM应用.md"
+      ],
+      "related": []
+    },
+    "来源/2026-04-12-Litter-Beta-Codex工具介绍.md": {
+      "title": "2026-04-12-Litter-Beta-Codex工具介绍",
+      "incoming": [
+        "工具/Litter-Codex移动编辑器.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "BROKEN:工具/Litter-Codex移动编辑器\\",
+        "BROKEN:工具/Litter-Codex移动编辑器\\",
+        "BROKEN:工具/Litter-Codex移动编辑器\\",
+        "BROKEN:工具/Litter-Codex移动编辑器\\",
+        "BROKEN:概念/Claude-LLM应用场景",
+        "BROKEN:工具/Litter-Codex移动编辑器\\",
+        "工具/Litter-Codex移动编辑器.md"
+      ],
+      "related": []
+    },
+    "来源/2026-04-12-Litter仓库架构.md": {
+      "title": "2026-04-12-Litter仓库架构",
+      "incoming": [
+        "工具/Litter-Codex移动编辑器.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "工具/Litter-Codex移动编辑器.md",
+        "工具/Obsidian-CodeX-Agent.md",
+        "概念/Obsidian生产力系统.md"
+      ],
+      "related": []
+    },
+    "来源/2026-04-12-Obsidian-CodeX-Agent插件说明.md": {
+      "title": "2026-04-12-Obsidian-CodeX-Agent插件说明",
+      "incoming": [
+        "工具/Obsidian-CodeX-Agent.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "工具/Obsidian-CodeX-Agent.md",
+        "概念/Obsidian生产力系统.md",
+        "概念/Claude & LLM应用.md"
+      ],
+      "related": []
+    },
+    "来源/2026-04-12-Obsidian附件同步与导出经验.md": {
+      "title": "2026-04-12-Obsidian附件同步与导出经验",
+      "incoming": [
+        "概念/Obsidian生产力系统.md"
+      ],
+      "outgoing": [
+        "概念/Obsidian生产力系统.md",
+        "项目/飞书记录系统.md"
+      ],
+      "related": []
+    },
+    "来源/2026-04-12-OpenClaw集成OpenAI与Codex认证.md": {
+      "title": "2026-04-12-OpenClaw集成OpenAI与Codex认证",
+      "incoming": [
+        "工具/OpenClaw.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "工具/OpenClaw.md",
+        "概念/Claude & LLM应用.md",
+        "工具/Litter-Codex移动编辑器.md"
+      ],
+      "related": []
+    },
+    "来源/ChatGPT-学习困难.md": {
+      "title": "ChatGPT-学习困难",
+      "incoming": [
+        "人物/Dario Amodei.md"
+      ],
+      "outgoing": [
+        "来源/2026-04-12-学习困倦与节能机制.md"
+      ],
+      "related": []
+    },
+    "来源/Karpathy-llm-wiki.md": {
+      "title": "Karpathy-llm-wiki",
+      "incoming": [
+        "概念/LLM知识库方法论.md",
+        "概念/LLM知识库方法论.md",
+        "人物/Andrej Karpathy.md",
+        "人物/Andrej Karpathy.md",
+        "人物/Andrej Karpathy.md"
+      ],
+      "outgoing": [
+        "来源/2026-04-07-Karpathy大模型AI知识库教程.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md",
+        "概念/Karpathy知识库方法.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260411-204714-爱思考的赛门斯.md": {
+      "title": "raw-20260411-204714-爱思考的赛门斯",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-学习启动阻力与拖延治理.md"
+      ],
+      "outgoing": [
+        "BROKEN:如何解决学习犯困？.txt",
+        "BROKEN:Pasted image 20260411140833.png",
+        "BROKEN:相关概念",
+        "BROKEN:相关项目"
+      ],
+      "related": []
+    },
+    "来源/raw-20260411-204714-别买 200 刀！深扒 Claude「真实额度」，Max 5x 才是性价比之王！.md": {
+      "title": "raw-20260411-204714-别买 200 刀！深扒 Claude「真实额度」，Max 5x 才是性价比之王！",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-Claude文件读取与订阅策略.md"
+      ],
+      "outgoing": [
+        "BROKEN:相关概念",
+        "BROKEN:相关项目"
+      ],
+      "related": []
+    },
+    "来源/raw-20260411-204714-Obsidian + Claude Code：让 AI 深度融入你的知识库.md": {
+      "title": "raw-20260411-204714-Obsidian + Claude Code：让 AI 深度融入你的知识库",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md"
+      ],
+      "outgoing": [
+        "BROKEN:相关概念",
+        "BROKEN:相关项目"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-133857-【教程】免信用卡为cloudflare添加付款方式.md": {
+      "title": "raw-20260412-133857-【教程】免信用卡为cloudflare添加付款方式",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-133857-法律人学Claude｜第三期：让Claude更高效读懂你的文件.md": {
+      "title": "raw-20260412-133857-法律人学Claude｜第三期：让Claude更高效读懂你的文件",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-Claude文件读取与订阅策略.md"
+      ],
+      "outgoing": [
+        "BROKEN:吕盈辉",
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-133857-法律人学Claude｜第十一期：给AI这匹野马套上缰绳——Hooks机制.md": {
+      "title": "raw-20260412-133857-法律人学Claude｜第十一期：给AI这匹野马套上缰绳——Hooks机制",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-Claude文件读取与订阅策略.md"
+      ],
+      "outgoing": [
+        "BROKEN:吕盈辉",
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-133857-全网爆火的大模型AI知识库，保姆级教程来了.md": {
+      "title": "raw-20260412-133857-全网爆火的大模型AI知识库，保姆级教程来了",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-文献体系化整理.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md"
+      ],
+      "outgoing": [
+        "BROKEN:Datawhale",
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-133857-一文看懂 AI Agent 的规划能力：ReAct、CoT、Plan-and-Execute 有什么区别.md": {
+      "title": "raw-20260412-133857-一文看懂 AI Agent 的规划能力：ReAct、CoT、Plan-and-Execute 有什么区别",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "BROKEN:关注前沿AI发展的",
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-133858-学习笔记479—解决obsidian无法加载第三方插件.md": {
+      "title": "raw-20260412-133858-学习笔记479—解决obsidian无法加载第三方插件",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md"
+      ],
+      "outgoing": [
+        "BROKEN:何弈",
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-133858-C_Users_Administrator_Desktop_xiaosong的知识库_ai知识库_第二大脑_raw_只读区_inbox_notion_mp_clipper.md": {
+      "title": "raw-20260412-133858-C_Users_Administrator_Desktop_xiaosong的知识库_ai知识库_第二大脑_raw_只读区_inbox_notion_mp_clipper",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034128-用 LLM + Obsidian 构建个人知识库：基于 Karpathy 的“L.md": {
+      "title": "raw-20260412-134034128-用 LLM + Obsidian 构建个人知识库：基于 Karpathy 的“L",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md"
+      ],
+      "outgoing": [
+        "BROKEN:@yanhua1010",
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034199-73.视频时间戳笔记生成器_obsidian_obsidian教程_-_抖音.md": {
+      "title": "raw-20260412-134034199-73.视频时间戳笔记生成器_obsidian_obsidian教程_-_抖音",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034230-Area（领域）_Project（项目）_Task（任务）_Action（行动）.md": {
+      "title": "raw-20260412-134034230-Area（领域）_Project（项目）_Task（任务）_Action（行动）",
+      "incoming": [
+        "来源/2026-04-12-飞书记录系统设计.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034262-AI知识库（codex）.md": {
+      "title": "raw-20260412-134034262-AI知识库（codex）",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034293-2026-04-02 日记.md": {
+      "title": "raw-20260412-134034293-2026-04-02 日记",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034325-2026-04-03 日记.md": {
+      "title": "raw-20260412-134034325-2026-04-03 日记",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034357-Chrome 浏览器插件「保存到飞书」.md": {
+      "title": "raw-20260412-134034357-Chrome 浏览器插件「保存到飞书」",
+      "incoming": [
+        "来源/2026-04-12-飞书记录系统设计.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034389-Installation - Chatgpt To Obsidian Docs.md": {
+      "title": "raw-20260412-134034389-Installation - Chatgpt To Obsidian Docs",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034420-ChatGPT-飞书记录系统思考.md": {
+      "title": "raw-20260412-134034420-ChatGPT-飞书记录系统思考",
+      "incoming": [
+        "来源/2026-04-12-飞书记录系统设计.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034451-归档.md": {
+      "title": "raw-20260412-134034451-归档",
+      "incoming": [
+        "来源/2026-04-12-飞书记录系统设计.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034481-首页.md": {
+      "title": "raw-20260412-134034481-首页",
+      "incoming": [
+        "来源/2026-04-12-飞书记录系统设计.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034511-资源.md": {
+      "title": "raw-20260412-134034511-资源",
+      "incoming": [
+        "来源/2026-04-12-飞书记录系统设计.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034543-南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院.md": {
+      "title": "raw-20260412-134034543-南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034574-score_2023311953_1775634965836.md": {
+      "title": "raw-20260412-134034574-score_2023311953_1775634965836",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034605-ChatGPT-法硕专业选择建议.md": {
+      "title": "raw-20260412-134034605-ChatGPT-法硕专业选择建议",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034636-南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院 1.md": {
+      "title": "raw-20260412-134034636-南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院 1",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034667-南京大学法学学硕经验贴，奔赴一场无畏的梦.md": {
+      "title": "raw-20260412-134034667-南京大学法学学硕经验贴，奔赴一场无畏的梦",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034699-【24状元】对26南大法学学硕真题的分析.md": {
+      "title": "raw-20260412-134034699-【24状元】对26南大法学学硕真题的分析",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034730-【26法学学硕考研】1w字超详细经验帖.md": {
+      "title": "raw-20260412-134034730-【26法学学硕考研】1w字超详细经验帖",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034762-搭子必备-ChatGPT内对话内容的存储 1.md": {
+      "title": "raw-20260412-134034762-搭子必备-ChatGPT内对话内容的存储 1",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034792-卡帕西没做完的，开源社区48小时搞定了！完全体知识库，token省70倍.md": {
+      "title": "raw-20260412-134034792-卡帕西没做完的，开源社区48小时搞定了！完全体知识库，token省70倍",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md"
+      ],
+      "outgoing": [
+        "BROKEN:关注前沿科技",
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034824-25南大法学学硕真题趋向变化分析.md": {
+      "title": "raw-20260412-134034824-25南大法学学硕真题趋向变化分析",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034855-3步配置：手机电脑都能用的 Obsidian 剪藏方案.md": {
+      "title": "raw-20260412-134034855-3步配置：手机电脑都能用的 Obsidian 剪藏方案",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034887-金知奖_2023知识区年终盛典.md": {
+      "title": "raw-20260412-134034887-金知奖_2023知识区年终盛典",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034921-《国内开发者必看！Claude API Key获取及使用全攻略》.md": {
+      "title": "raw-20260412-134034921-《国内开发者必看！Claude API Key获取及使用全攻略》",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-Claude文件读取与订阅策略.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034951-来了！Obsidian最好用的思维导图插件！.md": {
+      "title": "raw-20260412-134034951-来了！Obsidian最好用的思维导图插件！",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134034981-艾宾浩斯曲线——刘晓艳.md": {
+      "title": "raw-20260412-134034981-艾宾浩斯曲线——刘晓艳",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134035011-考研背单词计划.md": {
+      "title": "raw-20260412-134035011-考研背单词计划",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134035042-llm-wiki.md": {
+      "title": "raw-20260412-134035042-llm-wiki",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-文献体系化整理.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134035074-拖延症根治手册(1).md": {
+      "title": "raw-20260412-134035074-拖延症根治手册(1)",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-学习启动阻力与拖延治理.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134035106-如何把文献串起来，搭建出自己的文献体系？ - 小红书.md": {
+      "title": "raw-20260412-134035106-如何把文献串起来，搭建出自己的文献体系？ - 小红书",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-文献体系化整理.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134035137-原来一学习就犯困身体跟不上要这样做 - 小红书.md": {
+      "title": "raw-20260412-134035137-原来一学习就犯困身体跟不上要这样做 - 小红书",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-学习启动阻力与拖延治理.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134035168-如何解决学习犯困？.md": {
+      "title": "raw-20260412-134035168-如何解决学习犯困？",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-学习启动阻力与拖延治理.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134035215-中医人漫谈｜一学习就困，怎么调理？ - 小红书.md": {
+      "title": "raw-20260412-134035215-中医人漫谈｜一学习就困，怎么调理？ - 小红书",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-学习启动阻力与拖延治理.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134035247-大脑最基本的原理：节能.md": {
+      "title": "raw-20260412-134035247-大脑最基本的原理：节能",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-学习启动阻力与拖延治理.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134035278-dnakov-litter.md": {
+      "title": "raw-20260412-134035278-dnakov-litter",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134035309-Thread by @SIGKITTEN@SIGKITTEN @SIGKITTE.md": {
+      "title": "raw-20260412-134035309-Thread by @SIGKITTEN@SIGKITTEN @SIGKITTE",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134035340-Android - Termux - Hermes Agent.md": {
+      "title": "raw-20260412-134035340-Android - Termux - Hermes Agent",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134035372-OpenClaw 中集成 OpenAI：API 密钥与 Codex 订阅双模式详.md": {
+      "title": "raw-20260412-134035372-OpenClaw 中集成 OpenAI：API 密钥与 Codex 订阅双模式详",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/raw-20260412-134035403-LfoikCC-Obsidian-CodeX-Agent.md": {
+      "title": "raw-20260412-134035403-LfoikCC-Obsidian-CodeX-Agent",
+      "incoming": [
+        "来源/2026-04-12-剩余raw素材吸收索引.md"
+      ],
+      "outgoing": [
+        "收件箱/README.md",
+        "来源/README.md"
+      ],
+      "related": []
+    },
+    "来源/README.md": {
+      "title": "README",
+      "incoming": [
+        "来源/raw-20260412-133857-【教程】免信用卡为cloudflare添加付款方式.md",
+        "来源/raw-20260412-133857-法律人学Claude｜第三期：让Claude更高效读懂你的文件.md",
+        "来源/raw-20260412-133857-法律人学Claude｜第十一期：给AI这匹野马套上缰绳——Hooks机制.md",
+        "来源/raw-20260412-133857-全网爆火的大模型AI知识库，保姆级教程来了.md",
+        "来源/raw-20260412-133857-一文看懂 AI Agent 的规划能力：ReAct、CoT、Plan-and-Execute 有什么区别.md",
+        "来源/raw-20260412-133858-学习笔记479—解决obsidian无法加载第三方插件.md",
+        "来源/raw-20260412-133858-C_Users_Administrator_Desktop_xiaosong的知识库_ai知识库_第二大脑_raw_只读区_inbox_notion_mp_clipper.md",
+        "来源/raw-20260412-134034128-用 LLM + Obsidian 构建个人知识库：基于 Karpathy 的“L.md",
+        "来源/raw-20260412-134034199-73.视频时间戳笔记生成器_obsidian_obsidian教程_-_抖音.md",
+        "来源/raw-20260412-134034230-Area（领域）_Project（项目）_Task（任务）_Action（行动）.md",
+        "来源/raw-20260412-134034262-AI知识库（codex）.md",
+        "来源/raw-20260412-134034293-2026-04-02 日记.md",
+        "来源/raw-20260412-134034325-2026-04-03 日记.md",
+        "来源/raw-20260412-134034357-Chrome 浏览器插件「保存到飞书」.md",
+        "来源/raw-20260412-134034389-Installation - Chatgpt To Obsidian Docs.md",
+        "来源/raw-20260412-134034420-ChatGPT-飞书记录系统思考.md",
+        "来源/raw-20260412-134034451-归档.md",
+        "来源/raw-20260412-134034481-首页.md",
+        "来源/raw-20260412-134034511-资源.md",
+        "来源/raw-20260412-134034543-南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院.md",
+        "来源/raw-20260412-134034574-score_2023311953_1775634965836.md",
+        "来源/raw-20260412-134034605-ChatGPT-法硕专业选择建议.md",
+        "来源/raw-20260412-134034636-南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院 1.md",
+        "来源/raw-20260412-134034667-南京大学法学学硕经验贴，奔赴一场无畏的梦.md",
+        "来源/raw-20260412-134034699-【24状元】对26南大法学学硕真题的分析.md",
+        "来源/raw-20260412-134034730-【26法学学硕考研】1w字超详细经验帖.md",
+        "来源/raw-20260412-134034762-搭子必备-ChatGPT内对话内容的存储 1.md",
+        "来源/raw-20260412-134034792-卡帕西没做完的，开源社区48小时搞定了！完全体知识库，token省70倍.md",
+        "来源/raw-20260412-134034824-25南大法学学硕真题趋向变化分析.md",
+        "来源/raw-20260412-134034855-3步配置：手机电脑都能用的 Obsidian 剪藏方案.md",
+        "来源/raw-20260412-134034887-金知奖_2023知识区年终盛典.md",
+        "来源/raw-20260412-134034921-《国内开发者必看！Claude API Key获取及使用全攻略》.md",
+        "来源/raw-20260412-134034951-来了！Obsidian最好用的思维导图插件！.md",
+        "来源/raw-20260412-134034981-艾宾浩斯曲线——刘晓艳.md",
+        "来源/raw-20260412-134035011-考研背单词计划.md",
+        "来源/raw-20260412-134035042-llm-wiki.md",
+        "来源/raw-20260412-134035074-拖延症根治手册(1).md",
+        "来源/raw-20260412-134035106-如何把文献串起来，搭建出自己的文献体系？ - 小红书.md",
+        "来源/raw-20260412-134035137-原来一学习就犯困身体跟不上要这样做 - 小红书.md",
+        "来源/raw-20260412-134035168-如何解决学习犯困？.md",
+        "来源/raw-20260412-134035215-中医人漫谈｜一学习就困，怎么调理？ - 小红书.md",
+        "来源/raw-20260412-134035247-大脑最基本的原理：节能.md",
+        "来源/raw-20260412-134035278-dnakov-litter.md",
+        "来源/raw-20260412-134035309-Thread by @SIGKITTEN@SIGKITTEN @SIGKITTE.md",
+        "来源/raw-20260412-134035340-Android - Termux - Hermes Agent.md",
+        "来源/raw-20260412-134035372-OpenClaw 中集成 OpenAI：API 密钥与 Codex 订阅双模式详.md",
+        "来源/raw-20260412-134035403-LfoikCC-Obsidian-CodeX-Agent.md"
+      ],
+      "outgoing": [
+        "BROKEN:概念1",
+        "BROKEN:项目1",
+        "BROKEN:../schema.md#7-来源页-来源",
+        "BROKEN:../RESOLVER.md#7️⃣-来源",
+        "BROKEN:../schema.md#7-来源页-来源"
+      ],
+      "related": []
+    },
+    "人物/马一清.md": {
+      "title": "马一清",
+      "incoming": [],
+      "outgoing": [],
+      "related": []
+    },
+    "人物/你.md": {
+      "title": "你",
+      "incoming": [],
+      "outgoing": [
+        "概念/法律学习备考.md",
+        "概念/AI知识库构建.md",
+        "概念/个人学习管理.md",
+        "概念/思维方法与创意.md",
+        "项目/AI知识库（第二大脑）.md",
+        "BROKEN:COLLABORATE_WITH_CLAUDE.md",
+        "概念/LLM知识库方法论.md",
+        "概念/思维方法与创意.md",
+        "概念/个人学习管理.md",
+        "工具/Obsidian生产力系统.md",
+        "工具/Claude & LLM应用.md",
+        "BROKEN:RESOLVER.md",
+        "BROKEN:RESOLVER.md",
+        "BROKEN:schema.md",
+        "概念/法律学习备考.md",
+        "概念/个人学习管理.md",
+        "项目/考研法律备考.md",
+        "概念/LLM知识库方法论.md",
+        "概念/AI知识库构建.md",
+        "项目/AI知识库（第二大脑）.md",
+        "概念/思维方法与创意.md",
+        "BROKEN:KNOWLEDGE_COMPILATION_SYSTEM.md"
+      ],
+      "related": []
+    },
+    "人物/赵宇馨/4.2生日小作文.md": {
+      "title": "4.2生日小作文",
+      "incoming": [],
+      "outgoing": [],
+      "related": []
+    },
+    "人物/Andrej Karpathy.md": {
+      "title": "Andrej Karpathy",
+      "incoming": [
+        "人物/Dario Amodei.md"
+      ],
+      "outgoing": [
+        "来源/Karpathy-llm-wiki.md",
+        "项目/AI知识库（第二大脑）.md",
+        "BROKEN:KNOWLEDGE_COMPILATION_SYSTEM.md",
+        "概念/LLM知识库方法论.md",
+        "概念/AI知识库构建.md",
+        "概念/Claude & LLM应用.md",
+        "来源/Karpathy-llm-wiki.md",
+        "项目/AI知识库（第二大脑）.md",
+        "来源/Karpathy-llm-wiki.md",
+        "BROKEN:来源/Karpathy知识库教程",
+        "概念/LLM知识库方法论.md",
+        "项目/AI知识库（第二大脑）.md",
+        "人物/Dario Amodei.md",
+        "概念/AI知识库构建.md",
+        "概念/LLM知识库方法论.md",
+        "工具/Claude & LLM应用.md"
+      ],
+      "related": []
+    },
+    "人物/Dario Amodei.md": {
+      "title": "Dario Amodei",
+      "incoming": [
+        "人物/Andrej Karpathy.md"
+      ],
+      "outgoing": [
+        "工具/Claude & LLM应用.md",
+        "BROKEN:COLLABORATE_WITH_CLAUDE.md",
+        "项目/AI知识库（第二大脑）.md",
+        "概念/法律学习备考.md",
+        "BROKEN:来源/...",
+        "概念/个人学习管理.md",
+        "来源/ChatGPT-学习困难.md",
+        "项目/AI知识库（第二大脑）.md",
+        "BROKEN:来源/Claude对话记录",
+        "工具/Claude & LLM应用.md",
+        "人物/Andrej Karpathy.md",
+        "工具/Claude & LLM应用.md",
+        "BROKEN:COLLABORATE_WITH_CLAUDE.md",
+        "项目/AI知识库（第二大脑）.md"
+      ],
+      "related": []
+    },
+    "人物/README.md": {
+      "title": "README",
+      "incoming": [],
+      "outgoing": [
+        "BROKEN:../schema.md",
+        "BROKEN:../RESOLVER.md#2️⃣-人物",
+        "BROKEN:../schema.md#1-人物页-人物"
+      ],
+      "related": []
+    },
+    "收件箱/README.md": {
+      "title": "README",
+      "incoming": [
+        "来源/raw-20260412-133857-【教程】免信用卡为cloudflare添加付款方式.md",
+        "来源/raw-20260412-133857-法律人学Claude｜第三期：让Claude更高效读懂你的文件.md",
+        "来源/raw-20260412-133857-法律人学Claude｜第十一期：给AI这匹野马套上缰绳——Hooks机制.md",
+        "来源/raw-20260412-133857-全网爆火的大模型AI知识库，保姆级教程来了.md",
+        "来源/raw-20260412-133857-一文看懂 AI Agent 的规划能力：ReAct、CoT、Plan-and-Execute 有什么区别.md",
+        "来源/raw-20260412-133858-学习笔记479—解决obsidian无法加载第三方插件.md",
+        "来源/raw-20260412-133858-C_Users_Administrator_Desktop_xiaosong的知识库_ai知识库_第二大脑_raw_只读区_inbox_notion_mp_clipper.md",
+        "来源/raw-20260412-134034128-用 LLM + Obsidian 构建个人知识库：基于 Karpathy 的“L.md",
+        "来源/raw-20260412-134034199-73.视频时间戳笔记生成器_obsidian_obsidian教程_-_抖音.md",
+        "来源/raw-20260412-134034230-Area（领域）_Project（项目）_Task（任务）_Action（行动）.md",
+        "来源/raw-20260412-134034262-AI知识库（codex）.md",
+        "来源/raw-20260412-134034293-2026-04-02 日记.md",
+        "来源/raw-20260412-134034325-2026-04-03 日记.md",
+        "来源/raw-20260412-134034357-Chrome 浏览器插件「保存到飞书」.md",
+        "来源/raw-20260412-134034389-Installation - Chatgpt To Obsidian Docs.md",
+        "来源/raw-20260412-134034420-ChatGPT-飞书记录系统思考.md",
+        "来源/raw-20260412-134034451-归档.md",
+        "来源/raw-20260412-134034481-首页.md",
+        "来源/raw-20260412-134034511-资源.md",
+        "来源/raw-20260412-134034543-南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院.md",
+        "来源/raw-20260412-134034574-score_2023311953_1775634965836.md",
+        "来源/raw-20260412-134034605-ChatGPT-法硕专业选择建议.md",
+        "来源/raw-20260412-134034636-南京大学法学院2026年硕士研究生招生复试录取工作细则-南京大学法学院 1.md",
+        "来源/raw-20260412-134034667-南京大学法学学硕经验贴，奔赴一场无畏的梦.md",
+        "来源/raw-20260412-134034699-【24状元】对26南大法学学硕真题的分析.md",
+        "来源/raw-20260412-134034730-【26法学学硕考研】1w字超详细经验帖.md",
+        "来源/raw-20260412-134034762-搭子必备-ChatGPT内对话内容的存储 1.md",
+        "来源/raw-20260412-134034792-卡帕西没做完的，开源社区48小时搞定了！完全体知识库，token省70倍.md",
+        "来源/raw-20260412-134034824-25南大法学学硕真题趋向变化分析.md",
+        "来源/raw-20260412-134034855-3步配置：手机电脑都能用的 Obsidian 剪藏方案.md",
+        "来源/raw-20260412-134034887-金知奖_2023知识区年终盛典.md",
+        "来源/raw-20260412-134034921-《国内开发者必看！Claude API Key获取及使用全攻略》.md",
+        "来源/raw-20260412-134034951-来了！Obsidian最好用的思维导图插件！.md",
+        "来源/raw-20260412-134034981-艾宾浩斯曲线——刘晓艳.md",
+        "来源/raw-20260412-134035011-考研背单词计划.md",
+        "来源/raw-20260412-134035042-llm-wiki.md",
+        "来源/raw-20260412-134035074-拖延症根治手册(1).md",
+        "来源/raw-20260412-134035106-如何把文献串起来，搭建出自己的文献体系？ - 小红书.md",
+        "来源/raw-20260412-134035137-原来一学习就犯困身体跟不上要这样做 - 小红书.md",
+        "来源/raw-20260412-134035168-如何解决学习犯困？.md",
+        "来源/raw-20260412-134035215-中医人漫谈｜一学习就困，怎么调理？ - 小红书.md",
+        "来源/raw-20260412-134035247-大脑最基本的原理：节能.md",
+        "来源/raw-20260412-134035278-dnakov-litter.md",
+        "来源/raw-20260412-134035309-Thread by @SIGKITTEN@SIGKITTEN @SIGKITTE.md",
+        "来源/raw-20260412-134035340-Android - Termux - Hermes Agent.md",
+        "来源/raw-20260412-134035372-OpenClaw 中集成 OpenAI：API 密钥与 Codex 订阅双模式详.md",
+        "来源/raw-20260412-134035403-LfoikCC-Obsidian-CodeX-Agent.md"
+      ],
+      "outgoing": [
+        "BROKEN:../RESOLVER.md#8️⃣-收件箱"
+      ],
+      "related": []
+    },
+    "想法/飞书作为执行中枢.md": {
+      "title": "飞书作为执行中枢",
+      "incoming": [
+        "项目/飞书记录系统.md"
+      ],
+      "outgoing": [
+        "项目/飞书记录系统.md",
+        "来源/2026-04-12-飞书记录系统设计.md"
+      ],
+      "related": []
+    },
+    "想法/README.md": {
+      "title": "README",
+      "incoming": [],
+      "outgoing": [
+        "BROKEN:../schema.md#5-想法页-想法",
+        "BROKEN:../RESOLVER.md#5️⃣-想法",
+        "BROKEN:../schema.md#5-想法页-想法"
+      ],
+      "related": []
+    },
+    "项目/2027法学学硕备考.md": {
+      "title": "2027法学学硕备考",
+      "incoming": [
+        "概念/法律学习备考.md",
+        "概念/个人学习管理.md",
+        "概念/个人学习管理.md",
+        "来源/2026-04-12-法硕专业选择与南大备考.md",
+        "来源/2026-04-12-考研背单词间隔重复计划.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-学习困倦与节能机制.md",
+        "项目/考研法律备考.md"
+      ],
+      "outgoing": [
+        "概念/法律学习备考.md",
+        "概念/个人学习管理.md",
+        "来源/2026-04-12-法硕专业选择与南大备考.md",
+        "来源/2026-04-12-考研背单词间隔重复计划.md",
+        "来源/2026-04-12-学习困倦与节能机制.md"
+      ],
+      "related": []
+    },
+    "项目/飞书记录系统.md": {
+      "title": "飞书记录系统",
+      "incoming": [
+        "概念/inbox优先工作流.md",
+        "来源/2026-04-12-第一大脑剪藏与记录规则.md",
+        "来源/2026-04-12-飞书记录系统设计.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "来源/2026-04-12-Obsidian附件同步与导出经验.md",
+        "想法/飞书作为执行中枢.md"
+      ],
+      "outgoing": [
+        "想法/飞书作为执行中枢.md",
+        "来源/2026-04-12-飞书记录系统设计.md",
+        "来源/2026-04-12-第一大脑剪藏与记录规则.md",
+        "概念/个人学习管理.md"
+      ],
+      "related": []
+    },
+    "项目/考研法律备考.md": {
+      "title": "考研法律备考",
+      "incoming": [
+        "概念/AI-Agent规划框架.md",
+        "工具/Claude-Code-Hooks.md",
+        "人物/你.md"
+      ],
+      "outgoing": [
+        "项目/2027法学学硕备考.md"
+      ],
+      "related": []
+    },
+    "项目/AI知识库（第二大脑）.md": {
+      "title": "AI知识库（第二大脑）",
+      "incoming": [
+        "概念/LLM知识库方法论.md",
+        "概念/LLM知识库方法论.md",
+        "人物/你.md",
+        "人物/你.md",
+        "人物/Andrej Karpathy.md",
+        "人物/Andrej Karpathy.md",
+        "人物/Andrej Karpathy.md",
+        "人物/Dario Amodei.md",
+        "人物/Dario Amodei.md",
+        "人物/Dario Amodei.md"
+      ],
+      "outgoing": [
+        "概念/AI知识库构建.md",
+        "概念/Karpathy知识库方法.md",
+        "来源/2026-04-12-剩余raw素材吸收索引.md",
+        "BROKEN:log"
+      ],
+      "related": []
+    },
+    "项目/README.md": {
+      "title": "README",
+      "incoming": [],
+      "outgoing": [
+        "BROKEN:所用工具1",
+        "BROKEN:相关概念1",
+        "BROKEN:../schema.md#4-项目页-项目",
+        "BROKEN:../RESOLVER.md#4️⃣-项目",
+        "BROKEN:../schema.md#4-项目页-项目"
+      ],
+      "related": []
+    },
+    "写作/LLM-Wiki不是RAG.md": {
+      "title": "LLM-Wiki不是RAG",
+      "incoming": [
+        "概念/Karpathy知识库方法.md"
+      ],
+      "outgoing": [
+        "概念/AI知识库构建.md",
+        "概念/Karpathy知识库方法.md",
+        "来源/2026-04-12-AI知识库工作流与剪藏体系.md"
+      ],
+      "related": []
+    },
+    "写作/README.md": {
+      "title": "README",
+      "incoming": [],
+      "outgoing": [
+        "BROKEN:../schema.md#6-写作页-写作",
+        "BROKEN:../RESOLVER.md#6️⃣-写作",
+        "BROKEN:../schema.md#6-写作页-写作"
+      ],
+      "related": []
+    }
+  }
+}
