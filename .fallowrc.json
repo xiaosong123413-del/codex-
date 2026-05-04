@@ -2,6 +2,7 @@
   "$schema": "https://fallow.tools/schema.json",
   "entry": [
     "src/cli.ts",
+    "src/compiler/concept-pages.ts",
     "scripts/**/*.mjs",
     "web/build-client.mjs",
     "web/server/index.ts",
@@ -10,15 +11,18 @@
     "web/client/src/pages/review/automation-flow.ts",
     "web/client/src/pages/runs/automation-flow.ts",
     "web/client/src/pages/sources/automation-flow.ts",
+    "web/client/src/pages/wiki/identity-info-profile.ts",
     "web/client/styles.css",
     "web/client/assets/styles/**/*.css",
     "desktop-webui/src/main.ts",
     "desktop-webui/src/preload.ts",
     "desktop-webui/scripts/*.mjs",
+    "desktop-webui/scripts/*.ts",
     "audit-shared/src/index.ts",
     "plugins/obsidian-audit/esbuild.config.mjs",
     "plugins/obsidian-audit/src/main.ts",
     "plugins/obsidian-audit/styles.css",
+    "cloudflare/ai-native-mcp-worker/src/index.ts",
     "cloudflare/remote-brain-worker/src/index.ts",
     "functions/api/**/*.js",
     "functions/_lib/**/*.js",
@@ -32,9 +36,12 @@
   "ignorePatterns": [
     "codex/**",
     "plugins/obsidian-audit/main.js",
+    "test-index-build.mjs",
+    "test-search.mjs",
     "web/client/index.html"
   ],
   "ignoreDependencies": [
+    "agents",
     "audit-shared",
     "builtin-modules",
     "d3-drag",
@@ -49,14 +56,22 @@
     "markdown-it-anchor",
     "markdown-it-attrs",
     "markdown-it-texmath",
+    "mammoth",
     "mermaid",
     "next",
     "obsidian",
+    "pdf-parse",
     "react",
     "react-dom",
     "tsx",
+    "xlsx",
     "zod"
   ],
+  "duplicates": {
+    "enabled": true,
+    "minLines": 200,
+    "threshold": 15.0
+  },
   "overrides": [
     {
       "files": ["src/providers/*.ts"],

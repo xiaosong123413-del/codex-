@@ -51,6 +51,32 @@ describe("web intake summary", () => {
     expect(items.map((item) => item.title)).not.toContain("Done");
   });
 
+  it("includes markdown from configured sync source folders", () => {
+    const root = makeRoot();
+    const sourceRoot = path.join(root, "raw", "\u4e2a\u4eba\u4fe1\u606f");
+    fs.mkdirSync(sourceRoot, { recursive: true });
+    fs.writeFileSync(path.join(sourceRoot, "about.md"), "# About Me\n\nprofile", "utf8");
+
+    const options = { sourceRoots: [sourceRoot] };
+    const items = scanIntakeForReview(root, undefined, new Date(), options);
+    const plan = buildIntakePlan(root, undefined, new Date(), options);
+
+    expect(items).toContainEqual(
+      expect.objectContaining({
+        kind: "source",
+        channel: "\u4e2a\u4eba\u4fe1\u606f",
+        title: "About Me",
+        relativePath: "\u4e2a\u4eba\u4fe1\u606f/about.md",
+      }),
+    );
+    expect(plan).toContainEqual(
+      expect.objectContaining({
+        file: "\u4e2a\u4eba\u4fe1\u606f/about.md",
+        suggestedLocation: "\u6309\u6765\u6e90\u5f52\u6863/\u4e2a\u4eba\u4fe1\u606f/",
+      }),
+    );
+  });
+
   it("does not surface yesterday flash diary again after it was compiled", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-04-22T09:00:00"));
@@ -127,6 +153,43 @@ describe("web intake summary", () => {
 
     expect(items.map((item) => item.relativePath)).not.toContain("\u526a\u85cf/2026-04-21-11.md");
     expect(plan.map((item) => item.file)).not.toContain("\u526a\u85cf/2026-04-21-11.md");
+  });
+
+  it("does not surface configured source material again after it was compiled", () => {
+    const sourceVaultRoot = makeRoot();
+    const runtimeRoot = makeRoot();
+    const sourceRoot = path.join(sourceVaultRoot, "raw", "\u4e2a\u4eba\u4fe1\u606f");
+    fs.mkdirSync(sourceRoot, { recursive: true });
+    fs.writeFileSync(path.join(sourceRoot, "about.md"), "# About Me\n\nalready compiled\n", "utf8");
+    fs.writeFileSync(
+      path.join(runtimeRoot, "raw_import_manifest.json"),
+      `${JSON.stringify({
+        imports: [
+          {
+            imported_filename: "about__deadbeef.md",
+            source_kind: "source",
+            source_root: sourceRoot,
+            source_relative_path: "about.md",
+          },
+        ],
+      }, null, 2)}\n`,
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(runtimeRoot, ".llmwiki-batch-state.json"),
+      `${JSON.stringify({
+        completed_files: ["about__deadbeef.md"],
+        flash_diary_auto_compile: { last_run_on: null },
+      }, null, 2)}\n`,
+      "utf8",
+    );
+
+    const options = { sourceRoots: [sourceRoot] };
+    const items = scanIntakeForReview(sourceVaultRoot, runtimeRoot, new Date(), options);
+    const plan = buildIntakePlan(sourceVaultRoot, runtimeRoot, new Date(), options);
+
+    expect(items.map((item) => item.relativePath)).not.toContain("\u4e2a\u4eba\u4fe1\u606f/about.md");
+    expect(plan.map((item) => item.file)).not.toContain("\u4e2a\u4eba\u4fe1\u606f/about.md");
   });
 });
 

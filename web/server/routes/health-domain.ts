@@ -150,7 +150,7 @@ function handleWorkspaceHealthQrLoginPoll(cfg: ServerConfig) {
       }
       const state = await saveHealthDomainAccountConnection(cfg.projectRoot, {
         tokenJson: result.tokenJson,
-        relativeUid: "",
+        relativeUid: readText(req.query.relativeUid),
       });
       res.json(success({ status: "connected", state }));
     } catch (error) {

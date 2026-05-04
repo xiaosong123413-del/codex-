@@ -1,33 +1,39 @@
-/* Design tokens — see docs/superpowers/specs/2026-04-17-web-ui-redesign-design.md §4 */
+/* Design tokens — Wikipedia-style application palette. */
 :root {
   /* Brand */
-  --primary: #6D57FF;
-  --primary-hover: #5B46E8;
-  --primary-soft: #EFEBFF;
-  --primary-ring: rgba(109, 87, 255, 0.22);
+  --primary: #3366CC;
+  --primary-hover: #0645AD;
+  --primary-soft: #F5FAFF;
+  --primary-ring: rgba(51, 102, 204, 0.22);
 
   /* Neutrals */
-  --bg-app: #F7F7FB;
+  --bg-app: #F8F9FA;
   --bg-panel: #FFFFFF;
-  --bg-muted: #F2F2F7;
-  --bg-hover: #EDEDF4;
-  --bg-selected: #E8E5F7;
+  --bg-muted: #EAECF0;
+  --bg-hover: #F5F6F7;
+  --bg-selected: #EAF3FF;
+  --bg-canvas: #F8F9FA;
+  --surface: #FFFFFF;
+  --surface-muted: #EAECF0;
 
   /* Borders */
-  --border: #EAEAF0;
-  --border-strong: #D8D8E2;
+  --border: #C8CCD1;
+  --border-strong: #A2A9B1;
 
   /* Text */
-  --text: #18181B;
-  --text-secondary: #52525B;
-  --text-muted: #8A8A93;
+  --text: #202122;
+  --text-primary: #202122;
+  --text-secondary: #54595D;
+  --text-muted: #72777D;
+  --text-tertiary: #72777D;
   --text-on-primary: #FFFFFF;
+  --accent: #3366CC;
 
   /* Semantic */
-  --success: #10B981;
-  --warn: #F59E0B;
-  --danger: #EF4444;
-  --info: #3B82F6;
+  --success: #14866D;
+  --warn: #AC6600;
+  --danger: #D33;
+  --info: #3366CC;
 
   /* Radius */
   --radius-xs: 6px;
@@ -47,9 +53,10 @@
   --space-10: 40px;
 
   /* Elevation */
-  --shadow-sm: 0 1px 2px rgba(24, 24, 27, 0.04);
-  --shadow-md: 0 4px 16px rgba(24, 24, 27, 0.06), 0 2px 4px rgba(24, 24, 27, 0.04);
-  --shadow-lg: 0 20px 48px rgba(109, 87, 255, 0.12), 0 4px 12px rgba(24, 24, 27, 0.06);
+  --shadow-sm: 0 1px 2px rgba(32, 33, 34, 0.08);
+  --shadow-md: 0 2px 8px rgba(32, 33, 34, 0.12);
+  --shadow-lg: 0 8px 24px rgba(32, 33, 34, 0.16);
+  --shadow-soft: 0 2px 8px rgba(32, 33, 34, 0.10);
 
   /* Motion */
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);

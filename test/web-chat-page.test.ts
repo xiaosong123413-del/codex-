@@ -26,6 +26,7 @@ describe("mountChatPage", () => {
     expect(chat.composer.id).toBe("chat-composer");
     expect(container.querySelectorAll("[data-chat-search-scope]")).toHaveLength(3);
     expect(container.querySelector("[data-chat-app]")).not.toBeNull();
+    expect(container.querySelector("[data-chat-history-depth]")).not.toBeNull();
     expect(container.querySelector("[data-panel-handle='chat.sidebarWidth']")).not.toBeNull();
     expect(sidebarToggle).not.toBeNull();
     expect(sidebarToggle?.getAttribute("aria-label")).toBe("折叠会话栏");
@@ -79,6 +80,278 @@ describe("mountChatPage", () => {
     expect(chat.messageList.textContent).toContain("hello");
     expect(chat.messageList.textContent).toContain("world");
     expect(chat.articleRefs.textContent).toContain("wiki/concepts/example.md");
+  });
+
+  it("renders cited assistant references under the message", () => {
+    const container = document.getElementById("chat-app") as HTMLElement;
+    const chat = mountChatPage(container);
+
+    chat.renderThread({
+      title: "Spec thread",
+      messages: [{
+        id: "m1",
+        role: "assistant",
+        content: "Redis 是缓存系统。[1]\n<!-- cited: 1 -->",
+        createdAt: "2026-04-17T10:00:00.000Z",
+        references: [
+          {
+            index: 1,
+            kind: "wiki",
+            title: "Redis",
+            path: "wiki/concepts/redis.md",
+            excerpt: "Redis excerpt",
+          },
+          {
+            index: 2,
+            kind: "wiki",
+            title: "Unused",
+            path: "wiki/concepts/unused.md",
+            excerpt: "Unused excerpt",
+          },
+        ],
+      }],
+      articleRefs: [],
+    });
+
+    const refs = chat.messageList.querySelector(".chat-message-refs");
+    expect(chat.messageList.textContent).toContain("Redis 是缓存系统。[1]");
+    expect(chat.messageList.textContent).not.toContain("cited:");
+    expect(refs?.tagName).toBe("DETAILS");
+    expect((refs as HTMLDetailsElement | null)?.open).toBe(true);
+    expect(refs?.textContent).toContain("引用参考文献 (1)");
+    expect(refs?.textContent).toContain("[1] Redis");
+    expect(refs?.textContent).toContain("wiki/concepts/redis.md");
+    expect(refs?.textContent).not.toContain("Unused");
+  });
+
+  it("renders completed thinking blocks collapsed and outside the answer body", () => {
+    const container = document.getElementById("chat-app") as HTMLElement;
+    const chat = mountChatPage(container);
+
+    chat.renderThread({
+      id: "c1",
+      title: "Spec thread",
+      messages: [{
+        id: "m1",
+        role: "assistant",
+        content: "<think>先检索页面\n再组织答案</think>\n最终回答",
+        createdAt: "2026-04-17T10:00:00.000Z",
+      }],
+      articleRefs: [],
+    });
+
+    const thinking = chat.messageList.querySelector<HTMLDetailsElement>(".chat-message-thinking");
+    const body = chat.messageList.querySelector<HTMLElement>(".chat-message__body");
+
+    expect(thinking).not.toBeNull();
+    expect(thinking?.open).toBe(false);
+    expect(thinking?.textContent).toContain("先检索页面");
+    expect(body?.textContent).toContain("最终回答");
+    expect(body?.textContent).not.toContain("先检索页面");
+  });
+
+  it("renders streaming thinking as a rolling five-line display", () => {
+    const container = document.getElementById("chat-app") as HTMLElement;
+    const chat = mountChatPage(container);
+
+    chat.renderThread({
+      id: "c1",
+      title: "Spec thread",
+      messages: [{
+        id: "streaming-assistant",
+        role: "assistant",
+        content: "<think>one\ntwo\nthree\nfour\nfive\nsix</think>\n回答中",
+        createdAt: "2026-04-17T10:00:00.000Z",
+      }],
+      articleRefs: [],
+    });
+
+    const lines = [...chat.messageList.querySelectorAll<HTMLElement>(".chat-message-thinking__lines span")];
+    const body = chat.messageList.querySelector<HTMLElement>(".chat-message__body");
+
+    expect(lines.map((line) => line.textContent)).toEqual(["two", "three", "four", "five", "six"]);
+    expect(chat.messageList.querySelector("details.chat-message-thinking")).toBeNull();
+    expect(body?.textContent).toContain("回答中");
+    expect(body?.textContent).not.toContain("six");
+  });
+
+  it("opens wiki references from the cited references panel", () => {
+    const container = document.getElementById("chat-app") as HTMLElement;
+    const onOpenReference = vi.fn();
+    const chat = mountChatPage(container, { onOpenReference });
+
+    chat.renderThread({
+      id: "c1",
+      title: "Spec thread",
+      messages: [{
+        id: "m1",
+        role: "assistant",
+        content: "Redis 是缓存系统。[1]",
+        createdAt: "2026-04-17T10:00:00.000Z",
+        references: [{
+          index: 1,
+          kind: "wiki",
+          title: "Redis",
+          path: "wiki/concepts/redis.md",
+          excerpt: "Redis excerpt",
+        }],
+      }],
+      articleRefs: [],
+    });
+
+    const link = container.querySelector<HTMLAnchorElement>("[data-knowledge-preview-path]");
+    link?.click();
+
+    expect(link?.getAttribute("href")).toBe("#/wiki/wiki%2Fconcepts%2Fredis.md");
+    expect(onOpenReference).toHaveBeenCalledWith("wiki/concepts/redis.md");
+  });
+
+  it("opens inline citation numbers from the answer body", () => {
+    const container = document.getElementById("chat-app") as HTMLElement;
+    const onOpenReference = vi.fn();
+    const chat = mountChatPage(container, { onOpenReference });
+
+    chat.renderThread({
+      id: "c1",
+      title: "Spec thread",
+      messages: [{
+        id: "m1",
+        role: "assistant",
+        content: "重点看 NVH 汽车调研 [6] 和购车流程 [3]，未引用 [9]。",
+        createdAt: "2026-04-17T10:00:00.000Z",
+        references: [
+          {
+            index: 3,
+            kind: "wiki",
+            title: "购车决策流程",
+            path: "wiki/concepts/购车决策流程.md",
+            excerpt: "购车流程 excerpt",
+          },
+          {
+            index: 6,
+            kind: "wiki",
+            title: "NVH 汽车调研",
+            path: "wiki/concepts/nvh-汽车调研.md",
+            excerpt: "NVH excerpt",
+          },
+        ],
+      }],
+      articleRefs: [],
+    });
+
+    const citation = container.querySelector<HTMLAnchorElement>("[data-knowledge-preview-index='6']");
+    citation?.click();
+
+    expect(citation?.textContent).toBe("[6]");
+    expect(citation?.getAttribute("href")).toBe("#/wiki/wiki%2Fconcepts%2Fnvh-%E6%B1%BD%E8%BD%A6%E8%B0%83%E7%A0%94.md");
+    expect(onOpenReference).toHaveBeenCalledWith("wiki/concepts/nvh-汽车调研.md");
+    expect(container.querySelector("[data-knowledge-preview-index='9']")).toBeNull();
+  });
+
+  it("captures inline citation clicks before outer route handlers", () => {
+    const container = document.getElementById("chat-app") as HTMLElement;
+    const onOpenReference = vi.fn();
+    const outerClick = vi.fn();
+    const chat = mountChatPage(container, { onOpenReference });
+    document.body.addEventListener("click", outerClick);
+
+    chat.renderThread({
+      id: "c1",
+      title: "Spec thread",
+      messages: [{
+        id: "m1",
+        role: "assistant",
+        content: "重点看 [7]。",
+        createdAt: "2026-04-17T10:00:00.000Z",
+        references: [{
+          index: 7,
+          kind: "wiki",
+          title: "引用页面",
+          path: "wiki/concepts/ref.md",
+          excerpt: "ref excerpt",
+        }],
+      }],
+      articleRefs: [],
+    });
+
+    container.querySelector<HTMLAnchorElement>("[data-knowledge-preview-index='7']")?.click();
+
+    expect(onOpenReference).toHaveBeenCalledWith("wiki/concepts/ref.md");
+    expect(outerClick).not.toHaveBeenCalled();
+  });
+
+  it("does not link citation numbers inside code blocks", () => {
+    const container = document.getElementById("chat-app") as HTMLElement;
+    const chat = mountChatPage(container);
+
+    chat.renderThread({
+      id: "c1",
+      title: "Spec thread",
+      messages: [{
+        id: "m1",
+        role: "assistant",
+        content: "正文 [6]\n\n```txt\n[6]\n```",
+        createdAt: "2026-04-17T10:00:00.000Z",
+        references: [{
+          index: 6,
+          kind: "wiki",
+          title: "NVH 汽车调研",
+          path: "wiki/concepts/nvh-汽车调研.md",
+          excerpt: "NVH excerpt",
+        }],
+      }],
+      articleRefs: [],
+    });
+
+    expect(container.querySelectorAll("[data-knowledge-preview-index='6']")).toHaveLength(1);
+    expect(container.querySelector("pre [data-knowledge-preview-index='6']")).toBeNull();
+  });
+
+  it("opens wiki references when clicking the path chip text", () => {
+    const container = document.getElementById("chat-app") as HTMLElement;
+    const onOpenReference = vi.fn();
+    const chat = mountChatPage(container, { onOpenReference });
+
+    chat.renderThread({
+      id: "c1",
+      title: "Spec thread",
+      messages: [{
+        id: "m1",
+        role: "assistant",
+        content: "参考 Context DAG。[4]",
+        createdAt: "2026-04-17T10:00:00.000Z",
+        references: [{
+          index: 4,
+          kind: "wiki",
+          title: "Context DAG（上下文有向无环图）",
+          path: "wiki/concepts/context-dag上下文有向无环图.md",
+          excerpt: "Context DAG excerpt",
+        }],
+      }],
+      articleRefs: [],
+    });
+
+    container.querySelector<HTMLElement>(".chat-message-ref small")?.click();
+
+    expect(onOpenReference).toHaveBeenCalledWith("wiki/concepts/context-dag上下文有向无环图.md");
+  });
+
+  it("opens selected page chips through the chat reference path handler", () => {
+    const container = document.getElementById("chat-app") as HTMLElement;
+    const onOpenReference = vi.fn();
+    const chat = mountChatPage(container, { onOpenReference });
+
+    chat.renderThread({
+      id: "c1",
+      title: "Spec thread",
+      messages: [],
+      articleRefs: ["wiki/concepts/redis.md"],
+    });
+
+    container.querySelector<HTMLElement>(".chip__reference")?.click();
+
+    expect(container.querySelector(".chip__reference")?.getAttribute("data-knowledge-preview-path")).toBe("wiki/concepts/redis.md");
+    expect(onOpenReference).toHaveBeenCalledWith("wiki/concepts/redis.md");
   });
 
   it("renders markdown-like message content as readable HTML and marks short lines compact", () => {
@@ -163,6 +436,29 @@ describe("mountChatPage", () => {
     expect(onSearchScopeChange).toHaveBeenCalledWith("web");
     expect(onAppChange).toHaveBeenCalledWith("codex-app");
     expect(onSendMessage).toHaveBeenCalledWith("draft message");
+  });
+
+  it("emits history depth changes for the active thread", () => {
+    const container = document.getElementById("chat-app") as HTMLElement;
+    const onHistoryDepthChange = vi.fn();
+    const chat = mountChatPage(container, { onHistoryDepthChange });
+
+    chat.renderThread({
+      id: "c1",
+      title: "Spec thread",
+      messages: [],
+      articleRefs: [],
+      maxHistoryMessages: 12,
+    });
+
+    const input = container.querySelector<HTMLInputElement>("[data-chat-history-depth]")!;
+    expect(input.value).toBe("12");
+
+    input.value = "250";
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+
+    expect(input.value).toBe("100");
+    expect(onHistoryDepthChange).toHaveBeenCalledWith("c1", 100);
   });
 
   it("renders live composer article refs and search scope state", () => {

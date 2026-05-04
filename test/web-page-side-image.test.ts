@@ -53,6 +53,42 @@ describe("handlePageSideImageUpload", () => {
       }),
     }));
   });
+
+  it("can write avatar_image frontmatter for identity profile avatars", () => {
+    const sourceVaultRoot = makeDir("llmwiki-avatar-image-source-");
+    const runtimeRoot = makeDir("llmwiki-avatar-image-runtime-");
+    const pagePath = path.join(sourceVaultRoot, "wiki", "个人身份信息档案.md");
+    fs.mkdirSync(path.dirname(pagePath), { recursive: true });
+    fs.writeFileSync(pagePath, "# 个人身份信息档案\n", "utf8");
+
+    const handler = handlePageSideImageUpload(makeServerConfig(sourceVaultRoot, runtimeRoot));
+    const json = vi.fn();
+
+    handler(
+      {
+        body: {
+          path: "wiki/个人身份信息档案.md",
+          fileName: "avatar.png",
+          dataUrl: PNG_DATA_URL,
+          frontmatterKey: "avatar_image",
+        },
+      } as never,
+      { json, status: vi.fn() } as never,
+    );
+
+    const updatedRaw = fs.readFileSync(pagePath, "utf8");
+    expect(updatedRaw).toContain("avatar_image: wiki/.page-media/个人身份信息档案-avatar.png");
+    expect(updatedRaw).not.toContain("side_image:");
+
+    const storedImage = path.join(sourceVaultRoot, "wiki", ".page-media", "个人身份信息档案-avatar.png");
+    expect(fs.existsSync(storedImage)).toBe(true);
+    expect(json).toHaveBeenCalledWith(expect.objectContaining({
+      success: true,
+      data: expect.objectContaining({
+        sideImagePath: "wiki/.page-media/个人身份信息档案-avatar.png",
+      }),
+    }));
+  });
 });
 
 describe("handlePageSideImageMedia", () => {

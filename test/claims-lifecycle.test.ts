@@ -4,9 +4,18 @@ import {
   deriveProcedures,
   calculateConfidence,
   calculateRetention,
-  type ClaimCandidate,
-  type ClaimRecord,
 } from "../src/compiler/claims.js";
+import type { ClaimCandidate, ClaimRecord } from "../src/utils/types.js";
+
+function makeSource(file: string, observedAt: string) {
+  return {
+    file,
+    title: file,
+    kind: "external",
+    channel: "外部源",
+    observedAt,
+  };
+}
 
 function makeClaim(overrides: Partial<ClaimRecord> = {}): ClaimRecord {
   return {
@@ -16,7 +25,7 @@ function makeClaim(overrides: Partial<ClaimRecord> = {}): ClaimRecord {
     claimText: "Project X uses Redis for caching.",
     claimType: "fact",
     sourceFiles: ["a.md"],
-    episodeIds: ["ep-a"],
+    sources: [makeSource("a.md", "2026-04-01T00:00:00.000Z")],
     firstSeenAt: "2026-04-01T00:00:00.000Z",
     lastConfirmedAt: "2026-04-01T00:00:00.000Z",
     supportCount: 1,
@@ -36,8 +45,7 @@ function makeCandidate(overrides: Partial<ClaimCandidate> = {}): ClaimCandidate 
     claimKey: "cache-backend",
     claimText: "Project X uses Redis for caching.",
     claimType: "fact",
-    sourceFile: "b.md",
-    episodeId: "ep-b",
+    source: makeSource("b.md", "2026-04-10T00:00:00.000Z"),
     observedAt: "2026-04-10T00:00:00.000Z",
     ...overrides,
   };
@@ -111,7 +119,7 @@ describe("claim lifecycle", () => {
     expect(result.claims.every((claim) => claim.status === "contested")).toBe(true);
   });
 
-  it("promotes repeated workflow claims into procedures", () => {
+  it("promotes repeated workflow source evidence into procedures", () => {
     const claims = [
       makeClaim({
         id: "claim-a",
@@ -119,36 +127,22 @@ describe("claim lifecycle", () => {
         conceptSlug: "incident-response",
         claimKey: "restart-sequence",
         claimText: "Handle incident by restart service, inspect logs, and verify health endpoint.",
-        episodeIds: ["ep-1"],
-        sourceFiles: ["a.md"],
-        lastConfirmedAt: "2026-04-01T00:00:00.000Z",
-      }),
-      makeClaim({
-        id: "claim-b",
-        claimType: "workflow",
-        conceptSlug: "incident-response",
-        claimKey: "restart-sequence",
-        claimText: "Handle incident by restart service, inspect logs, and verify health endpoint.",
-        episodeIds: ["ep-2"],
-        sourceFiles: ["b.md"],
-        lastConfirmedAt: "2026-04-03T00:00:00.000Z",
-      }),
-      makeClaim({
-        id: "claim-c",
-        claimType: "workflow",
-        conceptSlug: "incident-response",
-        claimKey: "restart-sequence",
-        claimText: "Handle incident by restart service, inspect logs, and verify health endpoint.",
-        episodeIds: ["ep-3"],
-        sourceFiles: ["c.md"],
+        sourceFiles: ["a.md", "b.md", "c.md"],
+        sources: [
+          makeSource("a.md", "2026-04-01T00:00:00.000Z"),
+          makeSource("b.md", "2026-04-03T00:00:00.000Z"),
+          makeSource("c.md", "2026-04-08T00:00:00.000Z"),
+        ],
         lastConfirmedAt: "2026-04-08T00:00:00.000Z",
+        supportCount: 3,
       }),
     ];
 
     const procedures = deriveProcedures(claims);
 
     expect(procedures).toHaveLength(1);
-    expect(procedures[0]?.supportingClaimIds).toEqual(["claim-a", "claim-b", "claim-c"]);
+    expect(procedures[0]?.supportingClaimIds).toEqual(["claim-a"]);
+    expect(procedures[0]?.sourceFiles).toEqual(["a.md", "b.md", "c.md"]);
     expect(procedures[0]?.confidence).toBeGreaterThan(0.5);
   });
 });

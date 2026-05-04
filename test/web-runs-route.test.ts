@@ -47,6 +47,7 @@ describe("web runs route", () => {
       lines: [],
     };
     const manager = {
+      getCurrent: vi.fn().mockReturnValue(null),
       start: vi.fn().mockReturnValue(run),
       waitForRun: vi.fn().mockResolvedValue({
         ...run,
@@ -89,6 +90,7 @@ describe("web runs route", () => {
       lines: [],
     };
     const manager = {
+      getCurrent: vi.fn().mockReturnValue(null),
       start: vi.fn().mockReturnValue(run),
       waitForRun: vi.fn().mockResolvedValue({
         ...run,
@@ -103,6 +105,54 @@ describe("web runs route", () => {
     expect(response.statusCode).toBe(202);
     expect(searchAll).not.toHaveBeenCalled();
     expect(fs.existsSync(path.join(cfg.runtimeRoot, ".llmwiki", "review-web-search-suggestions.json"))).toBe(false);
+  });
+
+  it("returns the existing run when the same kind is already active", async () => {
+    const cfg = makeConfig();
+    const response = createJsonResponse();
+    const run = {
+      id: "sync-active",
+      kind: "sync" as const,
+      status: "running" as const,
+      startedAt: "2026-04-25T00:00:00.000Z",
+      lines: [],
+    };
+    const manager = {
+      getCurrent: vi.fn().mockReturnValue(run),
+      start: vi.fn(),
+      waitForRun: vi.fn(),
+    };
+
+    await handleRunStart(cfg, manager as never, "sync")({} as never, response as never);
+
+    expect(response.statusCode).toBe(202);
+    expect(response.body).toEqual({ success: true, data: run });
+    expect(manager.start).not.toHaveBeenCalled();
+  });
+
+  it("rejects a new run when another kind is already active", async () => {
+    const cfg = makeConfig();
+    const response = createJsonResponse();
+    const manager = {
+      getCurrent: vi.fn().mockReturnValue({
+        id: "check-active",
+        kind: "check" as const,
+        status: "running" as const,
+        startedAt: "2026-04-25T00:00:00.000Z",
+        lines: [],
+      }),
+      start: vi.fn(),
+      waitForRun: vi.fn(),
+    };
+
+    await handleRunStart(cfg, manager as never, "sync")({} as never, response as never);
+
+    expect(response.statusCode).toBe(409);
+    expect(response.body).toEqual({
+      success: false,
+      error: "系统检查已在后台运行，请等待结束后再启动同步编译。",
+    });
+    expect(manager.start).not.toHaveBeenCalled();
   });
 });
 

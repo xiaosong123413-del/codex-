@@ -1,6 +1,6 @@
-type SearchMode = "direct" | "keyword" | "hybrid";
+export type IntentSearchMode = "direct" | "keyword" | "hybrid";
 
-export function chooseSearchMode(query: string): SearchMode {
+export function chooseSearchMode(query: string): IntentSearchMode {
   const trimmed = query.trim();
   if (!trimmed) return "keyword";
 

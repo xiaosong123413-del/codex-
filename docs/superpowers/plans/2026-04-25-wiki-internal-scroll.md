@@ -1,8 +1,8 @@
-# Wiki Internal Scroll Implementation Plan
+﻿# Wiki Internal Scroll Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make the Farzapedia wiki page scroll inside its own content region while keeping the title, search, and tool row fixed at the top of the wiki pane.
+**Goal:** Make the Peiweipedia wiki page scroll inside its own content region while keeping the title, search, and tool row fixed at the top of the wiki pane.
 
 **Architecture:** Split the wiki main column into a fixed chrome wrapper and a scrollable body wrapper. Keep the existing header and tab markup semantics, but move them into a dedicated `wiki-page__chrome` container and put the lead/article/modules inside a dedicated `wiki-page__body` scroll container. Verify the new layout with focused page tests plus a small regression pass.
 

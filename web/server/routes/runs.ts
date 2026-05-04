@@ -12,6 +12,19 @@ export function handleRunCurrent(manager: RunManager) {
 export function handleRunStart(cfg: ServerConfig, manager: RunManager, kind: RunKind) {
   return (_req: Request, res: Response) => {
     try {
+      const currentRun = manager.getCurrent();
+      if (currentRun?.status === "running") {
+        if (currentRun.kind === kind) {
+          res.status(202).json({ success: true, data: currentRun });
+          return;
+        }
+        res.status(409).json({
+          success: false,
+          error: `${formatRunKind(currentRun.kind)}已在后台运行，请等待结束后再启动${formatRunKind(kind)}。`,
+        });
+        return;
+      }
+
       const run = manager.start(kind, {
         sourceVaultRoot: cfg.sourceVaultRoot,
         runtimeRoot: cfg.runtimeRoot,
@@ -38,6 +51,10 @@ export function handleRunStart(cfg: ServerConfig, manager: RunManager, kind: Run
       });
     }
   };
+}
+
+function formatRunKind(kind: RunKind): string {
+  return kind === "sync" ? "同步编译" : "系统检查";
 }
 
 export function handleRunEvents(manager: RunManager) {

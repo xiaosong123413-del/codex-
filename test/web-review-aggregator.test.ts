@@ -267,6 +267,36 @@ describe("review-aggregator", () => {
     ]);
   });
 
+  it("includes failed personal timeline source refreshes", () => {
+    const root = makeRoot();
+    fs.mkdirSync(path.join(root, ".llmwiki"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, ".llmwiki", "personal-timeline-source-failures.json"),
+      JSON.stringify([
+        {
+          id: "timeline-source-fail-1",
+          label: "历史回忆",
+          entries: ["wiki/个人信息档案/历史回忆.md"],
+          error: "输入来源路径不存在",
+          createdAt: "2026-04-29T04:00:00.000Z",
+          status: "failed",
+        },
+      ]),
+      "utf8",
+    );
+
+    const summary = aggregateReviewItems({ sourceVaultRoot: root, runtimeRoot: root, projectRoot: root });
+
+    expect(summary.items).toContainEqual(
+      expect.objectContaining({
+        id: "timeline-source-fail-1",
+        kind: "personal-timeline-source-failure",
+        title: "个人时间线来源刷新失败",
+        detail: expect.stringContaining("历史回忆"),
+      }),
+    );
+  });
+
   it("reads runtime review state but keeps inbox materials in the source vault", () => {
     const sourceVaultRoot = makeRoot();
     const runtimeRoot = makeRoot();

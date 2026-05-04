@@ -7,6 +7,8 @@ import texmath from "markdown-it-texmath";
 import katex from "katex";
 import path from "node:path";
 import fs from "node:fs";
+import yaml from "js-yaml";
+import { normalizeMarkdownHeadingAnchor } from "./heading-anchors.js";
 import { wikilinksPlugin, type WikilinkResolver } from "./wikilinks.js";
 
 interface RenderedPage {
@@ -18,6 +20,7 @@ interface RenderedPage {
 
 interface RendererOptions {
   pageLookupRoot?: string;
+  headingPermalinks?: boolean;
   wikilinkResolver?: WikilinkResolver;
 }
 
@@ -31,10 +34,15 @@ export function createRenderer(opts: RendererOptions) {
 
   md.use(attrs, {});
   md.use(anchor, {
-    permalink: anchor.permalink.linkInsideHeader({
-      symbol: "§",
-      placement: "before",
-    }),
+    slugify: normalizeMarkdownHeadingAnchor,
+    ...(opts.headingPermalinks === false
+      ? {}
+      : {
+          permalink: anchor.permalink.linkInsideHeader({
+            symbol: "§",
+            placement: "before",
+          }),
+        }),
   });
   md.use(texmath, {
     engine: katex,
@@ -121,13 +129,7 @@ function stripFrontmatter(text: string): {
   let frontmatter: Record<string, unknown> | null = null;
   let body = normalizedText;
   if (m) {
-    // We don't need full YAML parsing here — keep it for display only.
-    frontmatter = {};
-    for (const line of m[1]!.split(/\r?\n/)) {
-      const idx = line.indexOf(":");
-      if (idx < 0) continue;
-      frontmatter[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
-    }
+    frontmatter = parseYamlFrontmatter(m[1] ?? "");
     body = normalizedText.slice(m[0].length);
   }
   const h1 = /^#\s+(.+?)\s*$/m.exec(body);
@@ -136,6 +138,19 @@ function stripFrontmatter(text: string): {
     (h1 && h1[1]) ||
     null;
   return { frontmatter, body, title };
+}
+
+function parseYamlFrontmatter(value: string): Record<string, unknown> | null {
+  try {
+    const parsed = yaml.load(value);
+    return isPlainRecord(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**

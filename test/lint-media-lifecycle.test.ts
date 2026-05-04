@@ -12,7 +12,6 @@ beforeEach(async () => {
   tmpDir = await mkdtemp(path.join(os.tmpdir(), "lint-media-"));
   await mkdir(path.join(tmpDir, "wiki", "concepts"), { recursive: true });
   await mkdir(path.join(tmpDir, "wiki", "queries"), { recursive: true });
-  await mkdir(path.join(tmpDir, "wiki", "episodes"), { recursive: true });
   await mkdir(path.join(tmpDir, "wiki", "procedures"), { recursive: true });
   await mkdir(path.join(tmpDir, "raw"), { recursive: true });
   await mkdir(path.join(tmpDir, "sources_full", "\u9644\u4ef6\u526f\u672c\uff08\u975eMarkdown\uff09"), { recursive: true });
@@ -106,7 +105,13 @@ describe("claim lifecycle lint rules", () => {
         claimText: "Project X uses Redis for caching.",
         claimType: "fact",
         sourceFiles: ["a.md"],
-        episodeIds: ["ep-1"],
+        sources: [{
+          file: "a.md",
+          title: "a.md",
+          kind: "external",
+          channel: "外部源",
+          observedAt: "2026-04-01T00:00:00.000Z",
+        }],
         firstSeenAt: "2026-04-01T00:00:00.000Z",
         lastConfirmedAt: "2026-04-01T00:00:00.000Z",
         supportCount: 1,
@@ -138,7 +143,13 @@ describe("claim lifecycle lint rules", () => {
         claimText: "Project X uses Redis for caching.",
         claimType: "fact",
         sourceFiles: ["a.md"],
-        episodeIds: ["ep-1"],
+        sources: [{
+          file: "a.md",
+          title: "a.md",
+          kind: "external",
+          channel: "外部源",
+          observedAt: "2026-04-01T00:00:00.000Z",
+        }],
         firstSeenAt: "2026-04-01T00:00:00.000Z",
         lastConfirmedAt: "2026-04-01T00:00:00.000Z",
         supportCount: 1,

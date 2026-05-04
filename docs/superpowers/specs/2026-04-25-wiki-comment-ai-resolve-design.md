@@ -1,8 +1,8 @@
-# Wiki Comment AI Resolve Design
+﻿# Wiki Comment AI Resolve Design
 
 ## Goal
 
-Add an `AI自动解决` action to Farzapedia wiki comments so that a comment can drive an AI-generated page edit proposal.
+Add an `AI自动解决` action to Peiweipedia wiki comments so that a comment can drive an AI-generated page edit proposal.
 
 The workflow is strict:
 
@@ -20,7 +20,7 @@ This feature exists to close the loop between comment feedback and source conten
 
 In scope:
 
-- Farzapedia wiki comment cards in `web/client/src/components/wiki-comments.ts`
+- Peiweipedia wiki comment cards in `web/client/src/components/wiki-comments.ts`
 - wiki page comment orchestration in `web/client/src/pages/wiki/index.ts`
 - new wiki comment AI draft backend routes under `web/server/routes/`
 - new wiki comment AI draft service/storage under `web/server/services/`

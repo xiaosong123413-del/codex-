@@ -31,39 +31,100 @@ llmwiki query "what is X?"
 
 llmwiki configures providers via environment variables. The default provider is Anthropic.
 
-Configuration precedence for Anthropic values:
-
-1. Shell env / local `.env`
-2. Claude Code settings fallback (`~/.claude/settings.json` → `env` block)
-3. Built-in provider defaults (where applicable)
-
-- `LLMWIKI_PROVIDER`: The provider to use (e.g., anthropic, openai).
+- `LLMWIKI_PROVIDER`: The provider to use: `anthropic` | `openai` | `gemini` | `ollama` | `minimax` | `cloudflare`
 - `LLMWIKI_MODEL`: The model name to override the provider default.
 
 ### Anthropic (Default)
 
-- `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN`: Required. Either one can satisfy Anthropic authentication.
-- `ANTHROPIC_BASE_URL`: Optional. Custom endpoint for proxies. Valid HTTP(S) URLs are accepted, including Claude-style path endpoints such as `https://api.kimi.com/coding/`.
+Configuration precedence: shell env / `.env` → Claude Code settings fallback (`~/.claude/settings.json` env block) → built-in defaults.
 
-Example using an Anthropic or cc-switch custom proxy:
+- `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN`: Required.
+- `ANTHROPIC_BASE_URL`: Optional. Custom endpoint for proxies.
 
 ```bash
 export LLMWIKI_PROVIDER=anthropic
 export ANTHROPIC_API_KEY=sk-...
-export ANTHROPIC_BASE_URL=https://proxy.example.com
+# Or zero exports if Claude Code already has credentials configured
 ```
 
-If those values are not set in shell env or `.env`, llmwiki will try Anthropic-compatible values from `~/.claude/settings.json` (`env` block) for:
-
-- `ANTHROPIC_API_KEY`
-- `ANTHROPIC_AUTH_TOKEN`
-- `ANTHROPIC_BASE_URL`
-- `ANTHROPIC_MODEL`
-
-Example with zero exports (Claude Code already configured):
+### OpenAI
 
 ```bash
-llmwiki compile
+export LLMWIKI_PROVIDER=openai
+export OPENAI_API_KEY=sk-proj-...
+# export LLMWIKI_OPENAI_BASE_URL=https://api.openai.com/v1/  # optional
+```
+
+### Google Gemini
+
+```bash
+export LLMWIKI_PROVIDER=gemini
+export GOOGLE_API_KEY=...
+# export GEMINI_BASE_URL=https://generativelanguage.googleapis.com  # optional
+```
+
+### Ollama (local models)
+
+```bash
+export LLMWIKI_PROVIDER=ollama
+export OLLAMA_HOST=http://localhost:11434/v1  # default
+```
+
+### MiniMax
+
+```bash
+export LLMWIKI_PROVIDER=minimax
+export MINIMAX_API_KEY=...
+# export MINIMAX_BASE_URL=https://api.minimax.io/anthropic  # optional
+```
+
+MiniMax uses its Anthropic-compatible Messages endpoint and bearer-token
+authentication.
+
+### Cloudflare Workers AI
+
+```bash
+# Option 1: Direct API
+export LLMWIKI_PROVIDER=cloudflare
+export CLOUDFLARE_ACCOUNT_ID=...
+export CLOUDFLARE_API_TOKEN=...
+
+# Option 2: Worker proxy
+export CLOUDFLARE_WORKER_URL=https://your-worker.workers.dev
+export CLOUDFLARE_REMOTE_TOKEN=...
+```
+
+See `.env.example` for a complete reference of all environment variables.
+
+## MCP Server
+
+llmwiki ships with an MCP server for agent integration. It exposes `ingest`, `compile`, `query`, and `lint` as MCP tools.
+
+### Claude Code
+
+Add to `.claude/mcp.json` in your project:
+
+```json
+{
+  "mcpServers": {
+    "llmwiki": {
+      "command": "node",
+      "args": ["path/to/llm-wiki-compiler/dist/mcp-server.js"]
+    }
+  }
+}
+```
+
+### Codex CLI
+
+```bash
+codex mcp add llmwiki -- node path/to/llm-wiki-compiler/dist/mcp-server.js
+```
+
+### Running directly
+
+```bash
+npm run mcp  # starts the MCP server on stdio
 ```
 
 ## Why not just RAG?
@@ -186,6 +247,7 @@ Karpathy describes an abstract pattern for turning raw data into compiled knowle
 | Output filing (save answers back) | `llmwiki query --save` | Implemented |
 | Auto-recompile | `llmwiki watch` | Implemented |
 | Linting / health-check pass | `llmwiki lint` | Implemented |
+| MCP server for agent integration | `dist/mcp-server.js` | Implemented |
 | Image support | — | Not yet implemented |
 | Marp slides | — | Not yet implemented |
 | Fine-tuning | — | Not yet implemented |
@@ -194,10 +256,10 @@ Karpathy describes an abstract pattern for turning raw data into compiled knowle
 
 - ✅ Better provenance (paragraph-level source attribution)
 - ✅ Linting pass for wiki quality checks
-- Multi-provider support (OpenAI, local models)
+- ✅ MCP server for agent integration (Codex & Claude Code)
+- ✅ Multi-provider support (Anthropic, OpenAI, Gemini, Ollama, MiniMax, Cloudflare)
 - Larger-corpus query strategy (semantic search, embeddings)
 - Deeper Obsidian integration
-- MCP server for agent integration
 
 If you want to contribute, these are the highest-leverage areas right now. Issues and PRs are welcome.
 

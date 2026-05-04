@@ -16,11 +16,21 @@
     <link rel="stylesheet" href="/assets/styles/base.css?v=%BUILD_VERSION%" />
     <link rel="stylesheet" href="/assets/styles/components.css?v=%BUILD_VERSION%" />
     <link rel="stylesheet" href="/assets/styles/feedback.css?v=%BUILD_VERSION%" />
-    <link rel="stylesheet" href="/assets/styles/graph.css?v=%BUILD_VERSION%" />
     <link rel="stylesheet" href="/assets/styles/wiki-home-cover.css?v=%BUILD_VERSION%" />
     <link rel="stylesheet" href="/assets/styles/wiki-launch.css?v=%BUILD_VERSION%" />
+    <link rel="stylesheet" href="/assets/styles/wiki-relation-graph.css?v=%BUILD_VERSION%" />
+    <link rel="stylesheet" href="/assets/styles/identity-info-profile.css?v=%BUILD_VERSION%" />
+    <link rel="stylesheet" href="/assets/styles/identity-info-profile-panels.css?v=%BUILD_VERSION%" />
     <link rel="stylesheet" href="/assets/styles/shell.css?v=%BUILD_VERSION%" />
+    <link rel="stylesheet" href="/assets/styles/rss-import.css?v=%BUILD_VERSION%" />
     <link rel="stylesheet" href="/assets/styles.css?v=%BUILD_VERSION%" />
+    <link rel="stylesheet" href="/assets/styles/execution-workbench.css?v=%BUILD_VERSION%" />
+    <link rel="stylesheet" href="/assets/styles/project-workspace.css?v=%BUILD_VERSION%" />
+    <link rel="stylesheet" href="/assets/styles/project-workspace-phases.css?v=%BUILD_VERSION%" />
+    <link rel="stylesheet" href="/assets/styles/project-workspace-interactions.css?v=%BUILD_VERSION%" />
+    <link rel="stylesheet" href="/assets/styles/settings-plugins.css?v=%BUILD_VERSION%" />
+    <link rel="stylesheet" href="/assets/styles/settings-dialog.css?v=%BUILD_VERSION%" />
+    <link rel="stylesheet" href="/assets/styles/wiki-theme.css?v=%BUILD_VERSION%" />
     <link rel="stylesheet" href="/katex/katex.min.css" />
   </head>
   <body>
@@ -33,15 +43,43 @@
         </div>
       </section>
 
-      <section id="setup-screen" class="startup-screen hidden">
+      <section id="setup-screen" class="startup-screen hidden" hidden>
         <div class="startup-card setup-card">
           <div class="setup-header">
             <div class="eyebrow">Initialization</div>
             <h2>初始化配置</h2>
-            <p class="startup-copy">首次使用时，先配置你的目标仓库与同步源文件夹，然后由系统执行同步与编译。</p>
+            <p id="setup-copy" class="startup-copy">首次使用时，先配置你的目标仓库与同步源文件夹，然后由系统执行同步与编译。</p>
           </div>
 
           <div class="setup-grid">
+            <label id="setup-workspace-target" class="field">
+              <span class="field-label">账号标识</span>
+              <input
+                id="account-identifier"
+                type="text"
+                autocomplete="username"
+                placeholder="邮箱或手机号"
+              />
+            </label>
+
+            <label class="field">
+              <span class="field-label">密码</span>
+              <input
+                id="account-password"
+                type="password"
+                autocomplete="current-password"
+                placeholder="至少 8 位"
+              />
+            </label>
+
+            <label class="field">
+              <span class="field-label">登录方式</span>
+              <select id="account-auth-mode">
+                <option value="login">登录已有账号</option>
+                <option value="register">注册新账号</option>
+              </select>
+            </label>
+
             <label class="field">
               <span class="field-label">目标仓库</span>
               <div class="field-row">
@@ -50,7 +88,7 @@
               </div>
             </label>
 
-            <div class="field">
+            <div id="setup-workspace-sources" class="field">
               <span class="field-label">同步源文件夹</span>
               <div class="source-actions">
                 <button id="add-source-folders" class="btn btn-secondary" type="button">添加文件夹</button>
@@ -63,13 +101,16 @@
 
           <div class="setup-footer">
             <div id="initialize-status" class="status-copy"></div>
-            <button id="start-initialize" class="btn btn-primary btn-large" type="button" disabled>开始同步并编译</button>
+            <div class="setup-actions">
+              <button id="start-wechat-initialize" class="btn btn-secondary btn-large" type="button" disabled>微信登录</button>
+              <button id="start-initialize" class="btn btn-primary btn-large" type="button" disabled>开始同步并编译</button>
+            </div>
           </div>
         </div>
       </section>
     </div>
 
-    <div id="workspace-shell" class="hidden">
+    <div id="workspace-shell" class="hidden" hidden>
       <aside id="shell-rail-slot"></aside>
       <button
         id="shell-browser-rail-toggle"

@@ -9,6 +9,7 @@
     "dev": "tsx watch src/main.ts",
     "start": "npm run build && electron .",
     "prepare:runtime": "node scripts/write-runtime-config.mjs",
+    "preview:flash-diary-capture": "tsx scripts/flash-diary-capture-preview.ts",
     "build": "npm run prepare:runtime && tsc -p tsconfig.json"
   },
   "devDependencies": {

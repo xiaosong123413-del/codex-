@@ -7,6 +7,7 @@ export interface DraftConversation {
   webSearchEnabled: boolean;
   searchScope: "local" | "web" | "both";
   appId: string | null;
+  maxHistoryMessages: number;
 }
 
 interface DraftConversationInput {
@@ -18,6 +19,7 @@ interface DraftConversationInput {
   webSearchEnabled?: boolean;
   searchScope?: DraftConversation["searchScope"];
   appId?: string | null;
+  maxHistoryMessages?: number;
 }
 
 const DRAFT_PREFIX = "draft-";
@@ -33,6 +35,7 @@ export function createDraftConversation(input: DraftConversationInput = {}): Dra
     webSearchEnabled: input.webSearchEnabled ?? false,
     searchScope: input.searchScope ?? (input.webSearchEnabled ? "web" : "local"),
     appId: input.appId ?? null,
+    maxHistoryMessages: input.maxHistoryMessages ?? 10,
   };
 }
 

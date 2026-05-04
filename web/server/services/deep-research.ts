@@ -1503,6 +1503,7 @@ function expandCitationParts(captured: string): string[] {
     .filter((part) => part.length > 0);
 }
 
+// fallow-ignore-next-line complexity
 function normalizeDeepResearchItem(value: unknown, wikiRoot?: string): DeepResearchItem | null {
   if (!isRecord(value)) {
     return null;
@@ -1601,6 +1602,7 @@ function appendDraftContentIfMissing(targetPath: string, itemId: string, draftCo
   fs.writeFileSync(targetPath, `${existing}${separator}${draftContent.trim()}\n`, "utf8");
 }
 
+// fallow-ignore-next-line complexity
 function normalizeRequiredDeepResearchFields(
   value: Record<string, unknown>,
   wikiRoot?: string,

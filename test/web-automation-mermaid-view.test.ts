@@ -61,7 +61,13 @@ describe("automation mermaid passthrough", () => {
     await flushTwice();
 
     const source = String(mermaidRuntimeMocks.renderMermaidSvg.mock.calls.at(-1)?.[1] ?? "");
-    expect(source).toBe(REVIEW_BOARD_MERMAID);
+    expect(source).toContain(REVIEW_BOARD_MERMAID.trim());
+    expect(source).not.toContain("subgraph apiConsumption");
+    expect(source).not.toContain("apiConsumption_");
+    expect(source).toContain("classDef apiConsumerNode");
+    expect(source).toContain("class B,J,W,AK apiConsumerNode;");
+    expect(source).toContain("GET /api/review");
+    expect(source).toContain("POST /api/review/deep-research/:id/actions");
     expect(source.startsWith("%%{init:")).toBe(false);
   });
 
@@ -71,7 +77,10 @@ describe("automation mermaid passthrough", () => {
     await flushTwice();
 
     const source = String(mermaidRuntimeMocks.renderMermaidSvg.mock.calls.at(-1)?.[1] ?? "");
-    expect(source).toBe(COMPILE_OVERVIEW_MERMAID);
+    expect(source).toContain(COMPILE_OVERVIEW_MERMAID.trim());
+    expect(source).not.toContain("subgraph apiConsumption");
+    expect(source).not.toContain("apiConsumption_");
+    expect(source).not.toContain("classDef apiConsumerNode");
     expect(source.startsWith("%%{init:")).toBe(false);
   });
 });

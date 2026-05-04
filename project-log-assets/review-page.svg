@@ -1,16 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1120" height="560" viewBox="0 0 1120 560" role="img" aria-label="审查页界面">
-  <rect width="1120" height="560" rx="28" fill="#F9F8FE"/>
-  <rect x="0" y="0" width="72" height="560" fill="#FAFAFE"/>
-  <rect x="24" y="248" width="32" height="32" rx="10" fill="#7C5CFC"/>
-  <text x="120" y="96" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="52" fill="#1A1A1A" font-weight="800">审查</text>
-  <text x="120" y="132" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="17" fill="#555555">集中处理系统检查、同步失败、inbox 待处理和人工标注。</text>
-  <rect x="120" y="174" width="280" height="92" rx="22" fill="#FFFFFF" stroke="#E8E5F0"/>
-  <rect x="424" y="174" width="280" height="92" rx="22" fill="#FFFFFF" stroke="#E8E5F0"/>
-  <rect x="728" y="174" width="280" height="92" rx="22" fill="#FFFFFF" stroke="#E8E5F0"/>
-  <text x="146" y="230" font-family="Segoe UI, sans-serif" font-size="30" fill="#7C5CFC" font-weight="800">待处理</text>
-  <text x="450" y="230" font-family="Segoe UI, sans-serif" font-size="30" fill="#7C5CFC" font-weight="800">系统检查</text>
-  <text x="754" y="230" font-family="Segoe UI, sans-serif" font-size="30" fill="#7C5CFC" font-weight="800">inbox</text>
-  <rect x="120" y="302" width="888" height="154" rx="24" fill="#FFFFFF" stroke="#E8E5F0"/>
-  <text x="154" y="350" font-family="Segoe UI, sans-serif" font-size="22" fill="#1A1A1A" font-weight="700">待处理事项卡片</text>
-  <text x="154" y="392" font-family="Segoe UI, sans-serif" font-size="16" fill="#555555">亲自指导录入 / 优先批量录入 / 查看保存结果</text>
+  <rect width="1120" height="560" rx="28" fill="#F8F9FA"/>
+  <rect x="0" y="0" width="72" height="560" fill="#F8F9FA"/>
+  <rect x="24" y="248" width="32" height="32" rx="10" fill="#3366CC"/>
+  <text x="120" y="96" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="52" fill="#202122" font-weight="800">审查</text>
+  <text x="120" y="132" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="17" fill="#54595D">集中处理系统检查、同步失败、inbox 待处理和人工标注。</text>
+  <rect x="120" y="174" width="280" height="92" rx="22" fill="#FFFFFF" stroke="#C8CCD1"/>
+  <rect x="424" y="174" width="280" height="92" rx="22" fill="#FFFFFF" stroke="#C8CCD1"/>
+  <rect x="728" y="174" width="280" height="92" rx="22" fill="#FFFFFF" stroke="#C8CCD1"/>
+  <text x="146" y="230" font-family="Segoe UI, sans-serif" font-size="30" fill="#3366CC" font-weight="800">待处理</text>
+  <text x="450" y="230" font-family="Segoe UI, sans-serif" font-size="30" fill="#3366CC" font-weight="800">系统检查</text>
+  <text x="754" y="230" font-family="Segoe UI, sans-serif" font-size="30" fill="#3366CC" font-weight="800">inbox</text>
+  <rect x="120" y="302" width="888" height="154" rx="24" fill="#FFFFFF" stroke="#C8CCD1"/>
+  <text x="154" y="350" font-family="Segoe UI, sans-serif" font-size="22" fill="#202122" font-weight="700">待处理事项卡片</text>
+  <text x="154" y="392" font-family="Segoe UI, sans-serif" font-size="16" fill="#54595D">亲自指导录入 / 优先批量录入 / 查看保存结果</text>
 </svg>

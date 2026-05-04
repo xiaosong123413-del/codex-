@@ -165,7 +165,7 @@ describe("health domain routes", () => {
     await handler!(
       {
         params: { sessionId: "qr-1" },
-        query: {},
+        query: { relativeUid: "456" },
       } as unknown as Request,
       response as Response,
     );
@@ -173,7 +173,7 @@ describe("health domain routes", () => {
     expect(pollXiaomiHealthQrLoginMock).toHaveBeenCalledWith("qr-1");
     expect(saveHealthDomainAccountConnectionMock).toHaveBeenCalledWith("D:/project", {
       tokenJson: "{\"userId\":\"123\"}",
-      relativeUid: "",
+      relativeUid: "456",
     });
     expect(response.body).toEqual({
       success: true,

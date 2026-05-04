@@ -17,6 +17,8 @@
     "TRANSCRIBE_MODEL": "@cf/openai/whisper",
     "EMBEDDING_MODEL": "@cf/baai/bge-base-en-v1.5",
     "PUBLIC_MEDIA_BASE_URL": "https://your-remote-brain-worker.workers.dev",
+    "WECHAT_MINI_PROGRAM_APP_ID": "wx...",
+    "WECHAT_WEB_APP_ID": "wx...",
     "CLOUDFLARE_SEARCH_ENDPOINT": "https://api.tavily.com",
     "CLOUDFLARE_SEARCH_MODEL": ""
   },
@@ -45,5 +47,19 @@
   ],
   "ai": {
     "binding": "AI"
-  }
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "WIKI_PUBLISH_EVENTS",
+        "class_name": "WikiPublishEvents"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["WikiPublishEvents"]
+    }
+  ]
 }

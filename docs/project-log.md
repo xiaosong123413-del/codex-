@@ -11,6 +11,7 @@
 线上 `llm-wiki.cn` 外层使用 Cloudflare Access 保护；Access 应用 `llm-wiki` 的会话时长当前为 `720h`，正常情况下同一浏览器 30 天内不需要重新收邮箱验证码。
 线上 `llm-wiki.cn` 的 Wiki 页面复用桌面端 Wiki 渲染器和同一套 `/api/page`、`/api/tree`、`/api/search`、`/api/wiki-comments` 数据接口，不再使用旧的静态 Wiki 侧栏页面。
 左侧固定导航栏负责进入独立页面；右侧主内容区按路由独立渲染
+全局视觉当前收敛到 Wikipedia 仿站风格：白底、浅灰页面背景、`#3366CC` 链接/主操作蓝、`#202122` 正文、`#A2A9B1 / #C8CCD1` 边框。对话、Workflow、设置、审查、源料库、闪念日记和 Obsidian 审查插件都复用这套蓝灰色系。
 项目日志页本身不维护界面图；其余独DOM 页面各保留一张示意图
 项目日志页当前采用单栏阅读布局，页面主体full-page 容器内独立纵向滚动，顶部固定一条轻量工具栏：向下滚动时工具栏仍可见。工具栏包含目录、全部评论、未解决、已解决。点击目录会在右侧展开可调整宽度的目录栏；选中文字后，选区旁会浮出“评论”按钮，点击后会高亮原文并打开右侧评论栏，评论支持编辑、删除、解决和按状态筛选
 ### 对话页
@@ -18,10 +19,11 @@
 
 对话页保留文件浏览和消息流两条主线：
 
-- 左侧导航栏：对话、闪念日记、自动化、源料库、wiki、系统检查、同步、审查、图谱、设
+- 左侧导航栏：工作台、对话、闪念日记、源料库、wiki、系统检查、同步、审查、设置；点击系统检查或同步会在右下角显示带进度条的运行提示
 -  文件浏览区：支持 `wiki` / `raw层` 切换、搜索、文件树、选中模式
 - 主工作区：会话列表、消息流、输入框
-- Assistant 回答会保存本轮检索出的来源记录；正文里的 `[1]` / hidden cited 注释会筛出实际引用，并在消息下方按来源类型折叠展示稳定引用面板，点击 wiki 引用会打开右侧预览抽屉
+- Assistant 回答会保存本轮检索出的来源记录；正文里的 `[1]` / hidden cited 注释会筛出实际引用，并在消息下方按来源类型折叠展示稳定引用面板；正文编号、底部引用和已选页面 chip 统一通过 `data-knowledge-preview-path` 打开右侧预览抽屉
+- 对会输出 `<think>` / `<thinking>` 或 OpenAI-compatible `reasoning_content` 的模型，聊天页会把思考内容和正式回答分离：流式生成时显示最近 5 行思考摘要，生成完成后默认折叠，正式回答正文不显示思考块
 - Assistant 消息提供“重新生成”和“保存至维基”；重新生成会删除最后一组 user/assistant 再重发，保存至维基会写入 `wiki/queries/*.md`，复制到 `sources/saved-queries/`，并触发 compile 纳入知识网络
 - 对话顶部可配置历史上下文深度，默认 10 条，保存到每个会话；发送给 LLM 时只带当前会话最近 N 条 user/assistant 消息
 - 对话持久化采用源项目下 `.llm-wiki/conversations.json` + `.llm-wiki/chats/{id}.json`，同时保留旧 `.chat/{id}.json` 和 `.llm-wiki/chat-history.json` 读取迁移
@@ -45,8 +47,8 @@
 
 ![自动化页](../project-log-assets/automation-page.svg)
 
-Workflow 工作区现在拆成三条独立路由，直达这些路由时直接渲染 Workflow 页面，不再包在设置页侧栏里：
-- `#/automation`：白底列表概览页，只负责搜索、筛选、查看状态、进入详情、进入日志。
+Workflow 工作区现在拆成三条独立路由，直达这些路由时直接渲染 Workflow 页面；设置页的自动化分区也内置同一套视图：
+- `#/automation`：白底列表概览页，只负责搜索、查看状态、进入详情、进入日志。
 - `#/automation/<id>`：详情页统一用紧凑 Mermaid 阶段图展示流程；每个节点只表示一个最小可执行单位，第一行显示动作本身，第二行优先显示实现落点，不再套“用户触发 / 系统处理 / 用户可见结果”三段大框。
 - `#/automation-log/<id>`：单条 workflow 的运行日志页。
 - 列表页当前按三个专题展示：`应用流程` 聚合显式 workflow 和应用 workflow；`信息流转流程` 说明输入信息如何读取页面、prompt、应用和源码状态，并写入页面、wiki 或 runtime；`源码真实流程` 展示人工审计源码后录入的 `code-derived` 真实 DAG。
@@ -63,7 +65,9 @@ Workflow 工作区现在拆成三条独立路由，直达这些路由时直接�
 - 当统一 `flow nodes / edges / branches` 结构无法表达真实边标签时，详情页允许直接消费源码侧手写 Mermaid；当前 `审查与运行结果` 就走这条直通链路，保留 `单条推进 / 确认写入 / 批量进行 / 全部写入 / 批量录入 inbox / 打开对话` 这些真实分支标签。
 - `同步编译总览` 现在也走手写 Mermaid 原图；它和 `编译链路` 继续共存，前者负责 compile 端到端总览，后者负责 compile 内核执行单元。
 - 当前所有 code-derived workflow 都已经切到源码侧手写 Mermaid：`Workflow 工作区`、`审查与运行结果`、`同步入口`、`源料库`、`闪念日记快速记录`、`同步编译总览`、`编译链路`、`执行记录器归档流程`、`执行沉淀文件流转`。
-- `执行沉淀文件流转` 专门展示页面、运行时文件和长期文件夹的关系：工作台入口打开 `#/workflow-artifacts` 页面，页面通过 `/api/workflow-artifacts` 读取快照，服务端补齐 `.llmwiki/workflow-*.json` 运行时队列文件，并单独补齐 `资源库 / 资料验证记录 / 案例库 / 方法库` 这些长期 wiki 文件夹。
+- `执行沉淀文件流转` 专门展示页面、运行时文件和长期文件夹的关系：工作台入口打开 `#/workflow-artifacts` 页面，页面通过 `/api/workflow-artifacts` 读取快照，服务端补齐 `.llmwiki/workflow-*.json` 运行时队列文件，并单独补齐 `wiki/专题/资源库`、`wiki/专题/资料验证记录`、`wiki/专题/案例库`、`wiki/专题/方法库` 这些长期 wiki 文件夹。
+- `执行记录器归档流程` 现在把高置信度记录拆成同一条事件的三种视图：`Workflow Event` 是机器凭证；任务卡 `workflowLog` 绑定行动层；项目 `工作日志.md` 按时间线写入领域、项目、任务、任务 ID、行动和 Workflow Event。
+- 普通 Wiki 文件树不再展示执行沉淀专题和旧的 `个人信息档案/案例库` 等目录；这些占位页改由工作日志页读取并展示。
 - Workflow 列表的专题归类不再只看源码来源：`sourceKind` 表示用户看到的专题。`信息流转流程` 说明输入信息如何流向产物、队列和沉淀位置；`源码真实流程` 说明按钮、快捷键、API、函数和文件写入之间的一串真实反应。因此 `执行记录器归档流程` 归入 `源码真实流程`，`执行沉淀文件流转` 仍归入 `信息流转流程`。
 - sourceInsight 详情页统一采用规格说明结构：默认只显示全图 Mermaid 骨架，不展开右侧说明；点击图中节点后，节点高亮并打开右侧规格页。右侧上方显示当前节点说明，右侧下方显示 Prompt / Schema / 规则附录 tabs。节点标准不再以小标签挂在图上。
 - 其余 workflow 的自动生成图也不再套自定义蓝橙绿 class 配色，而是统一回到和手写 Mermaid 原图一致的原生 Mermaid 颜色、布局和卡片尺寸。
@@ -73,16 +77,16 @@ Workflow 工作区现在拆成三条独立路由，直达这些路由时直接�
 - 长流程继续在单页滚动容器里展示，不再依赖内部画布拖拽、分支偏移微调或评论锚点模式。
 ### 工作台页
 
-工作日志子页现在使用窄二级图标导航和窄文档目录树；工作台二级导航的折叠按钮固定在第一个图标卡片位置，其他页面入口依次排在下方。工作日志目录项会在工作台内切换选中文档，不再自动跳转到 Wiki 路由；正文区直接使用 Wiki 风格文章排版，但省略 Wiki 标题栏、工具页签、路径和更新时间，让文档正文直接开始。同一批 `领域.md`、`领域/<领域>.md`、`领域/<领域>/<项目>.md`、`领域/<领域>/<项目>/工作日志.md` 仍是源库稳定路径。工作台内默认可编辑并自动保存，同一文档仍可通过普通 Wiki 路由打开和引用。工作日志是任务记录页，不进入 compile 的知识来源抽取。
+工作日志子页现在使用窄二级图标导航和窄文档目录树；工作台二级导航的折叠按钮固定在第一个图标卡片位置，其他页面入口依次排在下方。工作日志根页现在是 `工作日志维护指南`，直接写清 AI 维护主事实源、行动处理顺序、页面边界、状态迁移、双链规则和禁止事项；旧 `专题` 占位说明会在加载工作日志时自动迁移成这份指南。工作日志目录项会在工作台内切换选中文档，不再自动跳转到 Wiki 路由，切换文档时会保持目录栏当前滚动位置；目录树现在按 `执行现场 / 项目工作区 / 案例库 / 沉淀库` 组织：执行现场在目录里收口成一个入口，正文以工作台方式汇总 `今日行动 / 待绑定任务 / 待归档记录 / 已归档记录 / Workflow Event`，运行时仍读取原 Workflow Event 和待处理队列；待归档队列中的记录可直接选择未完成任务并点击归档，提交到 `/api/workflow-recorder/archive` 后刷新执行现场；项目工作区直接读取任务池 `pool.items`，按任务池里的 `project` 分组，任务页使用任务池同一个 `taskId`，在工作日志页改任务标题、项目、领域或优先级会写回任务池；案例库是独立顶层目录，下面直接记录多个案例；沉淀库只承载方法库和工具箱，方法和工具按 `已验证但成功 / 待验证 / 已验证但失败` 三栏展示，点击卡片会在右侧打开可编辑详情栏，也可以把卡片拖到对应验证状态栏来保存状态。工作日志正文和画册详情里的知识双链统一标记 `data-knowledge-preview-path`，点击案例库、方法库、工具箱之间的双链会打开右侧预览抽屉，不再整页跳转。工具箱是工作日志沉淀库里的主事实入口，工作日志页编辑工具名、摘要、分类、链接或验证标记会写回工具真实数据源。正文第一个标题可直接编辑，保存后目录中的页面显示名会同步为这个标题。领域和项目节点都可折叠；每个目录项 hover 后会在同一行标题右侧显示删除按钮，删除时使用目录内确认面板，节点有子页面时可选择“只删除当前页面”或“包括以下子页面一起删除”。正文区直接使用 Wiki 风格文章排版，但省略 Wiki 标题栏、工具页签、路径和更新时间，让文档正文直接开始。工作日志正文顶部提供 Obsidian 风格基础块工具条，支持文本、标题、列表、任务、引用、代码块、链接、图片，并在保存时序列化回 Markdown；正文上方的 Graphy 小图复用页面级关系图，可拖动到工作日志阅读区内任意位置，位置保存在浏览器本地。同一批 `领域.md`、`领域/<领域>.md`、`领域/<领域>/<项目>.md`、`领域/<领域>/<项目>/工作日志.md` 仍是源库稳定路径。工作日志加载现在复用 Wiki 页的“目录与正文分离”策略：先请求轻量目录树，再只读取当前文档正文，并通过 `/api/page?raw=0` 使用页面渲染缓存，避免每次打开都渲染和传输全部工作日志文档。执行记录器归档到具体任务后，会同步追加到对应项目的 `工作日志.md`，条目内并排写清领域、项目、任务、任务 ID、任务卡引用、行动和 Workflow Event。工具/链接候选会直接写入工作日志沉淀库的工具箱待验证区，资料验证和方法候选进入方法库待验证；这些专题不再出现在普通 Wiki 页目录树。工作台内默认可编辑并自动保存，同一文档仍可通过普通 Wiki 路由打开和引用。工作日志是任务记录页，不进入 compile 的知识来源抽取。
 
-工作台页继续保留 `项目推进/ 任务计划/ 任务/ 工作日志 / 工具这组二级导航
-其`工具子页当前已经从旧的三栏条目编辑器改为 dashboard 式页面：
+工作日志 Graphy 当前默认贴在正文右上角，并以浮动块参与正文排版；拖动时会实时改变上方和右侧偏移，让文字围绕当前位置重新排布。它现在使用工作台专用 `/api/workspace/graph`，以当前工作对象为中心展示领域、项目、任务、行动、案例、方法和工具之间的直接双链，不再依赖 compile 后的 Wiki 页面图谱。
+Graphy 详情区现在显示可编辑的手动双链列表，可从当前工作对象关联到另一个领域、项目、任务、行动、案例、方法或工具；新增和删除都写入 `.llmwiki/workspace-relations.json`，从关系任一端打开时都会看到同一条双链。
+桌面端执行记录器快捷窗的绑定任务按钮读取任务池同一份 `pool.items`，不再按原始顺序截取；按钮会优先展示今天日程里的任务、近期截止任务和当前区高优任务，并保持提交的 `taskId` 与任务池任务 ID 一致。绑定任务区现在显示全部未完成任务，可横向滑动、按任务标题/领域/项目搜索，并可直接新增任务写回同一任务池；记录类型补充“可能的方法方案”，归档后进入方法库待验证候选。
 
-- 顶部显示页面标题、说明、搜索框和项目头像区
-- 中部上方使`工作/ 工具资产` 大切换按- 主区展示工作流卡片与工具资产卡片
-- 右侧固定显`最近运行Agent` `收藏/ 快捷入口`
-- 点`管理` 后通过弹层管理工作流或工具资产
-- 数据主源`工具toolbox.json`，Markdown 工具条目legacy 资产继续展示
+`01-项目工作区` 入口现在是只读项目执行室，不再显示普通 Wiki 正文编辑器。页面左侧用 `领域 -> 项目 -> 阶段列 -> 同步任务 -> 行动` 的执行层级图展示项目、任务和推进状态；阶段列按 `已完成 / 同步推进 / 待推进` 横向表达先后，同一阶段内的多张任务卡表示同一项目下的同步推进任务，节点之间用树状分叉线表达归属和推进关系。阶段现在是任务池里的真实 `pool.stages` 数据，不再只是前端推导分组；旧任务会按完成、正在推进、未确定自动补齐默认阶段。执行层级图默认按优先级排序，默认筛选为未完成，也可切换查看全部；领域、项目、阶段、任务和行动节点都支持拖动，拖动任务可投放到任务节点、阶段标题、阶段列空白区域或新建空阶段来切换项目或阶段，拖动行动可切换所属任务，拖动项目可改所属领域，拖动中只显示预览链接，松开后才写回任务池。任务卡和行动卡右上角提供删除入口，删除后同步写回任务池。点击项目、阶段、任务或行动时，按 `Tab` 会创建下一级，按 `Enter` 会创建同级或同阶段节点。领域、项目节点可点击折叠或展开，下游分支和连线会按当前可见节点重算；节点用 `已完成 / 正在进行 / 未确定` 状态标签和底色区分。页面不再显示独立的 `PROJECTS / 项目工作区` 顶部标题区，项目统计 chip 移到执行层级图标题行中间。执行层级图作为独立可缩放图层显示，节点保持自然横排宽度，可用 `- / 100% / +` 控制缩放，也可按住 Ctrl 滚轮缩放；右侧今日推进窗口直接同步任务计划页的“今日建议时间表”，可把图中正在进行或未确定的任务拖入窗口生成今日排期。左右两栏支持拖拽调宽。
+
+工作台页二级导航只保留 `任务计划 / 任务池 / 工作日志`；原 `项目推进页` 已移除，`#/workspace` 和旧 `#/workspace/project-progress` 都进入任务计划页。任务计划页不再显示底部“领域与项目推进”roadmap，也不再提供上下分割条，主区域由 `AI 智能排期助手` 占满。原独立 `工具箱` 子页和 hammer 入口已移除。工具的主事实源与编辑入口统一在工作日志页 `沉淀库 -> 工具箱`，按 `已验证但成功 / 待验证 / 已验证但失败` 画册分组管理。
+工作日志左侧目录新增真实的 `归档` 顶层层级，磁盘路径为 `wiki/专题/03-归档`；其中 `失败的方法` 自动同步方法库 `已验证但失败` 条目，`已完成领域、项目、任务` 自动同步任务池里带 `completedAt` 的任务。
 - `任务池` 子页新增 `列表视图 / 树状图` 双视图；树状图支持 `领域 / 项目 / 任务` 单层级切换、左侧筛选栏折叠、左右拖拽调宽、右侧画布缩放与纵向滚动
 - `任务池` 树状图编辑模式支持直接改名；在领域节点按 `Enter` 会进入新增项目，在项目节点按 `Enter` 会新增子任务，在任务节点按 `Enter` 会新增同级任务；删除项目或领域时会把任务保留到 `待分组 / 未归类`，并且支持把任务拖到项目节点重新挂接；树上的未保存修改继续与任务计划页顶部的共享任务池草稿共用同一条显式保存边界
 - `任务池` 顶部新增领域 chip 行，并额外提供 `健康` 领域入口
@@ -117,6 +121,7 @@ Cloudflare Pages 公开入口现在挂载同一个 Wiki 页面渲染器，线上
 首页的统计、精选条目、最近更新、Graphy、分类浏览和关于摘要都来自真实 wiki 数据：条目和分类从 `/api/tree?layer=wiki` 统计，简介和关于从 `wiki/index.md` 的真实内容提取，精选条目从真实条目页中挑选，Graphy 从 `/api/wiki/graph` 读取按 wikilink 建边、再用直接链接方向、来源重叠、共同邻居和类型亲和加权的 sigma 图谱，不再显示写死的示例数字或文案
 首页右侧 `Graphy` 标题现在可点击进入独立 Graphy 页面。
 普通 Wiki 文章页顶部现在也固定显示页面级 Graphy；它请求 `/api/wiki/graph?path=当前页`，只保留当前页、直接相关条目以及这些条目之间的连接边，不展示全站无关节点，并直接显示这些节点的页面名称。
+普通 Wiki 文章页左侧目录栏支持直接删除单个源库页面，也支持进入选择模式后批量删除页面；删除只作用于可编辑源库 Markdown 页面，不删除运行时只读页面或文件夹。
 顶部搜索框走统一 `/api/search?scope=local`，普通 Wiki 页面内展示本wiki / raw / sources_full / 向量结果左Farzapedia 品牌图现在可点击进`wiki/about-me.md` 对应的个人展示页；这个页面不再走普article 模板，而是按独立个人主页布局渲染
 搜索索引现在保留 Markdown 图片 alt text；视觉 caption 写入 alt 后，图片描述会参与关键词 / hybrid 检索。搜索结果会返回页面中的图片引用，并在结果顶部展示图片网格，优先显示 caption 命中的图片。
 - `wiki/about-me.md` 对应专用 profile page：顶部品牌+ 页签、紧Hero、右侧统计卡、左侧成果库主板、右侧单张切换卡、底部代表能力区
@@ -140,27 +145,30 @@ Cloudflare Pages 公开入口现在挂载同一个 Wiki 页面渲染器，线上
 -  只有当前页存在可批量删除的同步失败项时，才显`全选本/ `批量删除` 工具；Deep Research-only 页面不再展示无效的选择工具
 - 审查页当前不再默认挂右侧“工作区留存文件”面板；页面默认只显示待处理事项主队列，只有打开 Deep Research / 系统状态详情或指导录入时才临时展开右侧详情栏；如果当前只剩 1 条 inbox 原料，右侧会自动补全这条原料的详情与录入动作
 - 工具`刷新` 在重新读取审查队列时会显示明确的“刷新/ 已刷/ 读取失败”状态，不再表现成无反馈点击
+- 系统检查运行卡片如果来自 `check` run，会显示`自动补齐双链`；点击后调用后端 `/api/runs/check` 重新跑系统检查，复用 lint 自动修复预处理，完成后刷新审查队列
 
 ### 图谱页
 ![图谱页](../project-log-assets/graph-page.svg)
 
 Graphy 页是独立全宽页面，用于查看 wiki 页面之间的全局关系图。
-它不显示对话页文件树，复用首页 Graphy 的 `/api/wiki/graph` 全站图谱；独立页会显示节点名称，图谱区域会铺满标题下方的剩余高度，页面左上角提供 `🔙 返回` 按钮，返回 Wiki 首页。顶部提供 `Type / Community` 切换：`Type` 按 frontmatter / 路径推断出的页面类型上色，`Community` 按 Louvain 知识簇上色；左下角图例显示类型或知识簇，知识簇图例会显示成员数，并对 `cohesion < 0.15` 且节点数不少于 3 的簇标 `!`。点击节点会用节点 `path` 请求 `/api/page?path=...&raw=0`，右侧打开该 Wiki Markdown 文件预览：上方展示 frontmatter 元信息，下方展示渲染后的正文。标题栏的 `Insights` 按钮显示当前可见洞察数量，打开后列出意外连接和知识空白；点洞察卡片会高亮相关节点，再点同一卡片取消高亮；意外连接可在本次会话中忽略；知识空白卡片可继续启动 Graphy Deep Research。Deep Research 会先读取 `overview.md` 与 `purpose.md` 让 LLM 优化研究主题和多条搜索词，用户确认后进入右侧 Research Panel；后端全局最多 3 个研究任务并发，Tavily 使用 advanced + raw content，合成过程通过 SSE 流式展示，`<think>` / `<thinking>` 块会折叠，保存 `wiki/queries/*.md` 后自动触发同步收录。
+它不显示对话页文件树，复用首页 Graphy 的 `/api/wiki/graph` 全站图谱；独立页会显示节点名称，图谱区域会铺满标题下方的剩余高度，页面左上角提供 `🔙 返回` 按钮，返回 Wiki 首页。顶部提供 `Type / Community` 切换：`Type` 按 frontmatter / 路径推断出的页面类型上色，`Community` 按 Louvain 知识簇上色；左下角图例显示类型或知识簇，知识簇图例会显示成员数，并对 `cohesion < 0.15` 且节点数不少于 3 的簇标 `!`。点击节点会用节点 `path` 请求 `/api/page?path=...&raw=0`，右侧打开该 Wiki Markdown 文件预览：上方展示 frontmatter 元信息，下方展示渲染后的正文。标题栏的 `Insights` 按钮显示当前可见洞察数量，打开后列出意外连接和知识空白；点洞察卡片会高亮相关节点，再点同一卡片取消高亮；意外连接忽略状态会保存在浏览器本地存储中，刷新后仍隐藏；知识空白卡片可继续启动 Graphy Deep Research。Deep Research 会先读取 `overview.md` 与 `purpose.md` 让 LLM 优化研究主题和多条搜索词，用户确认后进入右侧 Research Panel；后端全局最多 3 个研究任务并发，Tavily 使用 advanced + raw content，合成过程通过 SSE 流式展示，`<think>` / `<thinking>` 块会折叠，保存 `wiki/queries/*.md` 后自动触发同步收录。
 ### 设置页
 ![设置页](../project-log-assets/settings-page.svg)
 
-设置页采用“双导航 + 小窗”结构：点击全局导航栏的“设置”会打开居中的设置小窗口；直达 `#/settings/...` 时仍可作为独立设置页渲染。设置页左侧采用 Obsidian 风格分组，顶部“选项”放置 `LLM 大模型`、`应用`、`自动化`、`仓库与同步`、`第三方插件`、`快捷键`、`项目日志`；下方再按 `核心插件` 和 `第三方插件` 两个标题列出已安装插件名称，点击插件名进入该插件详情页。设置页内各分区共享同一套字体、标题、图标按钮和开关尺寸规格。
+设置页采用“小窗 + 独立页”结构：点击全局导航栏的“设置”会打开居中的设置小窗口，小窗口保留左侧“选项”导航；直达 `#/settings/...` 时仍可作为独立设置页渲染，并保留左侧 Obsidian 风格分组用于跳转。左栏只显示 `LLM 大模型`、`应用`、`自动化`、`仓库与同步`、`第三方插件`、`快捷键`、`使用说明`、`项目日志` 这些页面入口，不再显示 `核心插件` / `第三方插件` 下的具体插件列表。设置页内各分区共享同一套字体、标题、图标按钮和开关尺寸规格。
 设置页当前包含：
 
-- 仓库与同步：集中显示本地仓库配置、同步结果、编译情况、运行进度条、最新日志，以及同步运行中的暂停 / 取消 / 刷新控制；数据导入区包含小红书、微信聊天记录、闪念笔记、抖音、B 站、小宇宙、RSS 和 X 来源卡片，其中“闪念笔记”是独立外部应用导入入口，不跳转到闪念日记页。
-- LLM 大模型：旧默认模型、账号池、CLIProxyAPI 代理转接和厂商配置列表已从首屏移除；页面当前显示“提供商 / 已添加 N 个提供商 / 添加提供商”，点击“添加提供商”会打开自定义 provider 表单；添加成功或读取到已有账号后，会在下方显示 provider 卡片，卡片标题中的粗体值使用表单 ID。选中 ChatGPT OAuth 或 Gemini OAuth 时，表单会切换到授权模式并隐藏 API 字段，认证成功并通过连通测试后才新增 OAuth provider。provider 卡片上的配置、删除 / 断开、展开收起都已接到真实操作；卡片里的“聊天模型”实际是绑定到该 provider 账号的应用，点击“+ 添加聊天模型”会创建应用并打开应用配置弹窗。Cloudflare Workers AI 也作为环境变量托管的 provider 显示在这里，并标注当前可用的嵌入模型；绑定到 `cloudflare:workers-ai` 的聊天应用会走 Cloudflare provider 运行。
+- 仓库与同步：集中显示本地仓库配置、同步结果、编译情况、运行进度条、最新日志，以及同步运行中的暂停 / 取消 / 刷新控制；数据导入区保留小红书、微信聊天记录、闪念笔记、抖音、B 站、小宇宙、RSS 和 X 来源卡片，点击任一来源只显示“之后将支持，现在暂不开放”提示，暂不进入具体导入流程。
+- LLM 大模型：旧默认模型、账号池、CLIProxyAPI 代理转接和厂商配置列表已从首屏移除；页面当前显示“提供商 / 已添加 N 个提供商 / 添加提供商”，并在首屏直接展示从源项目迁入的 provider 预设卡片。点击预设会打开添加表单并自动填入基础 URL、API 模式、默认模型和推荐模型；NVIDIA NIM 默认使用 `meta/llama-3.3-70b-instruct`，MiniMax 分为 Global / 中国两个 Anthropic Messages 端点，避免继续误用已退役的 `minimaxai/minimax-m2`；小马 / 神马中转预设走 OpenAI-compatible relay，默认 Base URL 为 `https://api.whatai.cc/v1`。添加成功或读取到已有账号后，会在下方显示 provider 卡片，卡片标题中的粗体值使用表单 ID。选中 ChatGPT OAuth 或 Gemini OAuth 时，表单会切换到授权模式并隐藏 API 字段，认证成功后会新增 OAuth provider，随后显示连通测试结果；测试失败只提示当前模型 / 额度 / 上游可用性问题，不再回滚已授权账号。provider 卡片上的配置、删除 / 断开、启用、展开收起都已接到真实操作；停用的 OAuth provider 会留在列表中并显示“启用”按钮。卡片里的“聊天模型”实际是绑定到该 provider 账号的应用，点击“+ 添加聊天模型”会创建应用并打开应用配置弹窗。Cloudflare Workers AI 也作为环境变量托管的 provider 显示在这里，并标注当前可用的嵌入模型；绑定到 `cloudflare:workers-ai` 的聊天应用会走 Cloudflare provider 运行。
 - 应用：应用配置区改为 Agent 卡片列表；点击应用卡片或“新建 Agent”会打开弹窗，弹窗内维护资料、模型、workflow 和 System prompt，保存仍写回 `agents/agents.json`。
+- 自动化：Workflow 列表内置在设置页自动化分区；顶部只保留标题、说明和搜索框，原 `运行中 / 未启动 / 全部 Workflow` 状态筛选行已移除，卡片上的状态标记仍保留。
 - 网络搜索配置：外网搜索状态已合并进 `LLM 大模型` 页的网络搜索 API 卡片，卡片位于提供商列表下方，通过状态灯和“刷新 / 测试”按钮展示真实可用性；接口连通但本次测试没有返回结果时仍显示可用状态，只有真实接口错误才标红。
-- 插件：原 `插件 / MCP` 占位页改为 `插件` 页，采用 Obsidian 风格的设置布局；顶部 `第三方插件` 是社区插件总设置页，提供安全模式、社区插件市场、插件安装情况、自动更新开关和第三方已安装插件列表。左侧 `核心插件` / `第三方插件` 分组下展示具体插件名称，点击名称进入该插件详情页，并提供搜索、刷新、目录、设置、快捷入口、卸载和启停开关。核心插件列表包含 `SMART CLI` 和 `AI 原生 CLI`；`SMART CLI` 对应已有 `smartclip-mcp` 网页剪藏能力，详情页提供可编辑的 SmartClip 设置地址、外部设置入口、地址复制、使用步骤、检查清单和注意事项；桌面端打开 `chrome-extension://` 地址时会优先启动系统默认浏览器，取不到默认浏览器时才回退 Chrome / Edge，避免 Windows 协议处理弹出 Microsoft Store；`AI 原生 CLI` 定义为“执行能力（CLI）+ 标准连接（MCP）+ 使用说明（Skills）”的本地万能插件入口；点击 `AI 原生 CLI` 的安装入口会展开 Codex、Claude Code、OpenClaw、Hermes 目标选择，并显示 Windows 与 macOS/Linux 的一键安装命令。
-- 原 `Vector Search / Embedding` 独立设置页已移除；嵌入模型统一回到 `LLM 大模型` 的 provider 卡片中展示。
+- 插件：设置页顶部保留 `第三方插件` 入口，但当前只显示“入口已保留，后续版本将支持社区插件安装、更新和管理”的占位说明；具体核心插件、第三方插件列表、插件详情页、市场、安全模式、自动更新和安装动作暂不开放。
+- 原 `Vector Search / Embedding` 独立设置页已移除；本地向量检索配置在 `LLM 大模型` 页内管理，支持选择 `网络 / 中转 API` 或 `本机 embedding 服务`，并展示可选 embedding 服务列表。本机服务列表会探测常见 OpenAI-compatible 本地端口，覆盖内置 Qwen、TEI、LM Studio、Ollama、Xinference 和通用 FastAPI；点选服务后自动填入 endpoint 和模型。内置 Qwen 模板支持由应用启动 / 停止，其它第三方服务提供检测和一键接入；`https://api.whatai.cc` 会规范化为 `https://api.whatai.cc/v1/embeddings`。
 - 同步结果面板：同步完成后显示已同步、已编译、未同步、未编译数量；编译情况面板独立展示 compile 阶段百分比和日志。
 - 快捷键配置：独立页面不再显示顶部说明卡片；列表记录“闪念日记快速记录”“页面内查找”“执行记录器”“工作台保存”四项快捷键，输入框聚焦后按下组合键会自动填入，点击“保存快捷键”写回桌面端配置。
-- 项目日志入口
+- 使用说明：原独立说明页已收进设置页，路由为 `#/settings/user-guide`；正文不再显示内部左侧章节目录，只保留右侧“快速定位”，目录链接使用 `#/settings/user-guide#...` 定位到具体章节；自动化页和项目日志页的使用说明也收进这里。
+- 项目日志：项目日志页内置在设置页 `项目日志` 分区，可在设置内直接阅读当前项目日志内容。
 
 ### Publish 页
 Publish 页是独立Cloudflare Remote Brain 操作页，不复用对话页四栏布局；入口已从全局导航移动到设置页的“云同步”二级导航中
@@ -193,7 +201,7 @@ Publish 页是独立Cloudflare Remote Brain 操作页，不复用对话页四栏
 8. 发布包新增清理检查：公开包目录不能包含 `.runtime`、`.env`、`.secrets`、cookie、token、`sync-compile-config.json`、`app-config.json`、`raw`、`wiki`、`sources_full` 等本地私有数据。
 ### 同步入口
 
-1. 用户点击左侧导航栏“同步”2. 应用先调`/api/intake/scan`，检`raw/剪藏`、`raw/闪念日记` `inbox`3. 如果没有新源料，也没`inbox` 待处理项，则提示“未检测到新源料”，不启动同步4. 如果检测到新源料，弹出“新源料检测”弹窗5. 如果存在可批量录入项，继续显示批量录入方案表；用户确认后才启动后台同步编译6. 同步结果进入运行日志，并由审查页聚合关键问题
+1. 用户点击左侧导航栏“同步”时，右下角先显示同步编译进度条2. 应用先调`/api/intake/scan`，检`raw/剪藏`、`raw/闪念日记` `inbox`3. 如果没有新源料，也没`inbox` 待处理项，则提示“未检测到新源料”，不启动同步4. 如果检测到新源料，弹出“新源料检测”弹窗5. 如果存在可批量录入项，继续显示批量录入方案表；用户确认后才启动后台同步编译6. 同步结果进入运行日志，并由审查页聚合关键问题。批次内 `llmwiki compile` 的输出会实时透传到 run 日志，避免编译子阶段还在处理 source 时右下角进度长期停在批次起点。
 ### 手机端 Cloudflare 同步
 
 当前大众化路径统一走 `/user/mobile/*` 与 `/user/media/upload`：登录后的客户端使用账号 session token，Worker 从 session 推导账号与 `ownerUid`，并按 `account + workspace` 前缀读取 wiki。Android 工程 `D:\Desktop\安卓 llm wiki` 已接入账号登录、session 版核心同步、聊天、AI Provider 保存、Codex OAuth、任务、共享文档、链接预览和媒体上传；旧 `/mobile/*` + `REMOTE_TOKEN` 仅保留为管理员 / 开发兼容路径，不应进入公开 APK / EXE。
@@ -227,7 +235,7 @@ Publish 页是独立Cloudflare Remote Brain 操作页，不复用对话页四栏
 ### Workflow 工作区
 
 1. 用户点击左侧导航栏“Workflow”。
-2. 列表页调用 `GET /api/automation-workspace`，按配置态把显式 workflow 和应用 workflow 放入“应用流程”，并在“全部 Workflow”里额外展示“信息流转流程”和“源码真实流程”两个专题。
+2. 列表页调用 `GET /api/automation-workspace`，按配置态把显式 workflow 和应用 workflow 放入“应用流程”，并额外展示“信息流转流程”和“源码真实流程”两个专题；顶部不再提供 `运行中 / 未启动 / 全部 Workflow` 状态筛选行。
 3. 点击 workflow 主体后进入 `#/automation/<id>` 详情页；点击“运行日志”后进入 `#/automation-log/<id>`。
 4. 详情页调用 `GET /api/automation-workspace/<id>`；后端继续返回统一的 normalized flow 数据，用来承载显式 workflow、app workflow、information flow 和 code-derived flow。
 5. 前端把 flow 转成 Mermaid `flowchart TD` 紧凑图；每个节点只对应一个最小可执行单位，节点第二行优先显示 `implementation` 实现落点，方便直接反查该改哪里。
@@ -355,7 +363,7 @@ Publish 页是独立Cloudflare Remote Brain 操作页，不复用对话页四栏
 3. 卡片中保留原始内容预览和失败原因
 4. 用户点击“重试写入闪念日记”后，服务端重新提交；成功则从失败队列移
 ### 审查与运行结
-1. 系统检查和同步都通过左侧导航触发，默认不切页
+1. 系统检查和同步都通过左侧导航触发，默认不切页；点击后右下角显示运行进度条
 2. 运行结果run manager 记录
 3. 对于同步任务，运行结束后会补一**final compile result** 摘要，而不是只依赖中间批次日志
 4. final compile result 同时输出 `synced / compiled / not synced / not compiled` 状态计数，设置页“仓库与同步”会把这些计数展示为结chip
@@ -384,6 +392,7 @@ Publish 页是独立Cloudflare Remote Brain 操作页，不复用对话页四栏
 15. 审查页读summary 时也会自动回填旧版已确认过`Deep Research草案` 遗留项；如果页面正文已经存在匹配草案块，系统会补刷对应低置信claim，并把重复生成的 `需要网络搜索补证的数据空白` 卡片直接收口为已完成
 16. 系统检查在扫`[[wikilink]]` `^[citation]` 时，会忽fenced code block（```markdown / ```json）里的演示内容，不再把代码块中的草稿链接或示例引用误判成真实断链
 17. `fill-chinese-aliases` wiki alias 生成现在会同时吸收三类别名来源：混合标题里的英文前缀、嵌入```markdown 原frontmatter，以及页面正文开头紧接着的二frontmatter；对已有同义页面的断链，可先批量回alias 再重新运行系统检18. `llmwiki lint` 现在会先跑一轮确定autofix prepass：仅针对 `broken-wikilink` `untraceable-*` 候选，自动执行 alias 回填、示例语法改写、以及基`.llmwiki/link-migrations.json` 的桥接页创建；只有在 rerun 后对应错误真正消失的修复才会计为 `applied`，最终系统检查结果只保留未收口的问题，并在运行日志里追加一段自动修复摘
+19. 对于 `type: query` 的 Deep Research / 查询草稿页，系统检查遇到坏双链时会保留原双链，并自动创建带 `status: seed` 和来源回链的 concept seed 页；正式 concept 页里的坏双链仍保留为待人工确认的问题，不自动污染知识页。
 ### 搜索入口
 
 1. 当前所有搜索统一收口`/api/search`
@@ -425,12 +434,463 @@ Publish 页是独立Cloudflare Remote Brain 操作页，不复用对话页四栏
 
 ## 时间线
 
+### [2026-05-04 12:10] Query 草稿坏双链自动补 seed 概念页
+
+- 修改内容：系统检查 autofix 新增 `query-concept-seed` 修复器；当 `wiki/queries` 中 `type: query` 页面包含不存在的 `[[wikilink]]` 时，自动创建 `wiki/concepts/*.md` seed 概念页，并在 seed 页正文回链到来源 query。
+- 修改内容：保留原 query 页双链，不再把 Deep Research 生成的概念连接降级为普通文本；正式 concept 页坏双链仍继续报错，留给人工判断是建页还是删链。
+- 验证结果：`npx vitest run test/lint-autofix.test.ts`、`npx vitest run test/lint-autofix.test.ts test/lint-autofix-orchestrator.test.ts test/lint-autofix-repairers.test.ts test/lint-autofix-bridge-pages.test.ts` 通过；对 `D:\Desktop\ai的仓库` 跑系统检查后坏双链为 0，新增 36 个 query concept seed 页。
+
+### [2026-05-04 12:05] 同步源文件夹纳入新源料检测并移除任务计划 roadmap
+
+- 修改内容：`/api/intake/scan` 改为读取设置页保存的 `sync-compile-config.json.source_folders`，前端选择的同步文件夹会在点击同步时被后端实时扫描，不再靠后端写死 `raw/个人信息` 等特定目录。
+- 修改内容：配置同步源进入通用 `source` intake 类型，来源标签使用文件夹名；同步写入 manifest 时记录 `source_root`、`source_relative_path`、`source_kind: "source"` 和 `source_channel`，避免重复检测已编译文件。
+- 修改内容：新源料检测弹窗支持显示配置同步源的文件夹标签；任务计划页移除“领域与项目推进”roadmap 与分割条，`AI 智能排期助手` 占满主区域。
+- 验证结果：`rtk test npx vitest run test/web-intake-summary.test.ts test/web-intake-route.test.ts test/web-intake-sync.test.ts test/intake-manifest.test.ts`、`rtk test npx vitest run test/web-workspace-page.test.ts`、`rtk test npm test`、`rtk tsc --noEmit`、`rtk err npm run build`、`rtk err fallow` 均通过。
+
+### [2026-05-04 10:40] AI Native MCP Worker 内置为 Cloudflare 入口
+
+- 修改内容：新增 `cloudflare/ai-native-mcp-worker` 内置子项目，把原独立 `ai-native-cli` 的 MCP / host bridge 思路收口成 Cloudflare Worker remote MCP 入口。
+- 修改内容：Worker 暴露 `llmwiki_status/search/get_page/chat/run_cli/webui/wechat_message` 工具，Codex 优先连接 `/mcp`；OpenClaw 接管个人微信后可把消息转给 `llmwiki_wechat_message`。
+- 行为边界：Worker 可直接读 D1 / Workers AI 或代理现有 Remote Brain；本机 CLI / WebUI 执行必须经 `LLMWIKI_LOCAL_BRIDGE_URL` 转发，避免把 Cloudflare Worker 误描述成能直接运行本机进程。
+- 验证结果：`npm --prefix cloudflare/ai-native-mcp-worker run typecheck` 通过；`WRANGLER_SEND_METRICS=false npm --prefix cloudflare/ai-native-mcp-worker run build` 通过。
+
+### [2026-05-03 22:20] 项目工作区任务卡补齐删除和空阶段投放
+
+- 修改内容：项目工作区的任务卡、行动卡右上角新增删除入口，删除直接写回任务池主事实源。
+- 修改内容：补充任务拖入新建空阶段的回归覆盖，确保任务可从现有阶段移动到其他阶段列。
+- 验证：`npx tsc --noEmit`、`npm run build`、`npm test`、`npm test -- test/web-workspace-page.test.ts -t project workspace` 通过；`fallow fix --dry-run` / `fallow fix --yes` 无可自动修复项，`fallow` 仍失败在既有 `web/server/services/search-router.ts` 复杂度热点。
+
+### [2026-05-03 22:12] 审查页系统检查卡片补齐自动补链入口
+
+- 修改内容：系统检查运行卡片新增 `自动补齐双链` 操作，只在后端标记为 `check` 的运行卡片上出现，避免同步失败卡片误触发。
+- 修改内容：后端审查聚合结果为运行卡片补充 `run.kind/status/exitCode`，前端按钮直接调用现有 `/api/runs/check` 后端入口，复用 lint 自动修复预处理并监听运行完成后刷新审查队列。
+- 验证：`npx tsc --noEmit`、`npm run build`、`npm test` 通过；`fallow` 仍失败在既有 `web/server/services/search-router.ts` 复杂度热点，`fallow fix --dry-run` / `fallow fix --yes` 无可自动修复项。
+
+### [2026-05-03 22:15] 案例库从沉淀库拆出
+
+- 修改内容：工作日志目录把 `案例库` 提升为独立顶层，案例页直接挂在案例库下面；沉淀库不再包含案例库，也不再把方法库、工具箱作为左侧目录项目展示。
+- 修改内容：沉淀库页面只保留方法库和工具箱两块画册区，方法/工具卡片可拖到 `已验证但成功 / 待验证 / 已验证但失败` 状态栏，方法文件会移动到对应状态文件夹，工具资产会写回工具箱主数据源的验证标记。
+- 验证结果：`rtk tsc --noEmit`、`rtk test npx vitest run test/web-workspace-page.test.ts`、`rtk test npx vitest run test/web-workspace-docs-route.test.ts`、`rtk test npx vitest run test/project-log-doc.test.ts`、`rtk err npm run build`、`rtk test npm test` 通过；`rtk err fallow` 仍失败在未触达的 `search-router.ts` 复杂度热点，`rtk err fallow fix --dry-run` / `rtk err fallow fix --yes` 均无可修改项。
+
+### [2026-05-03 21:46] 全局颜色收敛到 Wikipedia 仿站风格
+
+- 修改内容：全局 design token 从紫色工作台色系切到 Wikipedia 蓝灰色系，补齐 `--surface`、`--text-primary`、`--bg-canvas`、`--shadow-soft` 等运行中已使用的变量别名。
+- 修改内容：新增末尾主题覆盖层，统一主 Web 页面、Workflow、设置、审查、源料库、闪念日记和工作台的页面背景、卡片、按钮、输入框、chip 与状态色。
+- 修改内容：Automation Mermaid 和 Obsidian 审查插件同步改用 `#3366CC`、`#202122`、`#A2A9B1` 风格；项目日志界面示意图同步调色。
+
+### [2026-05-03 21:45] 执行现场补齐待归档操作
+
+- 修改内容：执行现场的待归档队列不再只读；每条待归档记录现在显示任务池未完成任务下拉框和“归档”按钮。
+- 修改内容：点击归档会调用现有 `/api/workflow-recorder/archive`，把记录写入所选任务的 workflow log 和项目工作日志，成功后刷新执行现场。
+- 验证结果：`test/web-workspace-page.test.ts`、`npx tsc --noEmit`、`npm run build`、`npm test` 通过；`fallow` 仍报告既有 `search-router.ts` 复杂度问题。
+
+### [2026-05-03 21:24] 同步编译批次内输出实时透传
+
+- 修改内容：`sync-compile` 启动 `llmwiki compile` 子进程后，不再把 stdout / stderr 缓存到退出时才输出，而是实时写回父进程，同时保留失败详情缓存。
+- 修改内容：右下角同步进度和运行日志现在能收到批次内 `Extracting`、LLM 重试等普通输出行，进度条会随实际编译输出继续推进，不再只停在 `正在编译第 1/1 批` 的 36%。
+- 影响范围：同步编译脚本、后台 run SSE 日志、右下角同步进度提示、项目日志。
+
+### [2026-05-03 21:22] 使用说明去掉内部左目录
+
+- 修改内容：设置小窗遮罩改为不透底，避免打开使用说明时背景页面仍清楚显示。
+- 修改内容：使用说明页删除正文内部左侧章节目录，保留右侧“快速定位”，并新增“自动化页”“项目日志页”说明章节。
+- 影响范围：设置弹窗、使用说明页、设置页测试、使用说明测试、项目日志。
+
+### [2026-05-03 21:20] 源仓库选择结果回填到路径栏
+
+- 修改内容：设置页“仓库与同步”里的源仓库选择结果现在会直接显示在“源仓库”那条路径栏里，不再只显示在下方路径列表。
+- 修改内容：桌面模式下这条源仓库路径栏只作为选择结果展示，不会在保存时把展示文本误追加成新的源仓库路径。
+- 验证结果：`rtk test -- npx vitest run test/web-settings-page.test.ts -t "loads workspace sync config"`、`rtk tsc --noEmit`、`rtk err -- npm run build`、`rtk test -- npm test`、`rtk err -- fallow` 通过。
+
+### [2026-05-03 21:12] 执行记录器任务绑定补齐搜索和新增
+
+- 修改内容：执行记录器绑定任务区不再限制只显示 4 个任务，改为显示任务池全部未完成任务并支持横向滑动。
+- 修改内容：绑定任务区新增“搜索任务”和“新增任务”按钮；搜索会筛选已读取的任务池任务，新增会写回 `/api/task-plan/pool` 并自动选中新任务。
+- 修改内容：记录类型新增“可能的方法方案”，桌面提交 `method` marker 后会写成“方法方案”事件，并进入方法库待验证候选。
+- 验证结果：`rtk test npx vitest run test/workflow-recorder-tasks.test.ts test/desktop-webui.test.ts test/case-library-workflow-recorder.test.ts` 通过。
+
+### [2026-05-03 21:09] 同步编译 lock 自动清理
+
+- 修改内容：同步编译锁文件从单纯 PID 改为记录 PID、脚本路径和创建时间；下次启动会同时校验进程是否存在、PID 是否被其他命令复用。
+- 修改内容：同步编译进程收到中断或终止信号时，会先停止当前编译子进程并删除自己持有的 live lock，避免余额耗尽、手动停止或桌面退出后卡住后续同步。
+- 处理结果：已确认并删除当前残留的旧同步锁，后续再次同步不会被这枚旧 lock 阻塞。
+- 验证结果：`rtk test -- npx vitest run test/sync-compile-sync.test.ts test/sync-compile-runner.test.ts`、`rtk err -- node --check scripts/sync-compile.mjs` 通过。
+
+### [2026-05-03 20:44] 同步/检查进度条改为数字百分比
+
+- 修改内容：右下角同步/检查进度提示从不确定闪动条改为明确百分比显示，启动后从 1% 进入运行进度，只有收到 run 完成状态才显示 100%。
+- 修改内容：后台入口和运行页都会读取 SSE 日志中的 `进度 xx%：...` 阶段行；同步编译脚本补充准备、同步、批次编译、发布和整理阶段进度输出。
+- 修改内容：后台入口和运行页测试补充阶段进度事件断言，确认运行中可显示 8%、27%、42% 等中间进度，完成后才显示 100%。
+
+### [2026-05-03 20:39] 工作日志首屏加载对齐 Wiki 页
+
+- 修改内容：工作日志页打开时改为默认文档和目录树并行加载，默认文档先落屏，目录树随后补齐；Graphy 和任务计划数据延后到当前文档真正需要时再加载。
+- 修改内容：工作日志 `/api/workspace/docs?mode=tree` 改为轻量摘要请求，不再在打开页面时重建搜索索引或渲染全部虚拟文档；单篇内容改走按 path 懒加载接口。
+- 验证结果：`rtk npx tsc --noEmit`、`rtk npm run build`、`rtk test npx vitest run test/web-workspace-page.test.ts test/web-workspace-docs-route.test.ts`、`rtk test npm test`、`rtk err fallow` 通过。
+
+### [2026-05-03 20:33] 同步/检查进度条改为等待 run 完成
+
+- 修改内容：后台入口的右下角进度条不再把“同步编译已启动 / 系统检查已启动”当作完成态；启动成功后继续订阅 `/api/runs/:id/events`，只有 run 状态变为 `succeeded / failed / stopped` 才切换为完成或错误。
+- 修改内容：后台入口测试补充 SSE 状态事件模拟，确认启动后进度条仍保持运行中，收到完成事件后才显示完成。
+- 验证结果：`rtk test npx vitest run test/web-background-run.test.ts test/web-runs-page.test.ts` 通过。
+
+### [2026-05-03 20:32] 执行层级图补齐真实鼠标拖拽
+
+- 修改内容：执行层级图任务拖拽新增鼠标按下、移动、释放链路，不再只依赖浏览器原生 `dragstart/drop` 事件。
+- 修改内容：拖动结束后会吞掉本次误点击，避免拖拽被当成普通按钮点击；任务仍可投放到阶段列、任务节点和今日推进窗口。
+- 影响范围：项目工作区拖拽交互、项目工作区测试、项目日志。
+
+### [2026-05-03 20:20] 同步/检查启动显示右下角进度条
+
+- 修改内容：左侧导航和运行页的“同步 / 系统检查”启动时都会创建右下角运行进度提示；运行中使用不确定进度条，跳过、启动失败、启动成功或运行完成后切换为完成 / 错误状态。
+- 修改内容：进度提示复用全局 toast 容器，避免和现有右下角提示重叠；补充后台入口和运行页入口测试。
+- 验证结果：`rtk tsc --noEmit`、`rtk npm run build`、`rtk npm --prefix web run build`、`rtk test npm test`、`rtk fallow` 通过。
+
+### [2026-05-03 21:01] 设置侧栏恢复选项导航
+
+- 修改内容：恢复设置小窗左侧“选项”导航和使用说明页左侧章节目录。
+- 修改内容：继续隐藏设置左栏里 `核心插件` / `第三方插件` 下的具体插件项，只保留顶部设置页面入口。
+- 影响范围：设置弹窗、使用说明页、设置页测试、使用说明测试、项目日志。
+
+### [2026-05-03 20:39] 设置小窗收起左侧目录并简化 Workflow 列表
+
+- 修改内容：Workflow 列表顶部移除 `运行中 / 未启动 / 全部 Workflow` 状态筛选行，只保留搜索和分专题列表。
+- 修改内容：自动化和项目日志继续作为设置内置分区。
+- 影响范围：设置弹窗、Workflow 列表、设置页测试、自动化列表测试、项目日志。
+
+### [2026-05-03 20:16] 工作台项目推进页移除
+
+- 修改内容：工作台二级导航移除 `项目推进页`，默认 `#/workspace` 直接进入 `任务计划页`。
+- 修改内容：旧 `#/workspace/project-progress` 链接保留兼容入口，但会落到 `任务计划页`，不再渲染今日时间表 / Focus Board / 今日完成表三栏页面。
+- 验证结果：`rtk test "npx vitest run test/web-workspace-page.test.ts test/web-main-slot.test.ts"`、`rtk tsc --noEmit`、`rtk err "npm run build"` 通过；完整 `npm test` 仍卡在既有 `web-automation-detail-page` 样式断言，`fallow` 仍报告既有 4 个 dead-code 项。
+
+### [2026-05-03 20:11] 执行层级图任务可投放到阶段列
+
+- 修改内容：执行层级图的阶段列容器现在也是任务投放目标，任务卡可拖到其他阶段的空白区域或阶段列内来切换阶段。
+- 修改内容：阶段列拖拽预览使用同一套蓝色投放高亮，并继续在松开后写回任务池 `pool.items`。
+- 影响范围：项目工作区拖拽交互、项目工作区测试、项目日志。
+
+### [2026-05-03 20:09] 数据导入来源入口暂不开放
+
+- 修改内容：设置页“数据导入”保留全部来源卡片，但点击任一来源统一显示“之后将支持，现在暂不开放”。
+- 修改内容：RSS、闪念笔记、小红书和抖音来源不再从来源卡片进入具体导入面板或弹窗。
+- 影响范围：设置页数据导入入口、设置页测试、项目日志。
+
+### [2026-05-03 20:08] 插件页收口为后续支持入口
+
+- 修改内容：设置页移除左侧 `核心插件` / `第三方插件` 具体插件列表，只保留顶部 `第三方插件` 入口。
+- 修改内容：插件面板改为占位说明，明确核心插件和第三方插件管理会在后续版本支持。
+- 影响范围：设置页插件入口、使用说明、设置页测试、项目日志。
+- 验证结果：`rtk test "npx vitest run test/web-settings-page.test.ts -t plugin"`、`rtk tsc --noEmit`、`rtk err "npm run build"`、`rtk err "npm --prefix web run build"` 通过；`rtk test "npm test"` 被既有 Workspace / Automation / Main slot / 导入弹窗测试失败阻塞，`rtk err "fallow"` 被既有 `openRssImportPanel`、`openFlashNoteImportPanel` 未用导出阻塞。
+
+### [2026-05-03 20:04] 使用说明收进设置页
+
+- 修改内容：移除全局左侧导航栏的“使用说明”顶层入口，说明文档改为设置页内的 `使用说明` 分区。
+- 修改内容：新增 `#/settings/user-guide` 设置分区，保留原说明正文和章节目录，并把章节链接改为 `#/settings/user-guide#...`。
+- 影响范围：全局导航栏、设置页导航、使用说明路由、相关页面测试、项目日志。
+
+### [2026-05-03 19:40] 项目工作区阶段改为真实层级并补齐快捷创建
+
+- 修改内容：任务池新增真实 `pool.stages` 阶段层级，项目工作区按 `领域 -> 项目 -> 阶段 -> 任务 -> 行动` 渲染；旧任务会自动归入 `已完成 / 同步推进 / 待推进` 默认阶段。
+- 修改内容：项目、阶段、任务和行动卡片支持键盘快速创建，`Tab` 创建下一级，`Enter` 创建同级或同阶段；拖任务到阶段时先显示预览链接，松开后才真正写回。
+- 修改内容：行动卡片支持在任务之间拖动归属，不再误移动整组任务；今日推进窗口继续与任务计划页今日建议时间表同步。
+- 验证结果：`rtk tsc --noEmit`、`rtk err "npm run web:build"`、`rtk err "npm run build"`、`rtk test "npm test"` 和 `rtk err "fallow"` 均通过。
+
+### [2026-05-03 18:43] 项目工作区任务改为阶段列同步组
+
+- 修改内容：执行层级图的项目下游从单列任务堆叠改为 `阶段 1 · 已完成 / 阶段 2 · 同步推进 / 阶段 3 · 待推进` 三类阶段列，横向表达先后，同阶段内多任务表示同步推进。
+- 修改内容：今日推进窗口和拖拽逻辑继续使用原任务 ID，不新增后端字段；阶段由现有任务生命周期推导。
+- 验证结果：`rtk test "npx vitest run test/web-workspace-page.test.ts -t project workspace"`、`rtk tsc --noEmit`、`rtk err "npm run web:build"`、`rtk err "npm run build"`、`rtk test "npm test"` 和 `rtk err "fallow"` 均通过。
+
+### [2026-05-03 18:21] 工作日志新增真实归档层级
+
+- 修改内容：工作日志目录新增 `归档` 顶层层级，并落为真实 Markdown 文件：`wiki/专题/03-归档/index.md`、`失败的方法/index.md`、`已完成领域、项目、任务/index.md`。
+- 修改内容：方法库 `已验收失败` 条目会同步复制到 `归档 / 失败的方法`；任务池中带 `completedAt` 的任务会同步写入 `归档 / 已完成领域、项目、任务`。
+- 验证结果：`rtk test "npx vitest run test/web-workspace-docs-route.test.ts -t archive"`、`rtk test "npx vitest run test/web-workspace-page.test.ts -t archive"`、`rtk tsc --noEmit`、`rtk err "npm run web:build"`、`rtk err "npm run build"`、`rtk test "npm test"` 和 `rtk err "fallow"` 均通过。
+
+### [2026-05-03 18:04] 项目工作区删去行动列并扩展筛选拖拽
+
+- 修改内容：执行层级图删去“行动”列，不再生成 `补充下一步行动` 卡片，图层收口为 `领域 -> 项目 -> 任务`。
+- 修改内容：执行层级图标题行新增 `未完成 / 全部` 筛选，默认只显示未完成分支。
+- 修改内容：领域、项目、任务卡片都支持拖动；拖动任务可改所属项目，拖动项目可改所属领域，同步写回任务池 `domain / project / projectOrder`。
+- 验证结果：`rtk test "npx vitest run test/web-workspace-page.test.ts -t project workspace"`、`rtk tsc --noEmit`、`rtk err "npm run web:build"`、`rtk err "npm run build"`、`rtk test "npm test"` 和 `rtk err "fallow"` 均通过。
+
+### [2026-05-03 17:48] 项目工作区执行层级图支持折叠
+
+- 修改内容：执行层级图中的领域、项目、任务节点可点击折叠或展开，折叠后隐藏下游分支。
+- 修改内容：树状连线会跳过折叠后不可见的节点，并在展开/折叠后重新测量绘制。
+- 验证结果：`rtk test "npx vitest run test/web-workspace-page.test.ts -t project workspace"`、`rtk tsc --noEmit`、`rtk err "npm run web:build"`、`rtk err "npm run build"`、`rtk test "npm test"` 和 `rtk err "fallow"` 均通过。
+
+### [2026-05-03 17:38] 项目工作区移除顶部标题栏
+
+- 修改内容：项目工作区不再显示独立的 `PROJECTS / 项目工作区 / 看清项目链路` 顶部标题区。
+- 修改内容：项目、已完成、正在进行、未确定四个统计 chip 移到“执行层级图”标题行中间，缩放控制仍保留在右侧。
+- 验证结果：`rtk test "npx vitest run test/web-workspace-page.test.ts -t project workspace"`、`rtk tsc --noEmit`、`rtk err "npm run web:build"`、`rtk err "npm run build"`、`rtk test "npm test"` 和 `rtk err "fallow"` 均通过。
+
+### [2026-05-03 17:30] 项目工作区接入优先级排序和今日时间表同步
+
+- 修改内容：执行层级图默认按任务优先级排序，并新增任务节点拖拽改序；拖动后的人工顺序写回任务池条目的 `projectOrder`。
+- 修改内容：执行层级图节点增加 `已完成 / 正在进行 / 未确定` 状态标签和底色，已完成任务不再作为可拖动排期来源。
+- 修改内容：今日推进窗口改为直接读取任务计划页“今日建议时间表”；从执行层级图拖入任务时会写入同一份 `schedule.items`，任务计划页立即同步。
+- 验证结果：`rtk test "npx vitest run test/web-workspace-page.test.ts -t project workspace"`、`rtk tsc --noEmit`、`rtk err "npm run web:build"`、`rtk err "npm run build"`、`rtk test "npm test"` 和 `rtk err "fallow"` 均通过。
+
+### [2026-05-03 17:07] 工作日志根页改为 AI 维护指南
+
+- 修改内容：`wiki/专题/index.md` 的默认内容改为 `工作日志维护指南`，说明任务、行动、工具和双链的主事实源，以及 AI 处理行动记录的顺序。
+- 修改内容：旧 `专题` 占位页或旧工作日志占位说明会在工作日志加载时自动迁移成维护指南；非占位的用户自写内容不会被覆盖。
+- 验证结果：`rtk tsc --noEmit` 和 `rtk test -- npm test -- test/web-workspace-docs-route.test.ts` 通过。
+
+### [2026-05-03 17:04] 项目工作区执行层级图连线改为树状分叉线
+
+- 修改内容：执行层级图连线从每个节点一段孤立线改为 SVG 树状分叉线，父节点先连到主干，再由主干分叉到所有子节点，恢复之前示意图里“一眼看到归属”的关系表达。
+- 修改内容：推进、卡点和下一步的连线保留状态色，高亮任务时对应关系线会加重；节点列宽和可缩放图层保持不变。
+- 验证结果：`rtk test "npx vitest run test/web-workspace-page.test.ts -t project workspace"`、`rtk tsc --noEmit`、`rtk err "npm run web:build"`、`rtk err "npm run build"`、`rtk test "npm test"` 和 `rtk err "fallow"` 均通过。
+
+### [2026-05-03 17:02] 工作台独立工具箱页移除
+
+- 修改内容：工作台二级导航移除独立 `工具箱` / hammer 入口，保留 `项目推进 / 任务计划 / 任务池 / 工作日志`。
+- 修改内容：旧 `#/workspace/toolbox*` 工作台链接不再打开工具箱页面，统一进入工作日志页；工具 App/Website 的主事实入口归到工作日志沉淀库。
+- 验证结果：`rtk tsc --noEmit` 和 `rtk test -- npm test -- test/web-workspace-page.test.ts test/web-router.test.ts` 通过。
+
+### [2026-05-03 16:56] 项目工作区执行层级图改为可缩放图层
+
+- 修改内容：执行层级图不再通过压窄列宽适配容器，改为在独立图层里保持节点自然横排宽度，并由外层视口滚动。
+- 修改内容：执行层级图新增 `- / 100% / +` 缩放控制，并支持按住 Ctrl 滚轮缩放；缩放比例保存在浏览器本地。
+- 验证结果：`rtk test "npx vitest run test/web-workspace-page.test.ts -t project workspace"`、`rtk tsc --noEmit`、`rtk err "npm run web:build"`、`rtk err "npm run build"`、`rtk test "npm test"` 和 `rtk err "fallow"` 均通过。
+
+### [2026-05-03 16:45] 执行记录器任务绑定改为今日近期优先
+
+- 修改内容：桌面端执行记录器的任务按钮继续来自任务池主事实源，但排序改为今天日程任务优先，其次近期截止、当前区、高优和新近任务。
+- 修改内容：任务按钮副标题增加 `今天 HH:mm`、`近期截止`、`当前任务` 等提示，提交时仍传任务池原始 `taskId`。
+- 验证结果：新增执行记录器任务选择单元测试；TypeScript 检查、桌面端定向测试和桌面端构建通过。
+
+### [2026-05-03 16:34] 项目工作区改为执行层级图
+
+- 修改内容：工作台 `01-项目工作区` 入口改为双栏项目执行室，左侧展示 `领域 -> 项目 -> 任务 -> 行动` 的执行层级图，右侧展示今日项目推进窗口。
+- 修改内容：层级图使用细直角分层线连接节点，任务和行动节点显示推进、卡点、下一步和已记录状态；点击右侧时间窗口会高亮左侧对应任务节点，左右两栏可拖拽调宽。
+- 修改内容：项目工作区作为特殊只读页隐藏通用工作日志正文编辑器，避免把执行室页面误当作普通 Markdown 文档编辑。
+- 验证结果：`rtk test "npx vitest run test/web-workspace-page.test.ts"`、`rtk tsc --noEmit`、`rtk err "npm run build"`、`rtk err "npm run web:build"`、`rtk test "npm test"` 和 `rtk err "fallow"` 均通过。
+
+### [2026-05-03 16:28] 工作日志 Graphy 补齐可编辑双链
+
+- 修改内容：新增工作台手动关系表 `.llmwiki/workspace-relations.json` 和 `/api/workspace/relations`，支持按当前对象读取、创建和删除双链。
+- 修改内容：工作日志 Graphy 详情区增加双链列表、关系类型选择、目标对象选择和删除按钮；工作台图谱会把手动双链合并进当前对象关系图。
+- 验证结果：新增服务端关系读写测试和前端 Graphy 新增关系测试；TypeScript 检查和工作台相关测试通过。
+
+### [2026-05-03 16:12] 工作日志 Graphy 改用工作台双链图谱
+
+- 修改内容：新增 `/api/workspace/graph`，从工作日志目录、任务池和任务关联字段生成工作对象关系图，节点覆盖领域、项目、任务、案例、方法和工具。
+- 修改内容：工作日志页 Graphy 不再请求 `/api/wiki/graph`，改为按当前工作对象 id 请求工作台图谱；当前对象周围展示直接双链关系。
+- 验证结果：新增工作台图谱路由测试和页面端点测试；TypeScript 检查和相关工作台测试通过。
+
+### [2026-05-03 15:45] 沉淀库统一为案例方法工具页
+
+- 修改内容：工作日志沉淀库改为一个统一页面，案例库、方法库和工具箱保留独立身份；方法库和工具箱统一使用 `已验证但成功 / 待验证 / 已验证但失败` 三栏。
+- 修改内容：案例、方法、工具和任务行动都进入工作日志 Graphy 候选；任务池行动会生成隐藏的行动节点，支持从行动层向领域、项目、任务和沉淀库条目补双链。
+- 验证结果：补充工作台页面和 workspace docs 路由回归测试覆盖统一沉淀页、新状态路径、工具保存路径和行动图谱边。
+
+### [2026-05-03 15:25] 工作日志目录切换文档保留滚动位置
+
+- 修改内容：工作日志左侧目录在点击页面、任务或项目后，会保留目录栏原来的滚动位置，不再因为正文切换或异步加载而回到顶部。
+- 验证结果：新增目录滚动保持回归测试；工作台页面定向测试和 TypeScript 检查通过。
+
+### [2026-05-03 15:18] 工作日志 Graphy 改为正文浮动块
+
+- 修改内容：工作日志正文里的 Graphy 默认贴在正文右上角，不再作为绝对定位浮层盖住文字。
+- 修改内容：拖动 Graphy 时改为实时更新上方和右侧偏移，浏览器会让正文文字围绕当前位置重新排布；位置仍保存在浏览器本地。
+- 验证结果：补充工作台页面回归测试，覆盖默认右上位置、拖动偏移和本地持久化。
+
+### [2026-05-03 15:18] 工作日志目录折叠改为显式箭头控制
+
+- 修改内容：工作日志左侧目录的领域和项目节点增加稳定的显式折叠/展开控制；点击箭头只切换目录分支，点击任务或页面标题只打开详情。
+- 修改内容：补充回归测试，覆盖项目工作区分支从展开到收起、再重新展开，以及项目节点单独收起的行为。
+- 验证结果：工作台页面定向测试和 TypeScript 检查通过。
+
+### [2026-05-03 14:02] 方法库和工具箱改为画册视图
+
+- 修改内容：工作日志沉淀库里的方法库、工具箱 App、工具箱 Website 现在只作为左侧目录入口；`已验证成功 / 待验收 / 已验收失败` 集成到对应主页面内，不再作为目录子页面展示。
+- 修改内容：方法和工具条目在主页面内按状态显示为画册卡片，点击卡片会在右侧打开可编辑详情栏；保存详情会继续写回方法 Markdown 或工作台工具箱真实数据源。
+- 修改内容：执行记录器新产生的方法候选和工具候选统一标记为待验收。
+- 验证结果：工作日志路由、工作台页面、执行记录器归档和执行沉淀相关测试通过；TypeScript 检查通过。
+
+### [2026-05-03 15:10] 执行现场整合为单页工作台
+
+- 修改内容：工作日志目录里的执行现场不再展开今日行动、待绑定任务、待归档记录、已归档记录和 Workflow Event 子入口；点击执行现场直接进入一个合并工作台。
+- 修改内容：合并工作台复用 `/api/workflow-artifacts`，在同页展示今日行动、待处理队列、最近完成和 Workflow Event，待处理队列可在待绑定与待归档之间切换。
+- 验证结果：新增工作台页面测试和 workspace docs 路由测试覆盖执行现场单页入口。
+
+### [2026-05-03 13:05] 工作日志目录重排为执行现场项目工作区沉淀库
+
+- 修改内容：工作日志项目工作区不再只镜像 `领域` 文件树，而是直接读取任务池 `pool.items`，按任务池项目名分组，任务页保存时写回同一个任务池条目的标题、项目、领域和优先级。
+- 修改内容：工作日志工具箱不再维护独立专题页，改为直接读取工作台工具箱页同一份 `工具箱/toolbox.json` 与 legacy Markdown；工作日志页保存工具文档会写回真实工具箱数据源。
+- 修改内容：工作日志目录从旧专题结构改为 `执行现场 / 项目工作区 / 沉淀库`；执行现场显示今日行动、待绑定任务、待归档记录、已归档记录和 Workflow Event，项目工作区继续引用领域、项目和项目工作日志稳定路径。
+- 修改内容：沉淀库拆成案例库、方法库、工具箱 App 和工具箱 Website；状态分组在对应页面内展示，不再占用左侧目录层级。
+- 修改内容：执行记录器候选写入位置同步调整：工具/链接候选直接进入工作台工具箱的受管工具资产并标记待验收，资料验证和方法候选进入方法库待验收；执行沉淀页和自动化说明同步到新目录。
+- 验证结果：工作日志路由、工作台页面、工具箱、执行沉淀、执行记录器归档和自动化 workspace 相关测试通过；TypeScript 检查通过。
+
+### [2026-05-03 11:45] 对话引用按源项目候选路径打开预览
+
+- 修改内容：对照源项目 `chat-message.tsx` 的引用打开逻辑，当前 WebUI 在打开对话引用时会按原始路径、`wiki/<path>`、`wiki/entities|concepts|sources|queries|synthesis|comparisons/<id>.md` 等候选路径依次尝试。
+- 修改内容：正文编号和底部引用仍统一走 `data-chat-reference-path`，但不再只依赖原始 path 能被 `/api/page` 命中。
+- 验证结果：聊天页引用、抽屉集成和 Markdown 消息聚焦测试通过；TypeScript 检查和 Web 客户端构建通过。
+
+### [2026-05-03 11:25] 工作日志专题整理闭环改为执行记录到资源库
+
+- 修改内容：工作日志专题 scaffold 从 `案例库 / 资源库 / 资料验证记录 / 方法库` 改为 `00-执行记录 / 01-案例库 / 02-任务卡 / 03-资源库`，并把示例内容替换为浏览记录效率诊断、信息消费失控案例、限制重复搜索任务和浏览器行为分析法。
+- 修改内容：执行沉淀页补齐的长期文件夹、案例库刷新路径、执行记录器候选写入路径和自动化说明同步到新专题结构；资料验证和方法候选先统一进入资源库。
+- 影响范围：工作台工作日志目录、执行沉淀页、执行记录器候选文件、案例库刷新、自动化说明、相关测试、项目日志。
+
+### [2026-05-03 11:20] 对话引用点击入口收敛到聊天页
+
+- 修改内容：对话正文引用编号、回答下方引用和已选页面 chip 统一使用 `data-chat-reference-path`，点击后由聊天页本地事件处理打开右侧预览抽屉。
+- 修改内容：移除主入口里的全局 document 捕获拦截，避免引用链接存在聊天页和主入口两套点击逻辑。
+- 验证结果：补充已选页面 chip 点击回归测试；聊天页、抽屉集成和消息 Markdown 聚焦测试通过，TypeScript 检查通过。
+
+### [2026-05-03 10:55] 对话正文引用编号可打开预览
+
+- 修改内容：对话回答正文中的 `[1]`、`[6]` 等 wiki 引用编号现在会渲染为可点击引用，并复用聊天页右侧预览抽屉打开对应页面。
+- 修改内容：代码块和已有链接内部的编号不会被改写；回答下方引用 chip 继续保持整条可点击；主入口现在会在捕获阶段拦截聊天引用链接，避免默认 `#/wiki/...` 路由抢先处理。
+- 验证结果：新增正文编号点击、代码块保护和主入口捕获拦截回归测试；聚焦聊天引用与抽屉测试、TypeScript、Web 客户端构建通过。
+
+### [2026-05-03 10:52] 工作日志目录删除确认改为页内面板
+
+- 修改内容：工作日志目录删除按钮固定在目录项标题右侧，默认仅在 hover / 聚焦时出现，避免另占一行。
+- 修改内容：删除确认从浏览器 `prompt` 改为目录内确认面板，支持只删当前页面或连同子页面删除，避免运行环境禁用 `prompt` 导致页面异常。
+- 修改内容：正文第一个标题可编辑，保存后反向同步到目录页面显示名，并加深领域到项目的缩进和连接线，强化上下级关系。
+- 验证结果：工作台页面回归测试、TypeScript、Web 前端构建通过。
+
+### [2026-05-03 10:50] 对话引用整条 chip 可打开预览
+
+- 修改内容：对话回答下方的 wiki 引用改为真实 `#/wiki/...` 链接，并在聊天页拦截后打开右侧预览抽屉；整条引用 chip（包含路径文本）都可点击，拦截失效时也会按 Wiki 路由打开页面。
+- 验证结果：新增点击路径文本的回归测试；聚焦聊天引用与抽屉测试、TypeScript、构建通过。
+
+### [2026-05-03 10:48] 工作日志补齐基础块编辑与可拖动 Graphy
+
+- 修改内容：工作日志正文新增基础块工具条，覆盖文本、标题、列表、任务、引用、代码块、链接、图片，并把编辑后的 HTML 按 Markdown 写回源文件。
+- 修改内容：工作日志内新增页面级 Graphy 小图，复用当前文档的 `/api/wiki/graph?path=...` 关系图，并支持拖动定位与本地持久化。
+- 修改内容：工作日志目录树改为领域、项目、日志三级真嵌套结构，并增加节点图标、缩进、竖向层级线和横向连接线，避免上下级关系只能靠蓝字判断。
+- 修改内容：工作日志目录节点支持折叠；每个页面支持删除，有子页面时会让用户选择只删当前页面或连同子页面一起删除，后端删除后刷新搜索索引。
+- 影响范围：工作台工作日志页、图标组件、工作日志 Markdown 序列化、工作台页面测试、项目日志。
+
+### [2026-05-03 10:35] 使用说明页补齐字段级填写手册
+
+- 修改内容：`#/user-guide` 从功能介绍扩展为可操作的填写说明，新增 LLM 提供商、Agent、搜索与向量检索、数据导入、CLIProxy/OAuth、快捷键与插件等字段级章节。
+- 修改内容：设置页说明补充每个关键输入项的填写来源、建议值、留空条件和常见错误排查路径，重点覆盖 API Key、Base URL、模型 ID、仓库路径、Cookie、Embedding Chunk / Overlap 和代理 URL。
+- 修改内容：刷新使用说明页示意图 `project-log-assets/user-guide-page.svg`。
+
+### [2026-05-03 10:20] 新增独立使用说明页
+
+- 修改内容：新增 `#/user-guide` 独立页面，左侧全局导航栏增加“使用说明”入口。
+- 修改内容：使用 `awesome-design-md` 中 Mintlify 文档风格组织页面，采用左侧章节导航、正文、右侧快速定位三栏布局；内容覆盖首次启动、日常流程、设置页布置、LLM 设置、仓库同步、主要页面和排查顺序。
+- 修改内容：补充使用说明页示意图 `project-log-assets/user-guide-page.svg`，并把新独立页面写入当前界面记录。
+
+### [2026-05-03 09:19] 本地向量检索支持服务选择
+
+- 修改内容：设置页“本地向量检索”新增 Embedding 来源选择，区分网络 / 中转 API 与本机 embedding 服务。
+- 修改内容：新增 `/api/search/embedding-services`，返回 OpenAI、小马中转和常见本机 OpenAI-compatible embedding 服务；本机服务通过端口探测显示可连接 / 未运行状态，点选后自动填入 endpoint 和模型。
+- 修改内容：内置 Qwen3-Embedding-8B 托管模板，应用可直接启动 / 停止 `127.0.0.1:8011` 的 OpenAI-compatible embedding 服务；LM Studio、Ollama、TEI、Xinference 和用户自建服务则提供检测与一键接入。
+- 验证结果：`rtk tsc --noEmit`、`rtk test npm test -- search-routes search-vector-config web-settings-page` 通过；完整检查见本轮任务最终结果。
+
+### [2026-05-02 22:32] 执行记录器改为绑定任务池任务
+
+- 修改内容：执行记录器独立小窗的“最近流程”改为“绑定任务”，选项直接读取任务池未完成任务，并提交任务 ID，不再新增命名流程或把流程名拼入正文。
+- 修改内容：服务端记录接口支持显式 `taskId`，有绑定任务时直接写入对应任务卡 `workflowLog`；工作日志条目补充任务 ID 与 `task-pool/<id>` 引用，保证任务池、执行记录器和工作日志三处映射到同一任务。
+- 验证结果：`rtk test npx vitest run test/case-library-workflow-recorder.test.ts test/desktop-webui.test.ts`、`rtk tsc --noEmit`、`rtk err npm run build`、`rtk test npm test`、`rtk err fallow` 通过。
+
+### [2026-05-02 22:30] Wiki 目录栏支持页面删除
+
+- 修改内容：普通 Wiki 文章页左侧目录树新增单页删除按钮和选择模式，用户可以在目录栏勾选多个页面后批量删除。
+- 行为边界：删除接口只接受可编辑源库 Markdown 页面；运行时只读页和文件夹不会被删除，批量请求中只要包含不可编辑路径就整体拒绝。
+- 验证结果：`rtk test npx vitest run test/web-page-save.test.ts test/web-wiki-page.test.ts`、`rtk tsc --noEmit` 通过。
+
+### [2026-05-02 21:24] Workflow 节点说明面板限制在详情页内
+
+- 修改内容：sourceInsight 详情页的右侧节点说明面板不再按浏览器视口固定定位，改回跟随详情页网格布局，避免在设置小窗或弹层中越界遮挡关闭、返回区域。
+- 验证结果：补充样式断言，锁定说明面板宽度由详情页网格约束。
+
+### [2026-05-02 21:16] 执行沉淀图按原 Mermaid 替换
+
+- 修改内容：`执行沉淀文件流转` 的 Mermaid 图按案例库输入输出流程原文替换，保留“读取来源路径”“进入待确认/待归档队列”“写入 wiki/个人信息档案/案例库/<标题>案例.md”等节点文案。
+- 修改内容：为 sourceInsight 图新增 `preserveMermaid` 开关；该流程不再被服务端重建成 A1/B1 编号骨架，详情页直接显示原 Mermaid。
+- 验证结果：`rtk test -- npx vitest run test/automation-workspace-routes.test.ts test/web-automation-detail-page.test.ts test/project-log-doc.test.ts`、`rtk tsc --noEmit` 通过。
+
+### [2026-05-02 21:14] Provider 卡片补齐启动与真删除
+
+- 修改内容：LLM provider 卡片现在始终提供“启动”按钮；启动会启用该账号并设为当前默认 provider。
+- 修改内容：删除按钮改为真实删除账号；API provider 从 `.llmwiki/llm-accounts.json` 移除，OAuth provider 通过 CLIProxy 账号删除接口移除本地 auth 文件，不再把删除伪装成停用或断开连接。
+- 验证结果：补充设置页、LLM 路由、CLIProxy 路由和账号存储测试；完整检查见本轮任务最终结果。
+
+### [2026-05-02 21:10] 小马 / 神马中转接入模型配置
+
+- 修改内容：`LLM 大模型` provider 预设新增“小马 / 神马中转”，表单会自动填入 `https://api.whatai.cc/v1`、OpenAI-compatible API 类型和常用聊天模型候选。
+- 修改内容：API 账号保存时会把 `api.whatai.cc` 识别为 relay；本地向量检索允许直接填写 `https://api.whatai.cc`，保存后会调用 `/v1/embeddings`。
+- 验证结果：新增/更新设置页、LLM 账号和向量配置测试；完整检查见本轮任务最终结果。
+
+### [2026-05-02 21:05] 对话 Thinking 跟随用户语言
+
+- 修改内容：聊天系统提示现在明确要求所有可见内容都使用用户工作语言，`<thinking>` 思考摘要也必须跟随同一语言；中文提问时 Thinking 和正式回答都应输出中文，避免出现英文计划说明。
+- 验证结果：新增 `web-llm-chat` 回归测试固定该提示词约束；完整检查见本轮任务最终结果。
+
+### [2026-05-02 20:56] 对话引用支持打开 raw/source 来源
+
+- 修改内容：对话引用面板点击 `raw/*`、`sources_full/*` 等来源路径时，预览抽屉会在 `/api/page` 失败后回退到源料库详情接口打开原文，不再只支持 wiki 页面。
+- 验证结果：`rtk test npx vitest run test/web-drawer-integration.test.ts`、`rtk tsc --noEmit` 通过；完整检查见本轮任务最终结果。
+
+### [2026-05-02 20:52] 对话 Thinking 与引用面板可见性修复
+
+- 修改内容：OpenAI-compatible provider 现在会读取 `reasoning_content` / `reasoning` 字段，并包装为聊天页可识别的 `<thinking>` 块；聊天系统提示也会要求输出简短思考摘要。
+- 修改内容：回答引用参考文献区改为默认展开的块状面板，不再压缩成一行 chip，用户可以直接看到引用来源并继续折叠。
+- 验证结果：`rtk test npx vitest run test/openai-provider.test.ts test/chat-message-markdown.test.ts test/web-chat-page.test.ts test/web-llm-chat.test.ts`、`rtk tsc --noEmit` 通过；完整检查见本轮任务最终结果。
+
+### [2026-05-02 20:50] LLM provider 卡片支持启用停用账号
+
+- 修改内容：LLM 大模型页停用后的 OAuth provider 不再从列表消失，而是显示“已停用”和“启用”按钮，可从卡片直接恢复启用。
+- 修改内容：API provider 卡片读取到 `enabled:false` 时也会显示停用状态，并可通过“启用”按钮重新保存为启用；原有删除 API provider 与断开 OAuth provider 操作保留。
+- 验证结果：`rtk test -- npx vitest run test/web-settings-page.test.ts` 通过；完整检查见本轮任务最终结果。
+
+### [2026-05-02 20:40] LLM provider 设置页迁入源项目预设体验
+
+- 修改内容：`LLM 大模型` 页首屏新增源项目风格 provider 预设卡片，点击即可用源项目的 URL、API 模式、默认模型和推荐模型填充添加表单。
+- 修改内容：Provider preset 列表改为源项目的精选服务商集合，包含 MiniMax Global / 中国、NVIDIA NIM、Kimi、智谱 GLM、百炼 Coding Plan、小米 MiMo、火山 Ark、Ollama Local / Cloud 等；已保存账号会按 URL 反推更准确的 provider 显示名。
+- 修改内容：NVIDIA NIM 默认模型改为 `meta/llama-3.3-70b-instruct`，避免默认填入已退役或容易过期的第三方模型 ID；MiniMax 继续走 Anthropic Messages / Bearer 认证链路。
+- 验证结果：`rtk tsc --noEmit`、`rtk test npx vitest run test/web-settings-page.test.ts`、`rtk test npx vitest run test/llm-config.test.ts test/provider-factory.test.ts`、`rtk test fallow` 通过。
+
+### [2026-05-02 20:32] LLM provider 列表默认折叠
+
+- 修改内容：LLM 大模型页的 provider 卡片现在默认折叠，只显示 provider 名称、模型数量和操作按钮，点击箭头后再展开连接信息与聊天 / 嵌入模型详情。
+- 验证结果：聚焦设置页测试、TypeScript 与构建检查见本轮任务最终结果。
+
+### [2026-05-02 20:27] ChatGPT OAuth 授权成功不再被连通测试回滚
+
+- 修改内容：LLM 大模型添加 ChatGPT OAuth provider 时，授权完成并读取到账号后会先保存默认账号并刷新 provider 卡片，再执行连通测试。
+- 修改内容：连通测试失败会显示“OAuth 已接入，但连通测试失败”，用于提示模型、额度或上游 Codex 403/502 问题，不再把已授权账号当作添加失败。
+- 验证结果：`rtk test -- npx vitest run test/web-settings-page.test.ts -t "OAuth"` 通过；完整检查见本轮任务最终结果。
+
+### [2026-05-02 20:30] 对话页补齐 Thinking 展示
+
+- 修改内容：聊天消息渲染现在会解析 `<think>` / `<thinking>` 块，正式回答正文会剥离思考内容。
+- 修改内容：流式生成中的思考内容显示为最近 5 行滚动窗口；生成完成后思考内容默认折叠，可点击展开查看。
+- 验证结果：`rtk test npx vitest run test/chat-message-markdown.test.ts test/web-chat-page.test.ts`、`rtk tsc --noEmit` 通过；完整检查见本轮任务最终结果。
+
+### [2026-05-02 20:32] 本地检索管理剩余项收口
+
+- 修改内容：设置页“本地向量检索”卡片新增重建向量索引、向量库状态和检索评测按钮；状态显示 page/chunk 数、库大小和更新时间。
+- 修改内容：新增 `/api/search/vector-status`、`/api/search/vector-rebuild`、`/api/search/benchmark`；向量索引可手动重建，评测会对比 sample qrels 下的 baseline 与当前 hybrid 检索指标。
+- 修改内容：本地搜索结果新增 `retrievalSources`，Wiki 搜索结果会显示 token / vector / graph 来源标签。
+- 验证结果：`rtk tsc --noEmit`、聚焦搜索测试、`rtk err npm run build`、`rtk err fallow`、`rtk test npm test -- --run` 通过。
+
 ### [2026-05-02 20:25] 对话多会话持久化补齐原功能
 
 - 修改内容：对话记录从 runtime 目录收口到源项目 `.llm-wiki/`，会话索引与每个会话消息分文件保存；旧 `.chat/{id}.json` 和 `.llm-wiki/chat-history.json` 都会读取迁移。
 - 修改内容：对话页新增每会话历史深度输入，保存到会话数据；引用面板的 wiki 引用可直接打开预览抽屉。
 - 修改内容：`保存至维基` 不再只归档回答，会同步写入 `wiki/queries/` 与 `sources/saved-queries/`，随后触发 compile，让回答进入后续知识抽取链路。
 - 验证结果：聚焦对话 / 审查 / 源料库测试通过，完整检查见本轮任务最终结果。
+
+### [2026-05-02 20:25] 剩余测试与 fallow 健康检查收口
+
+- 修改内容：源料库 guided-ingest compile 现在从 runtime root 读取聊天记录，匹配当前 `.llm-wiki/chats` 与旧 `.chat` 的实际存储位置，批量编译输入可正常生成并启动同步运行。
+- 修改内容：provider 设置与 LLM 配置相关映射改为查表，拆分 provider 连通性测试请求构造，消除 fallow 报告的死导出与复杂度超阈值。
+- 验证结果：`rtk tsc --noEmit`、`rtk test npm test`、`rtk test npm run build`、`rtk test fallow` 全部通过。
 
 ### [2026-05-02 20:10] MiniMax provider 认证迁移到 Anthropic Messages
 
@@ -533,6 +993,20 @@ Publish 页是独立Cloudflare Remote Brain 操作页，不复用对话页四栏
 - 影响范围：对话存储、聊天接口、对话页消息操作、审查页创建 seeded chat 的测试路径。
 - 验证结果：`rtk tsc --noEmit`、`rtk test npm run build`、`rtk test npm test`、`rtk err fallow` 通过。
 
+### [2026-05-02 20:20] Graphy Insights 忽略状态持久化
+
+- 修改内容：Graphy 意外连接卡片的忽略状态从会话内状态升级为浏览器本地持久状态，刷新或重新进入 Graphy 后已忽略的连接不会重新出现在 Insights 列表。
+- 修改内容：补充回归测试覆盖 Graphy 重挂载后的忽略状态；对照旧项目 `graph-insights.ts`、`graph-view.tsx`、`optimize-research-topic.ts`、`deep-research.ts`，确认当前规则与 Deep Research 链路已覆盖旧功能。
+- 当前边界：本机未配置 LLM 和外网搜索环境变量，无法执行真实 Deep Research 联网任务；已确认本地 WebUI 可启动并返回 Graphy 页面。
+- 验证结果：`rtk test -- npm test -- test/graph-page.test.ts`、`rtk tsc --noEmit` 通过。
+
+### [2026-05-02 22:19] 同步编译重复启动复用现有运行
+
+- 修改内容：`POST /api/runs/sync` 在已有同步编译运行中时直接返回当前运行快照，不再把重复点击报成 `run already active` 启动失败。
+- 修改内容：当系统检查和同步编译互斥时，后端返回中文说明，提示等待当前后台任务结束后再启动另一类任务。
+- 影响范围：运行启动接口、桌面/WebUI 后台同步编译入口、运行路由测试、项目日志。
+- 验证结果：`rtk test npx vitest run test/web-runs-route.test.ts test/web-background-run.test.ts test/web-run-manager.test.ts`、`rtk tsc --noEmit` 通过。
+
 ### [2026-05-02 18:15] Workflow 路由脱离设置页外壳
 
 - 修改内容：`#/automation`、`#/automation/<id>` 和 `#/automation-log/<id>` 现在直接挂载 Workflow 列表、详情和日志页，不再通过设置页自动化 section 间接渲染。
@@ -579,6 +1053,14 @@ Publish 页是独立Cloudflare Remote Brain 操作页，不复用对话页四栏
 - 修改内容：普通 Wiki 文章页顶部的页面级 Graphy 舞台补齐相对定位、固定高度和 overflow 裁剪，Sigma canvas 会被限制在 Graphy 框内，不再盖到正文或表格上。
 - 影响范围：Wiki 页面级 Graphy 样式、页面级 Graphy 测试、项目日志。
 - 验证结果：`rtk test -- npm test -- test/wiki-page-graph-render.test.ts test/web-wiki-page.test.ts test/project-log-doc.test.ts`、`rtk tsc --noEmit`、`rtk test -- npm --prefix web run build`、`rtk test -- npm run build`、`rtk test -- npm test`、`rtk run "fallow"` 通过。
+
+### [2026-05-03 20:39] 工作日志双链复用右侧预览抽屉
+
+- 修改内容：新增共享知识预览链接层，统一 `data-knowledge-preview-path` / `data-knowledge-preview-index`、点击捕获和右侧抽屉打开入口。
+- 修改内容：聊天正文引用、底部引用、已选页面 chip 改走共享链接层；工作日志正文、画册详情和抽屉正文里的 `wikilink` 会补同一预览 data attribute。
+- 修改内容：workspace 路由允许复用 shell 右侧抽屉，案例库、方法库、工具箱之间的双链点击后预览目标页面，不再整页跳转。
+- 影响范围：聊天页引用点击、工作日志知识双链、右侧抽屉、shell 布局、工作日志页面测试、项目日志。
+- 验证结果：`rtk test npm test -- test/web-chat-page.test.ts test/web-workspace-page.test.ts test/web-drawer-integration.test.ts`、`rtk npx tsc --noEmit`、`rtk npm run build` 通过；全量 `rtk test npm test` 仍被桌面工作流记录器 IPC 断言阻断，`rtk run "fallow"` 仍被桌面工作流记录器复杂度阻断。
 
 ### [2026-05-02 17:08] Graphy 高亮不再丢失节点坐标
 

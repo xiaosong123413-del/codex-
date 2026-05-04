@@ -5,10 +5,10 @@ import { existsSync } from "node:fs";
 const STATE_FILES = [
   "state.json",
   "claims.json",
-  "episodes.json",
   "procedures.json",
   "final-compile-result.json",
 ];
+const RETIRED_WIKI_DIRS = new Set(["episodes"]);
 
 export function buildStagingRoot(runtimeRoot, runId) {
   return path.join(runtimeRoot, ".llmwiki", "staging", runId);
@@ -25,7 +25,7 @@ export async function createStagingRun(sourceVaultRoot, runtimeRoot) {
   await mkdir(wikiDir, { recursive: true });
   await mkdir(llmwikiDir, { recursive: true });
 
-  await copyDirectoryIfPresent(path.join(sourceVaultRoot, "wiki"), wikiDir);
+  await copyDirectoryIfPresent(path.join(sourceVaultRoot, "wiki"), wikiDir, { removeRetiredWikiDirs: true });
   await copyStateFilesIfPresent(runtimeRoot, llmwikiDir);
 
   return { runId, root, wikiDir, llmwikiDir };
@@ -81,8 +81,17 @@ async function copyStateFilesIfPresent(vaultRoot, targetDir) {
   }
 }
 
-async function copyDirectoryIfPresent(sourceDir, targetDir) {
+async function copyDirectoryIfPresent(sourceDir, targetDir, options = {}) {
   if (!existsSync(sourceDir)) return;
   await mkdir(path.dirname(targetDir), { recursive: true });
   await cp(sourceDir, targetDir, { recursive: true, force: true });
+  if (options.removeRetiredWikiDirs) {
+    await removeRetiredWikiDirs(targetDir);
+  }
+}
+
+async function removeRetiredWikiDirs(wikiDir) {
+  for (const dirName of RETIRED_WIKI_DIRS) {
+    await rm(path.join(wikiDir, dirName), { recursive: true, force: true });
+  }
 }

@@ -104,4 +104,50 @@ describe("handlePage render cache", () => {
       html: expect.stringContaining("Runtime page."),
     }));
   });
+
+  it("returns YAML frontmatter arrays for page previews", () => {
+    const sourceVaultRoot = fs.mkdtempSync(path.join(os.tmpdir(), "llmwiki-page-frontmatter-source-"));
+    const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "llmwiki-page-frontmatter-runtime-"));
+    tempDirs.push(sourceVaultRoot, runtimeRoot);
+
+    fs.mkdirSync(path.join(runtimeRoot, "wiki"), { recursive: true });
+    fs.writeFileSync(path.join(runtimeRoot, "wiki", "alpha.md"), [
+      "---",
+      "title: Alpha",
+      "type: concept",
+      "tags:",
+      "  - one",
+      "  - two",
+      "sources:",
+      "  - source.md",
+      "related:",
+      "  - Beta",
+      "---",
+      "# Alpha",
+      "",
+      "Body.",
+    ].join("\n"), "utf8");
+
+    const handler = handlePage({
+      projectRoot: runtimeRoot,
+      sourceVaultRoot,
+      runtimeRoot,
+      host: "127.0.0.1",
+      port: 4175,
+      author: "me",
+    });
+    const json = vi.fn();
+
+    handler({ query: { path: "wiki/alpha.md", raw: "0" } } as never, { json, status: vi.fn() } as never);
+
+    expect(json).toHaveBeenCalledWith(expect.objectContaining({
+      frontmatter: expect.objectContaining({
+        title: "Alpha",
+        type: "concept",
+        tags: ["one", "two"],
+        sources: ["source.md"],
+        related: ["Beta"],
+      }),
+    }));
+  });
 });

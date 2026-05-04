@@ -1,7 +1,14 @@
+/**
+ * Coordinates local wiki search and configured external web search.
+ *
+ * The web bucket keeps transport success separate from result count so empty
+ * searches do not look like provider failures.
+ */
 import { searchWebExternal, type WebSearchResult } from "../../../src/services/cloudflare-web-search.js";
 import { readCloudflareServicesConfig } from "../../../src/utils/cloudflare-services-config.js";
 import type { ServerConfig } from "../config.js";
 import { runSearch, type SearchMode, type SearchResponse } from "./search-router.js";
+import { readLocalVectorConfigView } from "./search-vector-config.js";
 
 export type SearchScope = "local" | "web" | "all";
 
@@ -17,6 +24,8 @@ interface SearchAllResponse {
   local: SearchResponse;
   web: {
     configured: boolean;
+    ok: boolean;
+    error: string | null;
     results: WebSearchResult[];
   };
 }
@@ -29,15 +38,28 @@ interface SearchStatusResponse {
     configured: boolean;
     endpointHost: string | null;
   };
+  vector: {
+    enabled: boolean;
+    configured: boolean;
+    endpointHost: string | null;
+    model: string;
+  };
 }
 
 export function getSearchStatus(): SearchStatusResponse {
   const cfg = readCloudflareServicesConfig();
+  const vector = readLocalVectorConfigView();
   return {
     local: { configured: true },
     web: {
       configured: Boolean(cfg.searchEndpoint),
       endpointHost: cfg.searchEndpoint ? readHost(cfg.searchEndpoint) : null,
+    },
+    vector: {
+      enabled: vector.enabled,
+      configured: Boolean(vector.endpoint && vector.model),
+      endpointHost: vector.endpoint ? readHost(vector.endpoint) : null,
+      model: vector.model,
     },
   };
 }
@@ -57,7 +79,7 @@ export async function searchAll(
       : Promise.resolve<SearchResponse>({ mode, results: [] }),
     scope === "web" || scope === "all"
       ? runWebSearch(query, webLimit)
-      : Promise.resolve({ configured: false, results: [] as WebSearchResult[] }),
+      : Promise.resolve(emptyWebSearchBucket(false)),
   ]);
 
   return {
@@ -68,20 +90,29 @@ export async function searchAll(
   };
 }
 
-async function runWebSearch(query: string, limit: number): Promise<{ configured: boolean; results: WebSearchResult[] }> {
+async function runWebSearch(query: string, limit: number): Promise<SearchAllResponse["web"]> {
   const normalizedQuery = query.trim();
   if (!normalizedQuery) {
-    return { configured: true, results: [] };
+    return emptyWebSearchBucket(true, true);
   }
   try {
     const result = await searchWebExternal(normalizedQuery, limit);
+    if (result.ok) {
+      return { configured: true, ok: true, error: null, results: result.data };
+    }
     return {
-      configured: result.ok || result.error.type !== "cloudflare-unconfigured",
-      results: result.ok ? result.data : [],
+      configured: result.error.type !== "cloudflare-unconfigured",
+      ok: false,
+      error: result.error.message,
+      results: [],
     };
-  } catch {
-    return { configured: true, results: [] };
+  } catch (error) {
+    return { configured: true, ok: false, error: errorMessage(error), results: [] };
   }
+}
+
+function emptyWebSearchBucket(configured: boolean, ok = false): SearchAllResponse["web"] {
+  return { configured, ok, error: null, results: [] };
 }
 
 function normalizeScope(value: SearchScope | undefined): SearchScope {
@@ -105,4 +136,8 @@ function readHost(value: string): string | null {
   } catch {
     return value;
   }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

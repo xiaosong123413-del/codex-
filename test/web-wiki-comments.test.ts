@@ -353,6 +353,7 @@ describe("wiki page comments", () => {
       },
     ];
 
+    // fallow-ignore-next-line complexity
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.includes("/api/tree?")) {
@@ -861,6 +862,7 @@ describe("wiki page comments", () => {
   it("renders diff review after AI resolve and refreshes the article from confirm data.page", async () => {
     let commentResolved = false;
 
+    // fallow-ignore-next-line complexity
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.includes("/api/tree?")) {
@@ -970,6 +972,7 @@ describe("wiki page comments", () => {
   });
 
   it("discards AI diff review and restores the normal unresolved comment state", async () => {
+    // fallow-ignore-next-line complexity
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.includes("/api/tree?")) {
@@ -1123,6 +1126,7 @@ describe("wiki page comments", () => {
   });
 });
 
+// fallow-ignore-next-line complexity
 function ok(data: unknown) {
   return {
     ok: true,
@@ -1130,6 +1134,7 @@ function ok(data: unknown) {
   };
 }
 
+// fallow-ignore-next-line complexity
 function rawOk(data: unknown) {
   return {
     ok: true,
@@ -1164,6 +1169,7 @@ async function waitForCondition(condition: () => boolean): Promise<void> {
   throw new Error("Timed out waiting for condition");
 }
 
+// fallow-ignore-next-line complexity
 function installWikiStyles(): void {
   const existing = document.head.querySelector("[data-test-wiki-styles]");
   if (existing) {
@@ -1178,6 +1184,7 @@ function installWikiStyles(): void {
   document.head.appendChild(style);
 }
 
+// fallow-ignore-next-line complexity
 function findButtonsByText(root: ParentNode, text: string): HTMLButtonElement[] {
   return Array.from(root.querySelectorAll<HTMLButtonElement>("button"))
     .filter((button) => button.textContent?.includes(text) === true);

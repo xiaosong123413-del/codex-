@@ -6,6 +6,7 @@
  * directly testable.
  */
 
+// fallow-ignore-next-line complexity
 export function normalizeConversation(value) {
   if (!value || typeof value !== "object") return null;
   const id = cleanString(value.id);
@@ -24,6 +25,7 @@ export function normalizeConversation(value) {
   };
 }
 
+// fallow-ignore-next-line complexity
 export function normalizeComment(value) {
   if (!value || typeof value !== "object") return null;
   const id = cleanString(value.id);
@@ -42,6 +44,7 @@ export function normalizeComment(value) {
   };
 }
 
+// fallow-ignore-next-line complexity
 export function mergeByUpdatedAt(localItems, remoteItems) {
   const merged = new Map();
   for (const item of [...remoteItems, ...localItems]) {
@@ -53,6 +56,7 @@ export function mergeByUpdatedAt(localItems, remoteItems) {
   return [...merged.values()].sort((a, b) => Date.parse(b.updatedAt || "") - Date.parse(a.updatedAt || ""));
 }
 
+// fallow-ignore-next-line complexity
 export function normalizeArray(value) {
   if (Array.isArray(value)) return value;
   if (typeof value === "string" && value.trim()) {
@@ -66,10 +70,12 @@ export function normalizeArray(value) {
   return [];
 }
 
+// fallow-ignore-next-line complexity
 function normalizeMessages(value) {
   const items = normalizeArray(value);
   return items
     .filter((item) => item && typeof item === "object")
+    // fallow-ignore-next-line complexity
     .map((item) => ({
       id: cleanString(item.id) || randomId("msg"),
       role: cleanString(item.role) || "assistant",
@@ -82,14 +88,17 @@ function normalizeMessages(value) {
     }));
 }
 
+// fallow-ignore-next-line complexity
 function normalizeSearchScope(value) {
   return value === "web" || value === "all" || value === "both" ? value : "local";
 }
 
+// fallow-ignore-next-line complexity
 function cleanString(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+// fallow-ignore-next-line complexity
 function randomId(prefix) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }

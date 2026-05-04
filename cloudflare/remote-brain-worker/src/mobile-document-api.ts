@@ -2,6 +2,7 @@ import type { MobileDbEnv } from "./mobile-shared.js";
 import { json, safeJson } from "./worker-support.js";
 
 interface MobileDocumentPayload {
+  ownerUid?: string;
   path?: string;
   title?: string;
   raw?: string;
@@ -19,12 +20,13 @@ export async function handleMobileDocumentGet(request: Request, env: MobileDbEnv
   const payload = await safeJson<MobileDocumentPayload>(request);
   const path = normalizeDocumentPath(payload.path);
   if (!path) return json({ ok: false, error: "invalid_document_path" }, 400);
+  const storagePath = storageDocumentPath(payload.ownerUid, path);
   const row = await db.prepare(
     "SELECT path, title, raw, updated_at AS updatedAt FROM mobile_documents WHERE path = ?",
-  ).bind(path).first();
+  ).bind(storagePath).first();
   return json({
     ok: true,
-    document: row ? documentFromRow(row) : createEmptyDocument(path),
+    document: row ? documentFromRow(row, path) : createEmptyDocument(path),
   });
 }
 
@@ -38,9 +40,10 @@ export async function handleMobileDocumentSave(request: Request, env: MobileDbEn
   const title = String(payload.title || ALLOWED_DOCUMENTS.get(path) || "");
   const raw = String(payload.raw ?? "");
   const updatedAt = new Date().toISOString();
+  const storagePath = storageDocumentPath(payload.ownerUid, path);
   await db.prepare(
     "INSERT INTO mobile_documents (path, title, raw, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(path) DO UPDATE SET title = excluded.title, raw = excluded.raw, updated_at = excluded.updated_at",
-  ).bind(path, title, raw, updatedAt).run();
+  ).bind(storagePath, title, raw, updatedAt).run();
   return json({ ok: true, document: { path, title, raw, updatedAt } });
 }
 
@@ -55,9 +58,14 @@ function normalizeDocumentPath(value: unknown): string {
   return ALLOWED_DOCUMENTS.has(path) ? path : "";
 }
 
-function documentFromRow(row: Record<string, unknown>): Record<string, unknown> {
+function storageDocumentPath(ownerUid: unknown, path: string): string {
+  const owner = String(ownerUid ?? "").trim();
+  return owner ? `accounts/${owner}/${path}` : path;
+}
+
+function documentFromRow(row: Record<string, unknown>, path: string): Record<string, unknown> {
   return {
-    path: String(row.path ?? ""),
+    path,
     title: String(row.title ?? ""),
     raw: String(row.raw ?? ""),
     updatedAt: String(row.updatedAt ?? ""),

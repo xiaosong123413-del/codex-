@@ -1,12 +1,12 @@
-# Wiki Comments UX Implementation Plan
+﻿# Wiki Comments UX Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make Farzapedia comments behave like an on-demand reading tool: drawer closed by default, top bar clearly grouped, and new comments created from a selection toolbar instead of from an always-open side panel.
+**Goal:** Make Peiweipedia comments behave like an on-demand reading tool: drawer closed by default, top bar clearly grouped, and new comments created from a selection toolbar instead of from an always-open side panel.
 
 **Architecture:** Keep the current `renderWikiPage()` and `createWikiCommentSurface()` split. Move panel visibility and comment-creation intent into an explicit controller API, then let the wiki page own the floating selection toolbar and top-bar grouping. Preserve the existing comment routes and persistence logic.
 
-**Tech Stack:** TypeScript, DOM APIs, existing Farzapedia client shell, Vitest with jsdom
+**Tech Stack:** TypeScript, DOM APIs, existing Peiweipedia client shell, Vitest with jsdom
 
 ---
 

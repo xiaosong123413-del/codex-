@@ -37,7 +37,11 @@ import {
   getIntakeRoots,
   scanIntakeItems,
 } from "./sync-compile/intake.mjs";
-import { canClearStaleLock } from "./sync-compile/lock.mjs";
+import {
+  canClearStaleLock,
+  createLockFileContent,
+  formatLockOwner,
+} from "./sync-compile/lock.mjs";
 import {
   publishWikiToCloudflare,
   syncMobileEntriesFromCloudflare,
@@ -49,6 +53,25 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const compilerRoot = path.resolve(__dirname, "..");
 const LIVE_LOCK_PATH = path.join(".llmwiki", "lock");
+const MIN_RUNNING_PROGRESS = 1;
+const MAX_RUNNING_PROGRESS = 99;
+let activeCompileChild = null;
+let activeLiveLockPath = "";
+let lockSignalHandlersInstalled = false;
+
+function reportSyncProgress(percent, message) {
+  const normalized = Math.min(
+    MAX_RUNNING_PROGRESS,
+    Math.max(MIN_RUNNING_PROGRESS, Math.round(percent)),
+  );
+  console.log(`进度 ${normalized}%：${message}`);
+}
+
+function calculateProgressInRange(completed, total, startPercent, endPercent) {
+  if (total <= 0) return startPercent;
+  const ratio = Math.min(1, Math.max(0, completed / total));
+  return startPercent + Math.round((endPercent - startPercent) * ratio);
+}
 
 export function summarizeBatchProgress({
   importedCount,
@@ -71,13 +94,13 @@ export async function clearStaleLockIfSafe(vaultRoot) {
   const lockPath = path.join(vaultRoot, ".llmwiki", "lock");
   if (!existsSync(lockPath)) return;
 
-  const pidText = readFileSync(lockPath, "utf8").trim();
-  if (await canClearStaleLock(pidText)) {
+  const lockText = readFileSync(lockPath, "utf8").trim();
+  if (await canClearStaleLock(lockText)) {
     rmSync(lockPath, { force: true });
     return;
   }
 
-  throw new Error(`Compilation is already running with PID ${pidText}.`);
+  throw new Error(`Compilation is already running with ${formatLockOwner(lockText)}.`);
 }
 
 export function assertSourceInventoryHasContent({ markdownCount, assetCount }) {
@@ -188,17 +211,21 @@ async function runCompile(root, compilerRootPath) {
         shell: false,
       },
     );
+    activeCompileChild = child;
     let stdout = "";
     let stderr = "";
 
     child.stdout.on("data", (chunk) => {
       stdout += chunk.toString();
+      process.stdout.write(chunk);
     });
     child.stderr.on("data", (chunk) => {
       stderr += chunk.toString();
+      process.stderr.write(chunk);
     });
 
     child.on("exit", (code) => {
+      if (activeCompileChild === child) activeCompileChild = null;
       if (code === 0) {
         resolve();
         return;
@@ -207,7 +234,10 @@ async function runCompile(root, compilerRootPath) {
       reject(new Error(details || `Compile exited with code ${code ?? "unknown"}.`));
     });
 
-    child.on("error", reject);
+    child.on("error", (error) => {
+      if (activeCompileChild === child) activeCompileChild = null;
+      reject(error);
+    });
   });
 }
 
@@ -216,32 +246,49 @@ async function acquireLiveLock(vaultRoot) {
   await mkdir(path.dirname(lockPath), { recursive: true });
 
   try {
-    await writeFile(lockPath, `${process.pid}`, { encoding: "utf8", flag: "wx" });
+    await writeFile(lockPath, createLockFileContent(), { encoding: "utf8", flag: "wx" });
   } catch {
-    const pidText = existsSync(lockPath) ? readFileSync(lockPath, "utf8").trim() : "";
-    if (!(await canClearStaleLock(pidText))) {
-      throw new Error(`Compilation is already running with PID ${pidText}.`);
+    const lockText = existsSync(lockPath) ? readFileSync(lockPath, "utf8").trim() : "";
+    if (!(await canClearStaleLock(lockText))) {
+      throw new Error(`Compilation is already running with ${formatLockOwner(lockText)}.`);
     }
     await rm(lockPath, { force: true });
-    await writeFile(lockPath, `${process.pid}`, { encoding: "utf8", flag: "wx" });
+    await writeFile(lockPath, createLockFileContent(), { encoding: "utf8", flag: "wx" });
   }
 
+  activeLiveLockPath = lockPath;
+  installLockSignalHandlers();
   return lockPath;
 }
 
 async function releaseLiveLock(lockPath) {
+  if (activeLiveLockPath === lockPath) activeLiveLockPath = "";
   await unlink(lockPath).catch(() => {});
 }
 
+function installLockSignalHandlers() {
+  if (lockSignalHandlersInstalled) return;
+  lockSignalHandlersInstalled = true;
+  for (const signal of ["SIGINT", "SIGTERM"]) {
+    process.once(signal, () => cleanupLiveLockAfterSignal(signal));
+  }
+}
+
+function cleanupLiveLockAfterSignal(signal) {
+  activeCompileChild?.kill();
+  if (activeLiveLockPath) {
+    rmSync(activeLiveLockPath, { force: true });
+  }
+  process.exit(signal === "SIGINT" ? 130 : 143);
+}
+
 async function readTieredCounts(root) {
-  const [claims, episodes, procedures] = await Promise.all([
+  const [claims, procedures] = await Promise.all([
     readJsonArray(path.join(root, ".llmwiki", "claims.json")),
-    readJsonArray(path.join(root, ".llmwiki", "episodes.json")),
     readJsonArray(path.join(root, ".llmwiki", "procedures.json")),
   ]);
   return {
     claimsUpdated: claims.length,
-    episodesUpdated: episodes.length,
     proceduresUpdated: procedures.length,
   };
 }
@@ -389,9 +436,12 @@ async function moveCompiledClippingToCleaned(sourcePath, clippingRoot) {
   return true;
 }
 
+// fallow-ignore-next-line complexity
 async function main() {
+  reportSyncProgress(2, "正在读取同步配置");
   const initialConfig = await loadSyncCompileConfig(compilerRoot);
   const initialRoots = resolveCompileRootsFromConfig(initialConfig, compilerRoot);
+  reportSyncProgress(5, "正在同步手机输入");
   const mobileSync = await syncMobileEntriesFromCloudflare({
     projectRoot: compilerRoot,
     vaultRoot: initialRoots.sourceVaultRoot,
@@ -407,23 +457,27 @@ async function main() {
   }
   const config = await loadOrPromptSourceFolders(initialConfig);
   const roots = resolveCompileRootsFromConfig(config, compilerRoot);
+  reportSyncProgress(10, "正在检查源文件夹");
   const inventory = await inspectSourceFolders(config.source_folders, config.exclude_dirs);
   const lockPath = await acquireLiveLock(roots.runtimeRoot);
 
   try {
     assertSourceInventoryHasContent(inventory);
 
+    reportSyncProgress(16, "正在同步 Markdown 原料");
     const importedCount = await syncMarkdownSources(
       config.source_folders,
       roots.runtimeRoot,
       config.exclude_dirs,
     );
+    reportSyncProgress(24, "正在同步附件副本");
     const assetCount = await syncNonMarkdownAssets(
       config.source_folders,
       roots.runtimeRoot,
       config.exclude_dirs,
     );
 
+    reportSyncProgress(32, "正在规划编译批次");
     const now = new Date();
     const initialState = await readBatchState(roots.runtimeRoot);
     const completedFiles = new Set(initialState.completed_files);
@@ -455,6 +509,7 @@ async function main() {
     }
 
     if (batches.length === 0) {
+      reportSyncProgress(86, "没有剩余待编译文件，正在写入结果");
       await writeFinalCompileResult(roots.runtimeRoot, {
         status: "succeeded",
         syncedMarkdownCount: importedCount,
@@ -463,11 +518,11 @@ async function main() {
         internalBatchCount: 0,
         batchLimit: config.batch_limit,
         claimsUpdated: 0,
-        episodesUpdated: 0,
         proceduresUpdated: 0,
         wikiOutputDir: roots.runtimeWikiDir,
         publishedAt: new Date().toISOString(),
       });
+      reportSyncProgress(92, "正在发布 wiki");
       const cloudflarePublish = await publishWikiToCloudflare({
         projectRoot: compilerRoot,
         vaultRoot: roots.runtimeRoot,
@@ -483,6 +538,7 @@ async function main() {
       if (entitySnapshot.changed) {
         console.log(`\u5b9e\u4f53\u7d22\u5f15\u5df2\u5f52\u4e00\u5316\uff1a${entitySnapshot.entityCount}`);
       }
+      reportSyncProgress(98, "正在整理同步结果");
       console.log(
         summarizeBatchProgress({
           importedCount,
@@ -500,12 +556,22 @@ async function main() {
     const compiledFiles = [];
 
     try {
-      for (const batch of batches) {
+      for (const [batchIndex, batch] of batches.entries()) {
+        const batchNumber = batchIndex + 1;
+        reportSyncProgress(
+          calculateProgressInRange(batchIndex, batches.length, 36, 82),
+          `正在编译第 ${batchNumber}/${batches.length} 批`,
+        );
         await prepareActiveSources(staging.root, batch, roots.runtimeRoot);
         await runCompile(staging.root, config.compiler_root);
         compiledFiles.push(...batch);
+        reportSyncProgress(
+          calculateProgressInRange(batchNumber, batches.length, 36, 82),
+          `已完成第 ${batchNumber}/${batches.length} 批`,
+        );
       }
 
+      reportSyncProgress(86, "正在发布编译结果");
       await publishStagingRun(roots.sourceVaultRoot, roots.runtimeRoot, staging);
       await writeBatchState(roots.runtimeRoot, {
         completed_files: [...runState.completed_files, ...compiledFiles],
@@ -528,11 +594,11 @@ async function main() {
         internalBatchCount: batches.length,
         batchLimit: config.batch_limit,
         claimsUpdated: tieredCounts.claimsUpdated,
-        episodesUpdated: tieredCounts.episodesUpdated,
         proceduresUpdated: tieredCounts.proceduresUpdated,
         wikiOutputDir: roots.runtimeWikiDir,
         publishedAt,
       });
+      reportSyncProgress(92, "正在发布 wiki");
       const cloudflarePublish = await publishWikiToCloudflare({
         projectRoot: compilerRoot,
         vaultRoot: roots.runtimeRoot,
@@ -549,6 +615,7 @@ async function main() {
       if (entitySnapshot.changed) {
         console.log(`\u5b9e\u4f53\u7d22\u5f15\u5df2\u5f52\u4e00\u5316\uff1a${entitySnapshot.entityCount}`);
       }
+      reportSyncProgress(98, "正在整理同步结果");
 
       console.log(
         summarizeBatchProgress({
@@ -572,7 +639,6 @@ async function main() {
         internalBatchCount: batches.length,
         batchLimit: config.batch_limit,
         claimsUpdated: 0,
-        episodesUpdated: 0,
         proceduresUpdated: 0,
         wikiOutputDir: roots.runtimeWikiDir,
         error: error instanceof Error ? error.message : String(error),

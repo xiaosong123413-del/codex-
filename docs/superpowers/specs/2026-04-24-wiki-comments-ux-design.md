@@ -1,8 +1,8 @@
-# Wiki Comments UX Design
+﻿# Wiki Comments UX Design
 
 ## Goal
 
-Rewrite only the Farzapedia wiki page comment interaction so that comments behave like an intentional reading tool instead of a permanently open side panel.
+Rewrite only the Peiweipedia wiki page comment interaction so that comments behave like an intentional reading tool instead of a permanently open side panel.
 
 The target is a desktop-first reading flow where:
 
@@ -15,7 +15,7 @@ The target is a desktop-first reading flow where:
 
 In scope:
 
-- the Farzapedia wiki page in `web/client/src/pages/wiki/`
+- the Peiweipedia wiki page in `web/client/src/pages/wiki/`
 - the wiki comment surface in `web/client/src/components/wiki-comments.ts`
 - related wiki page styling in `web/client/assets/styles/wiki-launch.css`
 - focused tests for wiki page and wiki comments behavior
@@ -24,7 +24,7 @@ Out of scope:
 
 - changing wiki comment backend routes or storage format
 - redesigning the chat page
-- redesigning the whole Farzapedia shell
+- redesigning the whole Peiweipedia shell
 - changing article rendering semantics outside comment UX
 
 ## Final Interaction Model

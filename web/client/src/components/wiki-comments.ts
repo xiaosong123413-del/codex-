@@ -107,6 +107,7 @@ export function createWikiCommentSurface(options: WikiCommentSurfaceOptions): Wi
     void createCommentFromSelection();
   });
 
+  // fallow-ignore-next-line complexity
   list.addEventListener("click", (event) => {
     const target = event.target as HTMLElement;
     const card = target.closest<HTMLElement>("[data-wiki-comments-card]");
@@ -193,6 +194,7 @@ export function createWikiCommentSurface(options: WikiCommentSurfaceOptions): Wi
     },
   };
 
+  // fallow-ignore-next-line complexity
   async function refreshComments(): Promise<void> {
     if (!currentPath) {
       comments = [];
@@ -237,6 +239,7 @@ export function createWikiCommentSurface(options: WikiCommentSurfaceOptions): Wi
     void refreshComments();
   }
 
+  // fallow-ignore-next-line complexity
   async function createCommentFromSelection(selection: WikiCommentSelection | null = locateSelection(content)): Promise<void> {
     if (!currentPath) {
       status.textContent = "当前页面不支持评论。";
@@ -380,6 +383,7 @@ export function createWikiCommentSurface(options: WikiCommentSurfaceOptions): Wi
     }
   }
 
+  // fallow-ignore-next-line complexity
   async function confirmAiDraft(id: string): Promise<void> {
     const cardState = getCardState(id);
     if (!cardState.draft) {
@@ -584,6 +588,7 @@ function mergeCreatedComment(currentComments: WikiComment[], createdComment: Wik
   return [createdComment, ...currentComments];
 }
 
+// fallow-ignore-next-line complexity
 async function readApiResponse<T>(response: Response, fallbackMessage: string): Promise<ApiResponse<T>> {
   const contentType = response.headers?.get?.("content-type")?.toLowerCase() ?? "";
   if (contentType && !contentType.includes("application/json")) {
@@ -661,6 +666,7 @@ function wrapTextRange(root: HTMLElement, comment: WikiComment): void {
   }
 }
 
+// fallow-ignore-next-line complexity
 function createTextRange(root: HTMLElement, start: number, end: number): Range | null {
   const range = document.createRange();
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);

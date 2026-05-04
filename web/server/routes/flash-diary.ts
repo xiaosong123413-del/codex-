@@ -4,6 +4,7 @@
  * Exposes diary listing, editable page reads/writes, the rendered Memory page,
  * and quick-capture failure recovery for the flash-diary workspace.
  */
+import fs from "node:fs";
 import type { Request, Response } from "express";
 import type { ServerConfig } from "../config.js";
 import { createRenderer } from "../render/markdown.js";
@@ -17,12 +18,16 @@ import {
   removeFlashDiaryFailure,
   readTwelveQuestionsPage,
   readTwelveQuestionsSummary,
-  readCloudDocument,
   saveCloudDocument,
   saveFlashDiaryPage,
   saveTwelveQuestionsPage,
   TWELVE_QUESTIONS_PATH,
 } from "../services/flash-diary.js";
+import {
+  resolveFlashDiaryMediaFullPath,
+  saveFlashDiaryEditorImage,
+} from "../services/flash-diary-media.js";
+import { ensureSourceImageOcr } from "../services/source-ocr.js";
 import {
   isLegacyShortTermMemory,
   readFlashDiaryMemoryPage,
@@ -31,7 +36,14 @@ import {
   refreshStoredFlashDiaryShortTermPage,
   refreshFlashDiaryMemoryIfDue,
 } from "../services/flash-diary-memory.js";
-import { MEMORY_PATH, MEMORY_TITLE } from "../services/flash-diary-memory-files.js";
+import {
+  MEMORY_PATH,
+  MEMORY_TITLE,
+  writeFlashDiaryMemoryCopies,
+} from "../services/flash-diary-memory-files.js";
+import { recordWorkflowInput } from "../services/workflow-recorder.js";
+
+const STORED_MEMORY_SHORT_TERM_REFRESH_TIMEOUT_MS = 5;
 
 export function handleFlashDiaryList(cfg: ServerConfig) {
   return async (_req: Request, res: Response) => {
@@ -67,32 +79,15 @@ export function handleFlashDiaryPage(cfg: ServerConfig) {
 
 export function handleFlashDiaryMemory(
   cfg: ServerConfig,
-  options: { now?: Date; provider?: LLMProvider } = {},
+  options: { now?: Date; provider?: LLMProvider; shortTermRefreshTimeoutMs?: number } = {},
 ) {
   const renderer = createRenderer({ pageLookupRoot: cfg.sourceVaultRoot });
 
   return async (_req: Request, res: Response) => {
     try {
       const storedPage = readStoredFlashDiaryMemoryPage(cfg.sourceVaultRoot, cfg.runtimeRoot);
-      const cloudMemory = await readCloudDocument(MEMORY_PATH);
-      if (cloudMemory) {
-        const rendered = renderer.render(cloudMemory.raw);
-        res.json({
-          success: true,
-          data: {
-            path: MEMORY_PATH,
-            title: MEMORY_TITLE,
-            raw: cloudMemory.raw,
-            modifiedAt: cloudMemory.updatedAt || new Date().toISOString(),
-            sourceEditable: true,
-            lastAppliedDiaryDate: storedPage?.lastAppliedDiaryDate ?? null,
-            html: rendered.html,
-          },
-        });
-        return;
-      }
-      
       if (storedPage) {
+        const shortTermRefreshTimeoutMs = options.shortTermRefreshTimeoutMs ?? STORED_MEMORY_SHORT_TERM_REFRESH_TIMEOUT_MS;
         const immediatePage = isLegacyShortTermMemory(storedPage.raw) && options.provider
           ? await Promise.race([
             refreshStoredFlashDiaryShortTermPage({
@@ -102,9 +97,10 @@ export function handleFlashDiaryMemory(
             now: options.now,
             provider: options.provider,
             }),
-            new Promise<null>((resolve) => setTimeout(() => resolve(null), 25)),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), shortTermRefreshTimeoutMs)),
           ]) ?? storedPage
           : storedPage;
+        await writeFlashDiaryMemoryCopies(cfg.sourceVaultRoot, cfg.runtimeRoot, immediatePage.raw);
         void refreshFlashDiaryMemoryIfDue({
           projectRoot: cfg.projectRoot,
           sourceVaultRoot: cfg.sourceVaultRoot,
@@ -149,16 +145,44 @@ export function handleFlashDiarySave(cfg: ServerConfig) {
       const rawPath = String(req.body?.path ?? "").trim();
       const raw = String(req.body?.raw ?? "");
       if (rawPath.replace(/\\/g, "/") === MEMORY_PATH) {
-        await saveCloudDocument(MEMORY_PATH, MEMORY_TITLE, raw);
+        await writeFlashDiaryMemoryCopies(cfg.sourceVaultRoot, cfg.runtimeRoot, raw);
+        await saveCloudDocument(MEMORY_PATH, MEMORY_TITLE, raw).catch(() => undefined);
       } else if (rawPath.replace(/\\/g, "/") === TWELVE_QUESTIONS_PATH) {
         await saveTwelveQuestionsPage(cfg.sourceVaultRoot, raw);
       } else {
         await saveFlashDiaryPage(cfg.sourceVaultRoot, rawPath, raw);
+        await ensureDiaryOcr(cfg, rawPath);
       }
       res.json({ success: true });
     } catch (error) {
       res.status(400).json({ success: false, error: error instanceof Error ? error.message : String(error) });
     }
+  };
+}
+
+export function handleFlashDiaryMediaUpload(cfg: ServerConfig) {
+  return (req: Request, res: Response) => {
+    try {
+      const diaryPath = String(req.body?.path ?? "").trim();
+      const fileName = String(req.body?.fileName ?? "").trim();
+      const dataUrl = String(req.body?.dataUrl ?? "").trim();
+      const uploaded = saveFlashDiaryEditorImage(cfg.sourceVaultRoot, diaryPath, fileName, dataUrl);
+      res.json({ success: true, data: uploaded });
+    } catch (error) {
+      res.status(400).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+    }
+  };
+}
+
+export function handleFlashDiaryMedia(cfg: ServerConfig) {
+  return (req: Request, res: Response) => {
+    const logicalPath = String(req.query.path ?? "").trim();
+    const fullPath = resolveFlashDiaryMediaFullPath(cfg.sourceVaultRoot, logicalPath);
+    if (!fullPath || !fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) {
+      res.status(404).send("not found");
+      return;
+    }
+    res.sendFile(fullPath);
   };
 }
 
@@ -171,6 +195,13 @@ export function handleFlashDiaryAppend(cfg: ServerConfig) {
     const now = req.body?.now ? new Date(String(req.body.now)) : new Date();
     try {
       const result = await appendFlashDiaryEntry(cfg.sourceVaultRoot, { text, mediaPaths, now });
+      await ensureDiaryOcr(cfg, result.path);
+      await recordWorkflowInput(cfg, {
+        text,
+        attachments: result.mediaFiles,
+        marker: "normal",
+        source: "diary",
+      });
       res.json({ success: true, data: result });
     } catch (error) {
       const record = await recordFlashDiaryFailure(cfg.runtimeRoot, {
@@ -201,10 +232,26 @@ export function handleFlashDiaryRetry(cfg: ServerConfig) {
         mediaPaths: failure.mediaFiles,
         now: new Date(failure.createdAt),
       });
+      await ensureDiaryOcr(cfg, result.path);
+      await recordWorkflowInput(cfg, {
+        text: failure.text,
+        attachments: result.mediaFiles,
+        marker: "normal",
+        source: "diary",
+      });
       await removeFlashDiaryFailure(cfg.runtimeRoot, id);
       res.json({ success: true, data: result });
     } catch (error) {
       res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
     }
   };
+}
+
+async function ensureDiaryOcr(cfg: ServerConfig, diaryPath: string): Promise<void> {
+  await ensureSourceImageOcr({
+    sourceVaultRoot: cfg.sourceVaultRoot,
+    runtimeRoot: cfg.runtimeRoot,
+    recordPaths: [diaryPath],
+    rescan: true,
+  });
 }

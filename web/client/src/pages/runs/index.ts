@@ -1,4 +1,9 @@
 import type { RouteName } from "../../router.js";
+import { showRunProgress, type RunProgressHandle } from "../../run-progress.js";
+import {
+  nextObservedLineProgressPercent,
+  readRunLineProgress,
+} from "../../run-progress-metrics.js";
 
 type RunKind = "check" | "sync";
 type RunStatus = "running" | "succeeded" | "failed" | "stopped";
@@ -33,7 +38,7 @@ interface IntakePlanRow {
 }
 
 interface IntakeScan {
-  items: Array<{ kind: "clipping" | "flash" | "inbox"; title: string }>;
+  items: Array<{ kind: "clipping" | "flash" | "source" | "inbox"; channel?: string; title: string }>;
   plan: IntakePlanRow[];
 }
 
@@ -51,6 +56,9 @@ const COPY: Record<RunKind, { title: string; eyebrow: string; copy: string; butt
     button: "\u5f00\u59cb\u540c\u6b65\u7f16\u8bd1",
   },
 };
+
+const STARTING_PROGRESS_PERCENT = 3;
+const ACTIVE_PROGRESS_PERCENT = 8;
 
 export function renderRunPage(routeName: RouteName): HTMLElement {
   const kind: RunKind = routeName === "sync" ? "sync" : "check";
@@ -91,6 +99,12 @@ function bindRunPage(root: HTMLElement, kind: RunKind): void {
   let eventSource: EventSource | null = null;
 
   startButton.addEventListener("click", async () => {
+    const progress = showRunProgress({
+      key: kind,
+      title: readRunProgressTitle(kind),
+      message: readRunPreparingMessage(kind),
+      percent: 1,
+    });
     startButton.disabled = true;
     statusNode.textContent = "\u542f\u52a8\u4e2d";
     metaNode.textContent = "\u6b63\u5728\u8bf7\u6c42\u540e\u7aef\u542f\u52a8\u4efb\u52a1...";
@@ -105,24 +119,40 @@ function bindRunPage(root: HTMLElement, kind: RunKind): void {
         metaNode.textContent = syncDecision === "inbox"
           ? "\u8bf7\u5230\u5ba1\u67e5\u9875\u9009\u62e9\u4eb2\u81ea\u6307\u5bfc\u5f55\u5165\u6216\u4f18\u5148\u6279\u91cf\u5f55\u5165\u3002"
           : "\u5982\u679c\u8981\u6279\u91cf\u5f55\u5165\uff0c\u8bf7\u628a\u6587\u4ef6\u653e\u5230 raw/\u526a\u85cf \u6216 raw/\u95ea\u5ff5\u65e5\u8bb0\u3002";
+        progress.complete(readRunSkippedProgressMessage(kind));
         startButton.disabled = false;
         return;
       }
-      attachRunStream(await startRun(kind));
+      progress.update(readRunStartingMessage(kind), STARTING_PROGRESS_PERCENT);
+      attachRunStream(await startRun(kind), progress);
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       statusNode.textContent = "\u542f\u52a8\u5931\u8d25";
-      metaNode.textContent = error instanceof Error ? error.message : String(error);
+      metaNode.textContent = message;
+      progress.fail(`\u542f\u52a8\u5931\u8d25\uff1a${message}`);
       startButton.disabled = false;
     }
   });
 
-  function attachRunStream(run: RunSnapshot): void {
+  function attachRunStream(run: RunSnapshot, progress: RunProgressHandle): void {
     statusNode.textContent = formatStatus(run.status);
     metaNode.textContent = `${formatKind(run.kind)} \u00b7 ${formatTime(run.startedAt)}`;
+    let runningPercent = ACTIVE_PROGRESS_PERCENT;
+    progress.update(readRunActiveProgressMessage(run.kind), runningPercent);
     eventSource = new EventSource(`/api/runs/${encodeURIComponent(run.id)}/events`);
     eventSource.addEventListener("line", (event) => {
       const payload = JSON.parse((event as MessageEvent).data) as { line: RunLine };
       appendLogLine(logNode, payload.line);
+      const lineProgress = readRunLineProgress(payload.line.text);
+      if (lineProgress) {
+        runningPercent = Math.max(runningPercent, lineProgress.percent);
+        progress.update(lineProgress.message, runningPercent);
+        return;
+      }
+      if (payload.line.source !== "system") {
+        runningPercent = nextObservedLineProgressPercent(runningPercent);
+        progress.update(readRunActiveProgressMessage(run.kind), runningPercent);
+      }
     });
     eventSource.addEventListener("status", (event) => {
       const payload = JSON.parse((event as MessageEvent).data) as { run: RunSnapshot };
@@ -131,12 +161,14 @@ function bindRunPage(root: HTMLElement, kind: RunKind): void {
         ? `${formatKind(payload.run.kind)} \u00b7 ${formatTime(payload.run.startedAt)} - ${formatTime(payload.run.endedAt)}`
         : `${formatKind(payload.run.kind)} \u00b7 ${formatTime(payload.run.startedAt)}`;
       if (payload.run.status !== "running") {
+        settleRunProgress(progress, payload.run);
         startButton.disabled = false;
         eventSource?.close();
         eventSource = null;
       }
     });
     eventSource.onerror = () => {
+      progress.fail("\u8fd0\u884c\u8fdb\u5ea6\u8fde\u63a5\u4e2d\u65ad");
       startButton.disabled = false;
       eventSource?.close();
       eventSource = null;
@@ -241,6 +273,35 @@ function formatStatus(status: RunStatus): string {
 
 function formatKind(kind: RunKind): string {
   return kind === "sync" ? "\u540c\u6b65\u7f16\u8bd1" : "\u7cfb\u7edf\u68c0\u67e5";
+}
+
+function settleRunProgress(progress: RunProgressHandle, run: RunSnapshot): void {
+  const message = `${formatKind(run.kind)}${formatStatus(run.status)}`;
+  if (run.status === "succeeded") {
+    progress.complete(message);
+    return;
+  }
+  progress.fail(message);
+}
+
+function readRunPreparingMessage(kind: RunKind): string {
+  return kind === "sync" ? "\u6b63\u5728\u68c0\u67e5\u540c\u6b65\u6e90..." : readRunStartingMessage(kind);
+}
+
+function readRunStartingMessage(kind: RunKind): string {
+  return kind === "sync" ? "\u6b63\u5728\u542f\u52a8\u540c\u6b65\u7f16\u8bd1..." : "\u6b63\u5728\u542f\u52a8\u7cfb\u7edf\u68c0\u67e5...";
+}
+
+function readRunActiveProgressMessage(kind: RunKind): string {
+  return kind === "sync" ? "\u540c\u6b65\u7f16\u8bd1\u8fd0\u884c\u4e2d..." : "\u7cfb\u7edf\u68c0\u67e5\u8fd0\u884c\u4e2d...";
+}
+
+function readRunProgressTitle(kind: RunKind): string {
+  return kind === "sync" ? "\u540c\u6b65\u7f16\u8bd1\u8fdb\u5ea6" : "\u7cfb\u7edf\u68c0\u67e5\u8fdb\u5ea6";
+}
+
+function readRunSkippedProgressMessage(kind: RunKind): string {
+  return kind === "sync" ? "\u672a\u542f\u52a8\u540c\u6b65\u7f16\u8bd1" : "\u672a\u542f\u52a8\u7cfb\u7edf\u68c0\u67e5";
 }
 
 function formatTime(value: string): string {

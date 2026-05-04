@@ -13,7 +13,7 @@ import {
   parseFrontmatter,
   slugify,
 } from "../../utils/markdown.js";
-import type { LintAutofixDetail } from "../types.js";
+import type { LintAutofixDetail, LintResult } from "../types.js";
 import {
   buildAutofixCandidateMap,
   collectAllPages,
@@ -21,13 +21,81 @@ import {
 } from "../wiki-page-index.js";
 import type { AutofixContext, AutofixRepairer } from "./types.js";
 
+type CandidateMap = ReturnType<typeof buildAutofixCandidateMap>;
+type PageEntry = { filePath: string; content: string };
+
+/** Validate a broken-wikilink diagnostic and resolve its target page. Returns a finished detail if the diagnostic cannot proceed. */
+function resolveDiagnosticTarget(
+  diagnostic: LintResult,
+  context: AutofixContext,
+  candidates: CandidateMap,
+  pagesByPath: Map<string, PageEntry>,
+): { resolved: LintAutofixDetail } | { target: PageEntry; visibleTarget: string } {
+  const captured = diagnostic.message.match(/\[\[(.+?)\]\]/)?.[1];
+  if (!captured) {
+    return { resolved: makeDetail(context.root, "failed", diagnostic.file, "unparseable-target") };
+  }
+
+  const visibleTarget = normalizeWikilinkTarget(captured);
+  const slug = slugify(visibleTarget);
+  const matches = uniqueByPath(candidates.get(slug) ?? []);
+
+  if (matches.length === 0) {
+    return { resolved: makeDetail(context.root, "skipped", diagnostic.file, "missing-target") };
+  }
+  if (matches.length > 1) {
+    return { resolved: makeDetail(context.root, "skipped", diagnostic.file, "ambiguous-target") };
+  }
+
+  const target = matches[0];
+  const page = pagesByPath.get(target.filePath);
+  if (!page) {
+    return { resolved: makeDetail(context.root, "failed", diagnostic.file, "candidate-not-loaded") };
+  }
+
+  return { target: page, visibleTarget };
+}
+
+/** Add the missing alias to the target page's frontmatter and write the updated content. */
+async function applyAliasToPage(
+  diagnostic: LintResult,
+  context: AutofixContext,
+  page: PageEntry,
+  visibleTarget: string,
+  pagesByPath: Map<string, PageEntry>,
+): Promise<LintAutofixDetail> {
+  const { meta, body } = parseFrontmatter(page.content);
+  if (Object.keys(meta).length === 0) {
+    return makeDetail(context.root, "skipped", diagnostic.file, "missing-frontmatter");
+  }
+
+  const aliases = Array.isArray(meta.aliases)
+    ? meta.aliases.filter((value): value is string => typeof value === "string")
+    : [];
+  if (aliases.includes(visibleTarget)) {
+    return makeDetail(context.root, "skipped", diagnostic.file, "alias-already-present");
+  }
+
+  const nextContent = `${buildFrontmatter({
+    ...meta,
+    aliases: [...aliases, visibleTarget],
+  })}\n\n${body.trimStart()}`;
+  await atomicWrite(page.filePath, nextContent);
+  pagesByPath.set(page.filePath, { ...page, content: nextContent });
+  return {
+    repairer: "alias-backfill",
+    kind: diagnostic.rule,
+    target: path.relative(context.root, page.filePath).replace(/\\/g, "/"),
+    reason: "unique-target",
+    status: "applied",
+  };
+}
+
 export const aliasBackfillRepairer: AutofixRepairer = {
   name: "alias-backfill",
   async run(context): Promise<LintAutofixDetail[]> {
     const diagnostics = context.diagnostics.filter((result) => result.rule === "broken-wikilink");
-    if (diagnostics.length === 0) {
-      return [];
-    }
+    if (diagnostics.length === 0) return [];
 
     const pages = await collectAllPages(context.root);
     const candidates = buildAutofixCandidateMap(pages);
@@ -35,60 +103,12 @@ export const aliasBackfillRepairer: AutofixRepairer = {
     const details: LintAutofixDetail[] = [];
 
     for (const diagnostic of diagnostics) {
-      const captured = diagnostic.message.match(/\[\[(.+?)\]\]/)?.[1];
-      if (!captured) {
-        details.push(makeDetail(context.root, "failed", diagnostic.file, "unparseable-target"));
+      const resolution = resolveDiagnosticTarget(diagnostic, context, candidates, pagesByPath);
+      if ("resolved" in resolution) {
+        details.push(resolution.resolved);
         continue;
       }
-
-      const visibleTarget = normalizeWikilinkTarget(captured);
-      const slug = slugify(visibleTarget);
-      const matches = uniqueByPath(candidates.get(slug) ?? []);
-
-      if (matches.length === 0) {
-        details.push(makeDetail(context.root, "skipped", diagnostic.file, "missing-target"));
-        continue;
-      }
-
-      if (matches.length > 1) {
-        details.push(makeDetail(context.root, "skipped", diagnostic.file, "ambiguous-target"));
-        continue;
-      }
-
-      const target = matches[0];
-      const page = pagesByPath.get(target.filePath);
-      if (!page) {
-        details.push(makeDetail(context.root, "failed", diagnostic.file, "candidate-not-loaded"));
-        continue;
-      }
-
-      const { meta, body } = parseFrontmatter(page.content);
-      if (Object.keys(meta).length === 0) {
-        details.push(makeDetail(context.root, "skipped", diagnostic.file, "missing-frontmatter"));
-        continue;
-      }
-
-      const aliases = Array.isArray(meta.aliases)
-        ? meta.aliases.filter((value): value is string => typeof value === "string")
-        : [];
-      if (aliases.includes(visibleTarget)) {
-        details.push(makeDetail(context.root, "skipped", diagnostic.file, "alias-already-present"));
-        continue;
-      }
-
-      const nextContent = `${buildFrontmatter({
-        ...meta,
-        aliases: [...aliases, visibleTarget],
-      })}\n\n${body.trimStart()}`;
-      await atomicWrite(page.filePath, nextContent);
-      pagesByPath.set(page.filePath, { ...page, content: nextContent });
-      details.push({
-        repairer: "alias-backfill",
-        kind: diagnostic.rule,
-        target: path.relative(context.root, page.filePath).replace(/\\/g, "/"),
-        reason: "unique-target",
-        status: "applied",
-      });
+      details.push(await applyAliasToPage(diagnostic, context, resolution.target, resolution.visibleTarget, pagesByPath));
     }
 
     return details;

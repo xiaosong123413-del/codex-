@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "llmwiki-ai-native-mcp",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-04-21",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "vars": {
+    "LLM_MODEL": "@cf/meta/llama-3.1-8b-instruct"
+  },
+  "ai": {
+    "binding": "AI"
+  }
+}

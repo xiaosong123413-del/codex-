@@ -235,6 +235,7 @@ async function queueRemoteBrainAction(
   };
 }
 
+// fallow-ignore-next-line complexity
 async function queueRemoteBrainPublishBatches(
   cloudflare: CloudflareRemoteBrainConfig,
   base: URL,
@@ -334,6 +335,7 @@ async function queueRemoteBrainPublishBatches(
   };
 }
 
+// fallow-ignore-next-line complexity
 async function queueRemoteBrainPullPages(
   _cfg: ServerConfig,
   cloudflare: CloudflareRemoteBrainConfig,
@@ -406,6 +408,7 @@ function buildCloudflareBase(cloudflare: CloudflareRemoteBrainConfig): URL | nul
   }
 }
 
+// fallow-ignore-next-line complexity
 async function callCloudflareWorker(
   base: URL,
   cloudflare: CloudflareRemoteBrainConfig,

@@ -26,6 +26,10 @@ export function resolveContentPath(cfg: ServerConfig, logicalPath: string): stri
   const normalized = normalizeLogicalPath(logicalPath);
   const runtimeWikiPath = resolveRuntimeWikiLogicalPath(normalized);
   if (runtimeWikiPath) {
+    const sourceCandidate = sourcePath(cfg, runtimeWikiPath);
+    if (pathExists(sourceCandidate)) {
+      return sourceCandidate;
+    }
     return runtimePath(cfg, runtimeWikiPath);
   }
 
@@ -62,7 +66,7 @@ export function resolveEditableSourceMarkdownPath(cfg: ServerConfig, logicalPath
   if (!normalized) {
     return null;
   }
-  if (!(normalized === "wiki" || normalized.startsWith("wiki/"))) {
+  if (!isEditableSourceMarkdownNamespace(normalized)) {
     return null;
   }
   if (resolveRuntimeWikiLogicalPath(normalized)) {
@@ -77,6 +81,13 @@ export function resolveEditableSourceMarkdownPath(cfg: ServerConfig, logicalPath
   } catch {
     return null;
   }
+}
+
+function isEditableSourceMarkdownNamespace(logicalPath: string): boolean {
+  return logicalPath === "领域.md"
+    || logicalPath.startsWith("领域/")
+    || logicalPath === "wiki"
+    || logicalPath.startsWith("wiki/");
 }
 
 function normalizeEditableLogicalPath(value: string): string | null {

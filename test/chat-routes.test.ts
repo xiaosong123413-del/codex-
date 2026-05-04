@@ -2,11 +2,13 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createConversation, getConversation } from "../web/server/services/chat-store.js";
+import { addConversationMessage, createConversation, getConversation } from "../web/server/services/chat-store.js";
 import {
   handleChatCreate,
   handleChatAddMessage,
   handleChatPatch,
+  handleChatRegenerate,
+  handleChatSaveMessageToWiki,
   handleChatStreamMessage,
 } from "../web/server/routes/chat.js";
 
@@ -15,19 +17,25 @@ const {
   generateAssistantReplyMock,
   streamAssistantReplyMock,
   completeGuidedIngestFromConversationMock,
+  compileMock,
 } = vi.hoisted(() => ({
   generateAssistantReplyMock: vi.fn(),
   streamAssistantReplyMock: vi.fn(),
   completeGuidedIngestFromConversationMock: vi.fn(),
+  compileMock: vi.fn(),
 }));
 
 vi.mock("../web/server/services/llm-chat.js", () => ({
-  generateAssistantReply: generateAssistantReplyMock,
-  streamAssistantReply: streamAssistantReplyMock,
+  generateAssistantReplyResult: generateAssistantReplyMock,
+  streamAssistantReplyResult: streamAssistantReplyMock,
 }));
 
 vi.mock("../web/server/services/guided-ingest.js", () => ({
   completeGuidedIngestFromConversation: completeGuidedIngestFromConversationMock,
+}));
+
+vi.mock("../src/compiler/index.js", () => ({
+  compile: compileMock,
 }));
 
 describe("chat routes", () => {
@@ -35,7 +43,9 @@ describe("chat routes", () => {
     generateAssistantReplyMock.mockReset();
     streamAssistantReplyMock.mockReset();
     completeGuidedIngestFromConversationMock.mockReset();
+    compileMock.mockReset();
     completeGuidedIngestFromConversationMock.mockReturnValue(null);
+    compileMock.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -49,7 +59,7 @@ describe("chat routes", () => {
 
   it("rejects blank chat messages before touching conversation state", async () => {
     const cfg = makeConfig();
-    const conversation = createConversation(cfg.runtimeRoot, { title: "Thread" });
+    const conversation = createConversation(cfg.sourceVaultRoot, { title: "Thread" });
     const response = createJsonResponse();
 
     await handleChatAddMessage(cfg)({
@@ -60,7 +70,7 @@ describe("chat routes", () => {
     expect(response.statusCode).toBe(400);
     expect(response.payload).toEqual({ success: false, error: "content is required" });
     expect(generateAssistantReplyMock).not.toHaveBeenCalled();
-    expect(getConversation(cfg.runtimeRoot, conversation.id)?.messages).toHaveLength(0);
+    expect(getConversation(cfg.sourceVaultRoot, conversation.id)?.messages).toHaveLength(0);
   });
 
   it("keeps the app binding empty when create receives an explicit null appId", async () => {
@@ -81,7 +91,7 @@ describe("chat routes", () => {
 
   it("lets patch clear the app binding even when a legacy agentId is still present", () => {
     const cfg = makeConfig();
-    const conversation = createConversation(cfg.runtimeRoot, {
+    const conversation = createConversation(cfg.sourceVaultRoot, {
       title: "Bound thread",
       appId: "writer-app",
     });
@@ -101,9 +111,18 @@ describe("chat routes", () => {
 
   it("persists the synced appId and assistant reply for regular chat messages", async () => {
     const cfg = makeConfig();
-    const conversation = createConversation(cfg.runtimeRoot, { title: "Thread" });
+    const conversation = createConversation(cfg.sourceVaultRoot, { title: "Thread" });
     const response = createJsonResponse();
-    generateAssistantReplyMock.mockResolvedValue("  Assistant reply  ");
+    generateAssistantReplyMock.mockResolvedValue({
+      content: "  Assistant reply  ",
+      references: [{
+        index: 1,
+        kind: "wiki",
+        title: "Redis",
+        path: "wiki/concepts/redis.md",
+        excerpt: "Redis excerpt",
+      }],
+    });
 
     await handleChatAddMessage(cfg)({
       params: { id: conversation.id },
@@ -122,16 +141,23 @@ describe("chat routes", () => {
     expect(response.payload.data.messages).toHaveLength(2);
     expect(response.payload.data.messages[0]?.content).toBe("Need a summary");
     expect(response.payload.data.messages[1]?.content).toBe("Assistant reply");
+    expect(response.payload.data.messages[1]?.references).toEqual([{
+      index: 1,
+      kind: "wiki",
+      title: "Redis",
+      path: "wiki/concepts/redis.md",
+      excerpt: "Redis excerpt",
+    }]);
   });
 
   it("streams SSE tokens and persists the final assistant reply", async () => {
     const cfg = makeConfig();
-    const conversation = createConversation(cfg.runtimeRoot, { title: "Thread" });
+    const conversation = createConversation(cfg.sourceVaultRoot, { title: "Thread" });
     const response = createStreamResponse();
     streamAssistantReplyMock.mockImplementation(async (_root, _conversation, _options, onToken?: (token: string) => void) => {
       onToken?.("Hello");
       onToken?.(" world");
-      return "Hello world";
+      return { content: "Hello world", references: [] };
     });
 
     await handleChatStreamMessage(cfg)({
@@ -152,19 +178,20 @@ describe("chat routes", () => {
     expect(response.output).toContain("\"token\":\" world\"");
     expect(response.ended).toBe(true);
 
-    const stored = getConversation(cfg.runtimeRoot, conversation.id);
+    const stored = getConversation(cfg.sourceVaultRoot, conversation.id);
     expect(stored?.appId).toBe("stream-app");
     expect(stored?.messages.at(-1)?.content).toBe("Hello world");
   });
 
   it("streams an error event when the assistant reply cannot be persisted", async () => {
     const cfg = makeConfig();
-    const conversation = createConversation(cfg.runtimeRoot, { title: "Thread" });
+    const conversation = createConversation(cfg.sourceVaultRoot, { title: "Thread" });
     const response = createStreamResponse();
     streamAssistantReplyMock.mockImplementation(async (_root, _conversation, _options, onToken?: (token: string) => void) => {
       onToken?.("partial");
-      fs.rmSync(path.join(cfg.runtimeRoot, ".chat", `${conversation.id}.json`), { force: true });
-      return "Partial reply";
+      fs.rmSync(path.join(cfg.sourceVaultRoot, ".llm-wiki", "chats", `${conversation.id}.json`), { force: true });
+      fs.rmSync(path.join(cfg.sourceVaultRoot, ".llm-wiki", "conversations.json"), { force: true });
+      return { content: "Partial reply", references: [] };
     });
 
     await handleChatStreamMessage(cfg)({
@@ -179,6 +206,45 @@ describe("chat routes", () => {
     expect(response.output).toContain("assistant reply could not be persisted");
     expect(response.output).not.toContain("event: done");
     expect(response.ended).toBe(true);
+  });
+
+  it("regenerates the last assistant response by replaying the last user message", async () => {
+    const cfg = makeConfig();
+    const conversation = createConversation(cfg.sourceVaultRoot, { title: "Thread" });
+    addSeedMessage(cfg.sourceVaultRoot, conversation.id, "user", "Original question");
+    addSeedMessage(cfg.sourceVaultRoot, conversation.id, "assistant", "Old answer");
+    const response = createJsonResponse();
+    generateAssistantReplyMock.mockResolvedValue({ content: "New answer", references: [] });
+
+    await handleChatRegenerate(cfg)({
+      params: { id: conversation.id },
+      body: {},
+    } as never, response as never);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload.data.messages.map((message: { content: string }) => message.content))
+      .toEqual(["Original question", "New answer"]);
+  });
+
+  it("saves an assistant message into wiki queries", async () => {
+    const cfg = makeConfig();
+    fs.mkdirSync(path.join(cfg.sourceVaultRoot, "wiki"), { recursive: true });
+    const conversation = createConversation(cfg.sourceVaultRoot, { title: "Thread" });
+    addSeedMessage(cfg.sourceVaultRoot, conversation.id, "assistant", "# Useful answer\n\nBody");
+    const messageId = getConversation(cfg.sourceVaultRoot, conversation.id)?.messages[0]?.id ?? "";
+    const response = createJsonResponse();
+
+    await handleChatSaveMessageToWiki(cfg)({
+      params: { id: conversation.id, messageId },
+      body: {},
+    } as never, response as never);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload.data.path).toMatch(/^wiki\/queries\/useful-answer-/);
+    expect(response.payload.data.autoIngest.compiled).toBe(true);
+    expect(compileMock).toHaveBeenCalledWith(cfg.sourceVaultRoot);
+    expect(fs.existsSync(path.join(cfg.sourceVaultRoot, response.payload.data.path))).toBe(true);
+    expect(fs.existsSync(path.join(cfg.sourceVaultRoot, "sources", "saved-queries"))).toBe(true);
   });
 });
 
@@ -234,4 +300,8 @@ function createStreamResponse() {
       return this;
     },
   };
+}
+
+function addSeedMessage(root: string, id: string, role: "user" | "assistant", content: string): void {
+  addConversationMessage(root, id, { role, content });
 }

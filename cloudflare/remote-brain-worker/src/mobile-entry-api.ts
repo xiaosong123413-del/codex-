@@ -27,6 +27,12 @@ import { json, safeJson, titleFromPath } from "./worker-support.js";
 
 const MOBILE_ENTRY_SELECT =
   "SELECT id, owner_uid AS ownerUid, type, title, text, media_files_json AS mediaFilesJson, created_at AS createdAt, target_date AS targetDate, status, channel, source_name AS sourceName, source_url AS sourceUrl, desktop_path AS desktopPath, synced_at AS syncedAt, failed_at AS failedAt, error FROM mobile_entries";
+const CHINA_DATE_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Shanghai",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
 
 export async function handleMobileEntryCreate(request: Request, env: MobileDbEnv): Promise<Response> {
   const db = env.DB;
@@ -59,14 +65,16 @@ export async function handleMobileEntryDelete(request: Request, env: MobileDbEnv
   return json({ ok: true, deleted: ids.length });
 }
 
-export async function handleMobileEntryPending(env: MobileDbEnv): Promise<Response> {
+export async function handleMobileEntryPending(env: MobileDbEnv, ownerUid?: string): Promise<Response> {
   const db = env.DB;
   if (!db) return json({ ok: false, error: "missing_d1_binding" }, 500);
-  const result = await db.prepare(`${MOBILE_ENTRY_SELECT} WHERE status = 'new' ORDER BY created_at ASC LIMIT 300`).all();
+  const result = ownerUid
+    ? await db.prepare(`${MOBILE_ENTRY_SELECT} WHERE status = 'new' AND owner_uid = ? ORDER BY created_at ASC LIMIT 300`).bind(ownerUid).all()
+    : await db.prepare(`${MOBILE_ENTRY_SELECT} WHERE status = 'new' ORDER BY created_at ASC LIMIT 300`).all();
   return json({ ok: true, entries: (result.results ?? []).map(mobileEntryFromRow) });
 }
 
-export async function handleMobileEntryStatus(request: Request, env: MobileDbEnv): Promise<Response> {
+export async function handleMobileEntryStatus(request: Request, env: MobileDbEnv, ownerUid?: string): Promise<Response> {
   const db = env.DB;
   if (!db) return json({ ok: false, error: "missing_d1_binding" }, 500);
   const payload = await safeJson<MobileEntryStatusPayload>(request);
@@ -74,9 +82,12 @@ export async function handleMobileEntryStatus(request: Request, env: MobileDbEnv
   const status = payload.status === "synced" || payload.status === "failed" ? payload.status : "";
   if (!id) return json({ ok: false, error: "missing_entry_id" }, 400);
   if (!status) return json({ ok: false, error: "invalid_status" }, 400);
-  await db.prepare("UPDATE mobile_entries SET status = ?, desktop_path = ?, synced_at = ?, failed_at = ?, error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-    .bind(status, stringOrNull(payload.desktopPath), stringOrNull(payload.syncedAt), stringOrNull(payload.failedAt), stringOrNull(payload.error), id)
-    .run();
+  const statement = ownerUid
+    ? db.prepare("UPDATE mobile_entries SET status = ?, desktop_path = ?, synced_at = ?, failed_at = ?, error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND owner_uid = ?")
+      .bind(status, stringOrNull(payload.desktopPath), stringOrNull(payload.syncedAt), stringOrNull(payload.failedAt), stringOrNull(payload.error), id, ownerUid)
+    : db.prepare("UPDATE mobile_entries SET status = ?, desktop_path = ?, synced_at = ?, failed_at = ?, error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+      .bind(status, stringOrNull(payload.desktopPath), stringOrNull(payload.syncedAt), stringOrNull(payload.failedAt), stringOrNull(payload.error), id);
+  await statement.run();
   return json({ ok: true, id, status });
 }
 
@@ -119,7 +130,7 @@ export function normalizeMobileEntry(payload: MobileEntryPayload): MobileNormali
     text: String(payload.text || ""),
     mediaFiles: parseStringArray(payload.mediaFiles),
     createdAt,
-    targetDate: String(payload.targetDate || createdAt.slice(0, 10)),
+    targetDate: String(payload.targetDate || formatChinaDate(createdAt)),
     status,
     channel: String(payload.channel || "mobile-app"),
     sourceName: stringOrNull(payload.sourceName),
@@ -129,6 +140,15 @@ export function normalizeMobileEntry(payload: MobileEntryPayload): MobileNormali
     failedAt: stringOrNull(payload.failedAt),
     error: stringOrNull(payload.error),
   };
+}
+
+function formatChinaDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.slice(0, 10);
+  const parts = Object.fromEntries(
+    CHINA_DATE_FORMATTER.formatToParts(date).map((part) => [part.type, part.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 export function mobileEntryFromRow(row: Record<string, unknown>): MobileEntryResponseRecord {

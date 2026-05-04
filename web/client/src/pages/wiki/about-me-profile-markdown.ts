@@ -1,5 +1,5 @@
 /**
- * Parses wiki/about-me.md into a small, explicit view model for the dedicated
+ * Parses wiki/个人信息档案/about-me.md into a small, explicit view model for the dedicated
  * personal profile page. The parser intentionally supports only the markdown
  * structures that the profile layout consumes.
  */

@@ -1,4 +1,4 @@
-# About Me Profile Page Design
+﻿# About Me Profile Page Design
 
 ## Goal
 
@@ -42,7 +42,7 @@ Out of scope:
 - adding a second `about-me` content file
 - turning all wiki pages into card-driven landing pages
 - introducing a generic page-builder or arbitrary visual schema
-- replacing the existing Farzapedia reader for normal wiki articles
+- replacing the existing Peiweipedia reader for normal wiki articles
 - adding backend storage beyond the existing wiki file read path
 
 ## Current Problem
@@ -62,7 +62,7 @@ Use one dedicated personal-profile template that is triggered only for `wiki/abo
 
 This keeps the current system simple:
 
-- normal wiki pages still use the existing Farzapedia article renderer
+- normal wiki pages still use the existing Peiweipedia article renderer
 - only `wiki/about-me.md` switches into the special profile layout
 - the route remains inside the Wiki page flow instead of creating a second unrelated content system
 

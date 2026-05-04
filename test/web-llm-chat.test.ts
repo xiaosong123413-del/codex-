@@ -4,10 +4,12 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   generateAssistantReply,
+  generateAssistantReplyResult,
   resolveCodexAgentProviderRoute,
   streamAssistantReply,
 } from "../web/server/services/llm-chat.js";
 import type { Conversation } from "../web/server/services/chat-store.js";
+import { CloudflareProvider } from "../src/providers/cloudflare.js";
 import { GeminiProvider } from "../src/providers/gemini.js";
 import { OpenAIProvider } from "../src/providers/openai.js";
 
@@ -83,7 +85,38 @@ describe("llm-chat service", () => {
     expect(system).toContain("wiki/concepts/alpha.md");
     expect(system).toContain("Alpha knowledge lives here.");
     expect(messages).toEqual([{ role: "user", content: "Tell me about alpha." }]);
-    expect(maxTokens).toBe(1200);
+    expect(maxTokens).toBe(4000);
+  });
+
+  it("requires thinking summaries to use the user's working language", async () => {
+    const root = createTempRoot();
+    const conversation: Conversation = {
+      id: "c-language",
+      title: "Thread",
+      createdAt: "2026-04-17T10:00:00.000Z",
+      updatedAt: "2026-04-17T10:00:00.000Z",
+      webSearchEnabled: false,
+      articleRefs: [],
+      messages: [
+        {
+          id: "m1",
+          role: "user",
+          content: "如何不要过度交付？",
+          createdAt: "2026-04-17T10:00:00.000Z",
+        },
+      ],
+    };
+    const provider = {
+      complete: vi.fn().mockResolvedValue("回答"),
+    };
+
+    await generateAssistantReply(root, conversation, provider as never);
+
+    const [system] = provider.complete.mock.calls[0]!;
+    expect(system).toContain("Use the user's working language for every visible section, including <thinking>");
+    expect(system).toContain("If the user writes Chinese, answer in Chinese");
+    expect(system).toContain("the thinking summary must be Chinese");
+    expect(system).toContain("do not include hidden chain-of-thought or English planning notes");
   });
 
   it("streams assistant tokens through the provider", async () => {
@@ -228,9 +261,70 @@ describe("llm-chat service", () => {
       },
     );
     const [system] = provider.complete.mock.calls[0]!;
-    expect(system).toContain("wiki_search_results");
+    expect(system).toContain("<source_list>");
+    expect(system).toContain("[1] Redis");
+    expect(system).toContain("wiki_pages");
     expect(system).toContain("Redis");
     expect(system).toContain("Redis 用于缓存。");
+  });
+
+  it("returns stable numbered references for searched wiki pages", async () => {
+    const root = createTempRoot();
+    const pagePath = path.join(root, "wiki", "concepts", "redis.md");
+    fs.mkdirSync(path.dirname(pagePath), { recursive: true });
+    fs.writeFileSync(pagePath, "# Redis\n\nRedis 用于缓存和队列。");
+    const conversation: Conversation = {
+      id: "c-ref",
+      title: "Thread",
+      createdAt: "2026-04-17T10:00:00.000Z",
+      updatedAt: "2026-04-17T10:00:00.000Z",
+      webSearchEnabled: false,
+      searchScope: "local",
+      articleRefs: [],
+      messages: [
+        {
+          id: "m1",
+          role: "user",
+          content: "Redis 是什么？",
+          createdAt: "2026-04-17T10:00:00.000Z",
+        },
+      ],
+    };
+    searchAll.mockResolvedValue({
+      scope: "local",
+      mode: "hybrid",
+      local: {
+        mode: "hybrid",
+        results: [{
+          id: "redis",
+          title: "Redis",
+          path: "wiki/concepts/redis.md",
+          layer: "wiki",
+          excerpt: "Redis 用于缓存。",
+          tags: [],
+          modifiedAt: null,
+        }],
+      },
+      web: { results: [] },
+    });
+    const provider = {
+      complete: vi.fn().mockResolvedValue("Redis 是缓存系统。[1]\n<!-- cited: 1 -->"),
+    };
+
+    const result = await generateAssistantReplyResult(root, conversation, provider as never);
+
+    expect(result.content).toContain("[1]");
+    expect(result.references).toEqual([{
+      index: 1,
+      kind: "wiki",
+      title: "Redis",
+      path: "wiki/concepts/redis.md",
+      excerpt: "Redis 用于缓存。",
+    }]);
+    const [system] = provider.complete.mock.calls[0]!;
+    expect(system).toContain("When using a listed source, cite it inline as [1], [2], etc.");
+    expect(system).toContain("### [1] Redis");
+    expect(system).toContain("Redis 用于缓存和队列。");
   });
 
   it("loads both local and web search context when the conversation scope is all", async () => {
@@ -289,7 +383,7 @@ describe("llm-chat service", () => {
       },
     );
     const [system] = provider.complete.mock.calls[0]!;
-    expect(system).toContain("wiki_search_results");
+    expect(system).toContain("wiki_pages");
     expect(system).toContain("Redis 本地笔记");
     expect(system).toContain("web_search_results");
     expect(system).toContain("Redis Docs");
@@ -571,6 +665,53 @@ describe("llm-chat service", () => {
         "X-Session-ID": "agent:oauth-agent:oauth:gemini-cli:gemini.json:conversation:oauth-conversation",
       },
     });
+    completeSpy.mockRestore();
+  });
+
+  it("routes Cloudflare Workers AI account apps through the Cloudflare provider", async () => {
+    const root = createTempRoot();
+    writeAgentConfig(root, {
+      activeAgentId: "cloudflare-chat",
+      agents: [
+        {
+          id: "cloudflare-chat",
+          name: "Cloudflare Chat",
+          purpose: "聊天",
+          provider: "cloudflare",
+          accountRef: "cloudflare:workers-ai",
+          model: "@cf/meta/llama-3.1-8b-instruct",
+          workflow: "",
+          prompt: "",
+          enabled: true,
+          updatedAt: "2026-05-01T00:00:00.000Z",
+        },
+      ],
+    });
+    const conversation: Conversation = {
+      id: "cloudflare-conversation",
+      title: "Thread",
+      createdAt: "2026-05-01T00:00:00.000Z",
+      updatedAt: "2026-05-01T00:00:00.000Z",
+      webSearchEnabled: false,
+      searchScope: "local",
+      agentId: "cloudflare-chat",
+      articleRefs: [],
+      messages: [{
+        id: "m1",
+        role: "user",
+        content: "验证 Cloudflare provider",
+        createdAt: "2026-05-01T00:00:00.000Z",
+      }],
+    };
+    const completeSpy = vi.spyOn(CloudflareProvider.prototype, "complete").mockResolvedValue("Cloudflare reply");
+
+    const output = await generateAssistantReply(root, conversation, { projectRoot: root });
+
+    expect(output).toBe("Cloudflare reply");
+    expect(completeSpy).toHaveBeenCalledOnce();
+    const instance = completeSpy.mock.instances[0];
+    expect(instance).toBeInstanceOf(CloudflareProvider);
+    expect(Reflect.get(instance, "model")).toBe("@cf/meta/llama-3.1-8b-instruct");
     completeSpy.mockRestore();
   });
 });

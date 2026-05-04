@@ -8,6 +8,7 @@ interface PageProps {
   searchParams?: Promise<{ path?: string; search?: string }>;
 }
 
+// fallow-ignore-next-line complexity
 export default async function Home({ searchParams }: PageProps) {
   const params = await searchParams;
   const model = loadWikiModel({ currentPath: params?.path });

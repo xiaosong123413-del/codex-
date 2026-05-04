@@ -1,0 +1,268 @@
+<!--
+  Static prototype for the project execution workspace.
+
+  This mock page explores a project lane view with phase columns. Horizontal
+  movement shows time order, while stacked cards inside a phase show tasks that
+  are moving in parallel within the same project.
+-->
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>项目工作区 · 同步任务原型</title>
+    <style>
+      :root {
+        --bg: #f5f7fb; --panel: #fff; --text: #142033; --muted: #667085;
+        --line: #d9e2ef; --blue: #2563eb; --blue-soft: #eaf2ff;
+        --green: #16864a; --green-soft: #eaf8f0; --amber: #b96000;
+        --amber-soft: #fff3df; --red: #c92f2f; --red-soft: #fff0f0;
+        font-family: Inter, ui-sans-serif, system-ui, "Microsoft YaHei", sans-serif;
+      }
+
+      * { box-sizing: border-box; }
+      body { margin: 0; min-width: 1180px; background: var(--bg); color: var(--text); }
+      h1, h2, h3, p { margin: 0; }
+      h1 { font-size: 32px; line-height: 1.1; }
+      h2 { font-size: 18px; }
+      h3 { font-size: 15px; line-height: 1.35; }
+
+      .shell { min-height: 100vh; display: grid; grid-template-columns: 270px minmax(0, 1fr); }
+      aside.nav { padding: 22px 18px; border-right: 1px solid var(--line); background: #eef3fa; }
+      .search {
+        height: 42px; padding: 0 14px; display: flex; align-items: center;
+        border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--muted);
+      }
+      .nav-title { margin: 28px 0 12px; color: #475467; font-weight: 800; }
+      .nav-item {
+        min-height: 42px; display: flex; align-items: center; gap: 10px; padding: 0 10px;
+        border-radius: 8px; color: #0f4fb8; font-weight: 800;
+      }
+      .nav-item.active { background: #e0edff; box-shadow: inset 4px 0 0 var(--blue); }
+
+      main { padding: 26px; }
+      .topbar, .board, .today {
+        border: 1px solid var(--line); border-radius: 9px; background: var(--panel);
+      }
+      .topbar {
+        min-height: 102px; display: grid; grid-template-columns: minmax(300px, 1fr) auto;
+        align-items: center; gap: 18px; padding: 22px 24px;
+      }
+      .subtitle { margin-top: 8px; color: var(--muted); font-size: 15px; }
+      .stats { display: flex; align-items: center; gap: 10px; }
+      .pill {
+        min-width: 86px; height: 42px; display: inline-flex; align-items: center;
+        justify-content: center; padding: 0 14px; border: 1px solid var(--line);
+        border-radius: 999px; background: #f8fbff; color: #21324a; font-weight: 800;
+      }
+
+      .layout {
+        margin-top: 16px; display: grid; grid-template-columns: minmax(0, 1fr) 390px;
+        gap: 14px; align-items: start;
+      }
+      .board-header {
+        height: 76px; display: flex; align-items: center; justify-content: space-between;
+        padding: 0 22px; border-bottom: 1px solid var(--line);
+      }
+      .status-filter {
+        display: inline-grid; grid-template-columns: repeat(2, 96px); gap: 4px;
+        padding: 4px; border: 1px solid var(--line); border-radius: 8px; background: #f1f5f9;
+      }
+      .status-filter span {
+        height: 32px; display: grid; place-items: center; border-radius: 6px;
+        color: #344054; font-weight: 800;
+      }
+      .status-filter .active { background: #fff; color: var(--blue); }
+
+      .lanes { padding: 20px 22px 28px; overflow-x: auto; }
+      .lane {
+        min-width: 1040px; display: grid; grid-template-columns: 150px 190px minmax(0, 1fr);
+        gap: 16px; align-items: stretch; padding: 16px 0; border-bottom: 1px solid #edf1f7;
+      }
+      .lane:last-child { border-bottom: 0; }
+      .domain, .project {
+        min-height: 104px; padding: 14px; border: 1px solid var(--line);
+        border-radius: 8px; background: #fbfdff;
+      }
+      .domain strong, .project strong { display: block; font-size: 15px; }
+      .meta { display: block; margin-top: 10px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+      .phase-flow {
+        position: relative; display: grid; grid-template-columns: repeat(4, minmax(190px, 1fr));
+        gap: 18px; align-items: start;
+      }
+      .task {
+        position: relative; min-height: 92px; padding: 12px;
+        border: 1px solid var(--line); border-radius: 8px; background: #fff;
+        box-shadow: 0 1px 0 rgba(16, 24, 40, 0.03); z-index: 1;
+      }
+      .task + .task { margin-top: 10px; }
+      .task p { margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+      .phase {
+        position: relative; min-height: 222px; padding: 12px; border: 1px dashed #c7d4e6;
+        border-radius: 10px; background: #f8fbff;
+      }
+      .phase:not(:last-child)::after {
+        content: ""; position: absolute; top: 40px; right: -19px; width: 18px;
+        border-top: 2px solid #b8c7db;
+      }
+      .phase-head {
+        height: 46px; display: flex; align-items: flex-start; justify-content: space-between;
+        gap: 8px; margin-bottom: 12px; color: #263850;
+      }
+      .phase-head strong { font-size: 14px; }
+      .phase-head span { color: var(--muted); font-size: 12px; text-align: right; line-height: 1.35; }
+      .task-no { color: inherit; font-weight: 900; }
+      .done { color: var(--green); border-color: #a7e3bd; background: var(--green-soft); }
+      .doing {
+        color: var(--blue); border-color: #9dc0ff; background: var(--blue-soft);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+      }
+      .blocked { color: var(--red); border-color: #ffb8b8; background: var(--red-soft); }
+      .next { color: var(--amber); border-color: #f2cc8d; background: var(--amber-soft); }
+      .tag {
+        display: inline-flex; align-items: center; height: 22px; margin-top: 10px; padding: 0 8px;
+        border: 1px solid currentColor; border-radius: 999px; background: rgba(255,255,255,.75);
+        font-size: 12px; font-weight: 800;
+      }
+
+      .today { padding: 20px; }
+      .today h2 { font-size: 26px; }
+      .slot {
+        margin-top: 14px; padding: 15px 16px; border: 1px solid var(--line);
+        border-left: 5px solid var(--blue); border-radius: 8px; background: #fff;
+      }
+      .slot.blocked { border-left-color: var(--red); }
+      .slot.next { border-left-color: var(--amber); }
+      .time { color: var(--muted); font-size: 13px; font-weight: 800; }
+      .slot strong { display: block; margin-top: 7px; font-size: 17px; }
+      .path { margin-top: 8px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+      .sync-list { margin-top: 10px; padding-left: 18px; color: var(--muted); line-height: 1.7; }
+
+      @media (max-width: 980px) {
+        body { min-width: 0; }
+        .shell, .topbar, .layout { grid-template-columns: 1fr; }
+        aside.nav { display: none; }
+        .stats { flex-wrap: wrap; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="nav">
+        <div class="search">搜索</div>
+        <div class="nav-title">目录</div>
+        <div class="nav-item">工作日志维护指南</div>
+        <div class="nav-item">执行现场</div>
+        <div class="nav-item active">项目工作区</div>
+        <div class="nav-item">沉淀库</div>
+        <div class="nav-item">归档</div>
+      </aside>
+      <main>
+        <section class="topbar">
+          <div>
+            <h1>项目工作区</h1>
+            <p class="subtitle">横向表示阶段先后，阶段内多张任务卡表示同一项目的同步推进。</p>
+          </div>
+          <div class="stats">
+            <span class="pill">项目 13</span><span class="pill">已完成 12</span>
+            <span class="pill">正在进行 4</span><span class="pill">同步组 3</span>
+          </div>
+        </section>
+
+        <section class="layout">
+          <article class="board">
+            <div class="board-header">
+              <div>
+                <h2>执行层级图</h2>
+                <p class="subtitle">领域 -> 项目 -> 阶段列；同列任务表示同步推进</p>
+              </div>
+              <div class="status-filter"><span class="active">未完成</span><span>全部</span></div>
+            </div>
+            <div class="lanes">
+              <section class="lane">
+                <div class="domain"><strong>产品功能</strong><span class="meta">优先级 1<br />2 个项目</span></div>
+                <div class="project"><strong>个人 App 开发</strong><span class="meta">当前处于第 2 阶段<br />2 个任务同步</span></div>
+                <div class="phase-flow">
+                  <section class="phase">
+                    <div class="phase-head"><strong>阶段 1</strong><span>已完成<br />串行起点</span></div>
+                    <article class="task done"><h3><span class="task-no">1.1</span> 完成数据隔离</h3><p>多用户数据安全已完成。</p><span class="tag">已完成 04-29</span></article>
+                  </section>
+                  <section class="phase">
+                    <div class="phase-head"><strong>阶段 2</strong><span>同步推进<br />今天处理</span></div>
+                    <article class="task doing"><h3><span class="task-no">2.1</span> 上线后代码 review</h3><p>先处理高风险逻辑。</p><span class="tag">正在进行</span></article>
+                    <article class="task blocked"><h3><span class="task-no">2.2</span> 图片不保存到本地</h3><p>卡在上传链路和缓存策略。</p><span class="tag">卡点</span></article>
+                  </section>
+                  <section class="phase">
+                    <div class="phase-head"><strong>阶段 3</strong><span>汇合确认<br />依赖阶段 2</span></div>
+                    <article class="task next"><h3><span class="task-no">3.1</span> 整理用户反馈并归类</h3><p>等同步任务收口后推进。</p><span class="tag">下一步</span></article>
+                  </section>
+                  <section class="phase">
+                    <div class="phase-head"><strong>阶段 4</strong><span>发布后<br />复盘</span></div>
+                    <article class="task next"><h3><span class="task-no">4.1</span> 复盘今日完成情况</h3><p>同步任务完成后写入项目日志。</p><span class="tag">未确定</span></article>
+                  </section>
+                </div>
+              </section>
+
+              <section class="lane">
+                <div class="domain"><strong>知识库</strong><span class="meta">优先级 2<br />1 个项目</span></div>
+                <div class="project"><strong>LLM Wiki</strong><span class="meta">第 3 阶段同步设计<br />无卡点</span></div>
+                <div class="phase-flow">
+                  <section class="phase">
+                    <div class="phase-head"><strong>阶段 1</strong><span>基础完成</span></div>
+                    <article class="task done"><h3><span class="task-no">1.1</span> 完善个人档案页</h3><p>基础信息和 AI 收录入口已完成。</p><span class="tag">已完成 04-30</span></article>
+                  </section>
+                  <section class="phase">
+                    <div class="phase-head"><strong>阶段 2</strong><span>结构确认</span></div>
+                    <article class="task done"><h3><span class="task-no">2.1</span> 设计问题案例库结构</h3><p>清单字段和归属关系已定。</p><span class="tag">已完成 05-01</span></article>
+                  </section>
+                  <section class="phase">
+                    <div class="phase-head"><strong>阶段 3</strong><span>同步设计<br />2 个任务</span></div>
+                    <article class="task doing"><h3><span class="task-no">3.1</span> 执行层级图改成阶段列</h3><p>验证同阶段多任务表达。</p><span class="tag">正在进行</span></article>
+                    <article class="task doing"><h3><span class="task-no">3.2</span> 今日推进窗口同步规则</h3><p>同一个同步组可进入今日窗口。</p><span class="tag">正在进行</span></article>
+                  </section>
+                  <section class="phase">
+                    <div class="phase-head"><strong>阶段 4</strong><span>落地接入</span></div>
+                    <article class="task next"><h3><span class="task-no">4.1</span> 接入真实任务顺序字段</h3><p>确认交互后再进入真实页面。</p><span class="tag">下一步</span></article>
+                  </section>
+                </div>
+              </section>
+
+              <section class="lane">
+                <div class="domain"><strong>效率工具</strong><span class="meta">优先级 3<br />1 个项目</span></div>
+                <div class="project"><strong>搜索与转写</strong><span class="meta">候选任务较多<br />第 2 阶段卡住</span></div>
+                <div class="phase-flow">
+                  <section class="phase">
+                    <div class="phase-head"><strong>阶段 1</strong><span>探索完成</span></div>
+                    <article class="task done"><h3><span class="task-no">1.1</span> 探索听悟转写流程</h3><p>视频转文字流程已验证。</p><span class="tag">已完成</span></article>
+                  </section>
+                  <section class="phase">
+                    <div class="phase-head"><strong>阶段 2</strong><span>同步卡点<br />2 个问题</span></div>
+                    <article class="task blocked"><h3><span class="task-no">2.1</span> 沉淀摘要模板</h3><p>模板字段还没稳定。</p><span class="tag">卡点</span></article>
+                    <article class="task blocked"><h3><span class="task-no">2.2</span> 标注来源和可信度</h3><p>来源粒度还不一致。</p><span class="tag">卡点</span></article>
+                  </section>
+                  <section class="phase">
+                    <div class="phase-head"><strong>阶段 3</strong><span>恢复推进</span></div>
+                    <article class="task next"><h3><span class="task-no">3.1</span> 接入项目复盘页</h3><p>卡点解除后进入。</p><span class="tag">下一步</span></article>
+                  </section>
+                  <section class="phase">
+                    <div class="phase-head"><strong>阶段 4</strong><span>批量处理</span></div>
+                    <article class="task next"><h3><span class="task-no">4.1</span> 导入历史材料</h3><p>低优先级，暂不进今日。</p><span class="tag">未确定</span></article>
+                  </section>
+                </div>
+              </section>
+            </div>
+          </article>
+
+          <aside class="today">
+            <h2>今日推进窗口</h2>
+            <p class="subtitle">同一项目的同步组可以作为一个时间块进入今天。</p>
+            <article class="slot"><span class="time">11:00</span><strong>个人 App 开发 · 第 2 阶段同步组</strong><ul class="sync-list"><li>上线后代码 review</li><li>图片不保存到本地</li></ul><p class="path">产品功能 -> 个人 App 开发 -> 阶段 2</p></article>
+            <article class="slot"><span class="time">15:00</span><strong>LLM Wiki · 第 3 阶段同步组</strong><ul class="sync-list"><li>执行层级图改成阶段列</li><li>今日推进窗口同步规则</li></ul><p class="path">知识库 -> LLM Wiki -> 阶段 3</p></article>
+            <article class="slot blocked"><span class="time">17:00</span><strong>搜索与转写 · 第 2 阶段卡点组</strong><ul class="sync-list"><li>沉淀摘要模板</li><li>标注来源和可信度</li></ul><p class="path">效率工具 -> 搜索与转写 -> 阶段 2</p></article>
+          </aside>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

@@ -15,6 +15,7 @@ export function flowNode(
   title: string,
   description: string,
   implementation?: string,
+  standard?: string,
 ): AutomationFlow["nodes"][number] {
   return {
     id,
@@ -22,6 +23,7 @@ export function flowNode(
     title,
     description,
     ...(implementation ? { implementation } : {}),
+    ...(standard ? { standard } : {}),
     modelMode: "default",
   };
 }

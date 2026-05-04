@@ -1,8 +1,8 @@
-# Vault Runtime Separation Implementation Plan
+﻿# Vault Runtime Separation Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make `D:\Desktop\ai的仓库` the only editable source-of-truth while moving all Farzapedia runtime artifacts into `D:\Desktop\llm-wiki-compiler-main\.runtime\ai-vault\`.
+**Goal:** Make `D:\Desktop\ai的仓库` the only editable source-of-truth while moving all Peiweipedia runtime artifacts into `D:\Desktop\llm-wiki-compiler-main\.runtime\ai-vault\`.
 
 **Architecture:** Split the system into two explicit roots: a source vault root and a runtime output root. The compile pipeline writes only to the runtime root; the web server and desktop app read source markdown from the vault and indexes/state/generated pages from the runtime root. This keeps Obsidian content authoritative and makes all runtime output disposable.
 
@@ -671,7 +671,7 @@ rtk git commit -m "refactor: pass source and runtime roots into desktop webui"
 
 - source of truth remains `D:\Desktop\ai的仓库`
 - runtime output moved to `D:\Desktop\llm-wiki-compiler-main\.runtime\ai-vault`
-- Farzapedia now reads source markdown from the vault and generated indexes/state from runtime output
+- Peiweipedia now reads source markdown from the vault and generated indexes/state from runtime output
 - old vault runtime directories should be treated as stale and removed only after verification
 ```
 
@@ -715,7 +715,7 @@ Expected:
 
 - launcher closes after startup
 - Electron window title is `LLM Wiki`
-- Farzapedia opens source-backed pages from `D:\Desktop\ai的仓库\wiki\...`
+- Peiweipedia opens source-backed pages from `D:\Desktop\ai的仓库\wiki\...`
 - generated home/MOC/search/review still function via runtime root
 
 - [ ] **Step 5: Commit**
@@ -730,6 +730,6 @@ rtk git commit -m "docs: record vault runtime separation rollout"
 - Source of truth stays in `D:\Desktop\ai的仓库`: covered by Tasks 1-4.
 - `wiki/` remains editable source content: covered by Tasks 2-3.
 - Runtime artifacts move to `.runtime\ai-vault`: covered by Tasks 1-2.
-- Farzapedia reads source markdown plus runtime indexes: covered by Tasks 3-4.
+- Peiweipedia reads source markdown plus runtime indexes: covered by Tasks 3-4.
 - Desktop launcher/exe pathing stays correct: covered by Task 4.
 - Conservative rollout and verification: covered by Task 5.

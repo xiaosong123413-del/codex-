@@ -7,7 +7,8 @@ import { getConversation } from "./chat-store.js";
 import { listMarkdownFilesRecursive } from "./markdown-file-listing.js";
 import { createSourceBookmark, createSourceNote } from "./sources-full.js";
 import { readSourceMediaIndex, writeSourceMediaIndex } from "./source-media-index.js";
-import { runCloudflareOcr } from "./ocr-service.js";
+import { readSourceOcrSidecar } from "./ocr-service.js";
+import { ensureSourceImageOcr, runSourcePathImageOcr } from "./source-ocr.js";
 import { runCloudflareTranscription } from "./transcript-service.js";
 
 export type SourceGallerySort = "modified-desc" | "modified-asc" | "created-desc" | "created-asc";
@@ -88,7 +89,9 @@ export async function listSourceGalleryItems(
   sort: SourceGallerySort = "modified-desc",
   filters: SourceGalleryFilters = {},
 ): Promise<{ items: SourceGalleryItem[]; filters: SourceGalleryFilterOptions }> {
-  const mediaIndex = readSourceMediaIndex(runtimeRoot);
+  const mediaIndex = query?.trim()
+    ? (await ensureSourceImageOcr({ sourceVaultRoot, runtimeRoot, rescan: true })).index
+    : readSourceMediaIndex(runtimeRoot);
   const records = scanGallery(sourceVaultRoot, runtimeRoot, mediaIndex);
   const filterOptions = buildSourceGalleryFilterOptions(records);
   const filteredRecords = records
@@ -284,7 +287,7 @@ export async function createSourceGalleryCompileInput(
   now = new Date(),
 ): Promise<SourceGalleryCompileInput> {
   const detail = await getSourceGalleryDetail(sourceVaultRoot, runtimeRoot, id);
-  const conversation = getConversation(runtimeRoot, conversationId);
+  const conversation = getConversation(sourceVaultRoot, conversationId);
   if (!conversation) {
     throw new Error("conversation not found");
   }
@@ -310,17 +313,8 @@ export async function runSourceGalleryOcr(
   const mediaIndex = readSourceMediaIndex(runtimeRoot);
   const record = findRecord(sourceVaultRoot, runtimeRoot, id, mediaIndex);
   if (!record) throw new Error("source gallery item not found");
-  const imagePath = mediaIndex.records[id]?.media.find((item) => item.kind === "image" && item.exists)?.path
-    ?? record.previewImagePath;
-  if (!imagePath) throw new Error("no image media found");
-  const result = await runCloudflareOcr({
-    runtimeRoot,
-    sourceId: id,
-    filePath: resolveExistingMediaFile(sourceVaultRoot, runtimeRoot, imagePath),
-  });
-  if (!result.ok) throw new Error(result.error.message);
-  await updateMediaSidecarPath(runtimeRoot, id, { ocrTextPath: result.path });
-  return { id, path: result.path, text: result.text };
+  const result = await runSourcePathImageOcr({ sourceVaultRoot, runtimeRoot, sourcePath: record.path });
+  return { id: result.id, path: result.path, text: result.text };
 }
 
 export async function runSourceGalleryTranscription(
@@ -376,6 +370,7 @@ function scanMarkdownBucket(
   const root = path.join(baseRoot, ...relativeDir.split("/"));
   if (!fs.existsSync(root)) return [];
   const files = listMarkdownFilesRecursive(root);
+  // fallow-ignore-next-line complexity
   return files.map((fullPath) => {
     const relativePath = toPosix(path.relative(baseRoot, fullPath));
     const raw = fs.readFileSync(fullPath, "utf8");
@@ -427,7 +422,8 @@ function matchesQuery(sourceVaultRoot: string, runtimeRoot: string, item: Source
   const normalized = query?.trim().toLowerCase();
   if (!normalized) return true;
   const raw = fs.readFileSync(resolveGalleryPath(sourceVaultRoot, runtimeRoot, item.path), "utf8");
-  return [item.title, item.excerpt, item.sourceUrl, item.tags.join(" "), raw]
+  const ocrText = readSourceOcrSidecar(runtimeRoot, item.id);
+  return [item.title, item.excerpt, item.sourceUrl, item.tags.join(" "), raw, ocrText]
     .filter(Boolean)
     .join("\n")
     .toLowerCase()
@@ -663,7 +659,8 @@ function escapeAttribute(value: string): string {
 
 function resolveGalleryPath(sourceVaultRoot: string, runtimeRoot: string, relativePath: string): string {
   const normalized = path.normalize(relativePath).replace(/^(\.\.(\/|\\|$))+/, "");
-  const root = normalized.replace(/\\/g, "/").startsWith("sources_full/") ? runtimeRoot : sourceVaultRoot;
+  const posix = normalized.replace(/\\/g, "/");
+  const root = posix.startsWith("sources_full/") || posix.startsWith("wiki/") ? runtimeRoot : sourceVaultRoot;
   const full = path.resolve(root, normalized);
   if (!isInsideRoot(full, root)) throw new Error("invalid media path");
   return full;

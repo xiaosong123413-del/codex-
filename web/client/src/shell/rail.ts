@@ -21,13 +21,11 @@ const RAIL_ITEMS: RailItem[] = [
   { route: "workspace", icon: "hammer", label: "\u5de5\u4f5c\u53f0", position: "top" },
   { route: "chat", icon: "message-square", label: "\u5bf9\u8bdd", position: "top" },
   { route: "flash-diary", icon: "book-open-text", label: "\u95ea\u5ff5\u65e5\u8bb0", position: "top" },
-  { route: "automation", icon: "list-checks", label: "Workflow", position: "top" },
   { route: "sources", icon: "archive", label: "\u6e90\u6599\u5e93", position: "top" },
   { route: "wiki", icon: "wikipedia-w", label: "wiki", position: "top" },
   { route: "check", icon: "check-circle-2", label: "\u68c0\u67e5", position: "top" },
   { route: "sync", icon: "refresh-cw", label: "\u540c\u6b65", position: "top" },
   { route: "review", icon: "clipboard-list", label: "\u5ba1\u67e5", position: "top" },
-  { route: "graph", icon: "globe", label: "\u56fe\u8c31", position: "top" },
   { route: "settings", icon: "settings", label: "\u8bbe\u7f6e", position: "bottom" },
 ];
 
@@ -63,8 +61,15 @@ export function mountRail(container: HTMLElement, options: RailOptions): RailHan
 }
 
 function applyActive(container: HTMLElement, current: RouteName): void {
+  const activeRoute = normalizeRailRoute(current);
   const buttons = container.querySelectorAll<HTMLButtonElement>(".shell-rail__btn");
   buttons.forEach((button) => {
-    button.setAttribute("data-active", button.dataset.route === current ? "true" : "false");
+    button.setAttribute("data-active", button.dataset.route === activeRoute ? "true" : "false");
   });
+}
+
+function normalizeRailRoute(current: RouteName): RouteName {
+  return current === "automation" || current === "automation-log" || current === "project-log"
+    ? "settings"
+    : current;
 }

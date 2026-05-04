@@ -7,7 +7,13 @@
       "Bash(git -c commit.gpgsign=false commit -m \"docs: add web ui redesign phase 1 implementation plan\")",
       "Bash(npx vitest *)",
       "Bash(git -c commit.gpgsign=false commit -m \"feat\\(web\\): add inlined lucide icon renderer\")",
-      "Bash(git -c commit.gpgsign=false commit -m \"feat\\(web\\): add hash router\")"
+      "Bash(git -c commit.gpgsign=false commit -m \"feat\\(web\\): add hash router\")",
+      "Bash(rtk ls *)",
+      "Bash(rtk find *)",
+      "Bash(rtk git *)",
+      "Bash(python3 *)",
+      "Bash(python *)",
+      "Bash(rtk cat *)"
     ]
   }
 }

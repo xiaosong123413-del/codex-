@@ -28,6 +28,15 @@ type TreeWatcher = fs.FSWatcher & { unref?: () => void };
 
 const treeCache = new Map<string, TreeNode>();
 const treeWatchers = new Map<string, TreeWatcher[]>();
+const RETIRED_WIKI_DIRS = new Set([
+  "wiki/episodes",
+  "wiki/专题",
+  "wiki/个人信息档案/案例库",
+  "wiki/个人信息档案/资源库",
+  "wiki/个人信息档案/资料验证记录",
+  "wiki/个人信息档案/方法库",
+  "wiki/个人信息档案/当前执行记录器.md",
+]);
 
 export function buildTree(cfg: ServerConfig, layer: TreeLayer = "wiki", q = ""): TreeNode {
   const roots = getTreeRoots(cfg, layer);
@@ -42,7 +51,9 @@ export function buildTree(cfg: ServerConfig, layer: TreeLayer = "wiki", q = ""):
 
   for (const root of roots) {
     if (!fs.existsSync(root.dir)) {
-      rootNode.children!.push({ name: root.rel, path: root.rel, kind: "dir", children: [] });
+      if (root.rel === layer) {
+        rootNode.children!.push({ name: root.rel, path: root.rel, kind: "dir", children: [] });
+      }
       continue;
     }
 
@@ -89,6 +100,7 @@ function getTreeRoots(cfg: ServerConfig, layer: TreeLayer): TreeRoot[] {
       ]
     : [
         { rel: "wiki", dir: sourcePath(cfg, "wiki") },
+        { rel: "领域", dir: sourcePath(cfg, "领域") },
       ];
 }
 
@@ -181,6 +193,9 @@ function isDirectory(dir: string): boolean {
 function buildTreeChild(dir: string, rel: string, query: string, entry: fs.Dirent): TreeNode | null {
   const fullPath = path.join(dir, entry.name);
   const nodeRel = path.posix.join(rel, entry.name);
+  if (isRetiredWikiPath(nodeRel)) {
+    return null;
+  }
   if (entry.isDirectory()) {
     return walk(fullPath, nodeRel, query);
   }
@@ -208,6 +223,10 @@ function matchesTreeQuery(name: string, nodeRel: string, query: string): boolean
     return true;
   }
   return name.toLowerCase().includes(query) || nodeRel.toLowerCase().includes(query);
+}
+
+function isRetiredWikiPath(nodeRel: string): boolean {
+  return RETIRED_WIKI_DIRS.has(nodeRel.replace(/\\/g, "/").toLowerCase());
 }
 
 export function handleTree(cfg: ServerConfig) {

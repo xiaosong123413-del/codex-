@@ -19,6 +19,24 @@ A knowledge compiler CLI. Raw sources in, interlinked wiki out.
 - Use RTK especially for recursive listings, file reads, grep/search, git diff/status/log, test output, build output, lint output, and logs.
 - If `rtk` is not installed or a command is not supported, state that briefly and use the narrowest normal command that can answer the question.
 - Do not use RTK as a substitute for careful scoping. A narrow normal command is still better than a broad RTK command.
+- On Windows, never execute a `.sh` file directly from PowerShell or by opening it. Run it through `bash <script>.sh` or `sh <script>.sh` so Windows does not show the app picker.
+
+### Git Auto-Triage and Commit Rule
+
+When the user asks to automatically organize and commit current Git changes, Codex is authorized to decide what to keep, discard, split, stage, and commit without asking for file-by-file review.
+
+- Automatically keep source code, tests, documentation, configuration, migrations, lockfiles, and other feature-related changes.
+- Automatically discard logs, caches, temporary HTML, `tmp` contents, runtime outputs, build outputs, downloaded binaries, and empty debug artifacts.
+- Split commits by functional area, such as web, server, Cloudflare, tests, docs, and config.
+- Run the required checks before considering the work complete.
+
+Ask the user before proceeding only for high-risk cases:
+
+- Deleting source directories or many source files.
+- Deleting root documentation or instruction files, such as `README`, `AGENTS`, or `RTK`.
+- Deleting configuration files, database migrations, or lockfiles.
+- Ambiguous files that could be business data instead of generated output.
+- Tests or builds fail but the user still wants a commit.
 
 ### Subagent Scheduler Mode
 
@@ -48,6 +66,31 @@ A knowledge compiler CLI. Raw sources in, interlinked wiki out.
 - Maintain one image per independent DOM page in the "Current Interface" section: chat, flash-diary, wiki, review, graph, and settings. When a new independent page is added, add one image for it too.
 - Do not keep a single overview image, and do not include a screenshot for the project-log page itself.
 - Refresh those page images when the documented current interface changes in a user-visible way.
+
+### End-to-End Product Change Gate
+
+- Treat UI, backend, storage, and information flow as one feature surface. When a requested change touches a user-facing control, page, workflow, task, search result, sync action, or generated artifact, identify the full path before implementation: UI entry point -> client state -> API/IPC route -> service/domain logic -> persistence/source of truth -> downstream consumers.
+- If the user asks for a frontend-only object such as a button, menu item, card action, toggle, or form field, do not invent the backend behavior. Ask what the action should do, what API or command it should call, what data it reads/writes, where the result should flow, and how success/failure should be shown, unless the existing code already makes that behavior unambiguous.
+- If the user asks for backend/data behavior that has a user-facing effect, check whether the frontend, desktop WebUI, mobile/Cloudflare endpoints, and project log need matching updates. If one side is missing or unclear, stop and ask instead of shipping a disconnected partial.
+- At completion, explicitly state which layers are connected and which are not. Do not describe a UI control as working if it is only rendered, and do not describe a backend capability as available if no reachable UI/API path invokes it.
+
+### Recurring Problem Productization Gate
+
+- When a user-facing problem appears, do not default to a one-off manual repair by Codex. First identify what product capability is missing or broken so the application can solve the same class of problem next time.
+- For every diagnosis, explicitly consider whether the app needs a new button, menu action, bulk action, review flow, backend endpoint, deterministic repairer, queue processor, or clearer success/failure state.
+- If the correct product behavior is already implied by existing workflows, implement the smallest end-to-end change that connects UI entry point -> client state -> API/IPC route -> domain logic -> persistence -> downstream refresh.
+- If the correct product behavior is not implied, ask the user what action the app should expose and what result it should write, instead of silently doing an irreversible data fix.
+- Manual data repair is acceptable only as part of validating or unblocking the product fix. At completion, state which repeatable app capability now handles the issue and which cases still require human review.
+
+### Personal And Knowledge Retrieval Rule
+
+- For search, chat, answer generation, task generation, and wiki/workspace integration, distinguish `personal` information from `knowledge` information while allowing bridge records that connect both.
+- Personal information includes profile facts, About Me, personal timeline, flash diary, memory, task pool, project workspace, work logs, current goals, preferences, constraints, and lived history.
+- Knowledge information includes wiki pages, source notes, methods, tools, general concepts, external references, reusable patterns, and domain knowledge.
+- Bridge information includes tasks, projects, cases, work logs, execution records, methods used in personal work, and tools selected for personal workflows. These records should connect personal context to reusable knowledge instead of living in isolated silos.
+- When answering a user question, default to dual retrieval: retrieve relevant personal facts and relevant knowledge facts, then look for bridge records by project, task, case, method, tool, date, and source. The answer should be tightly grounded in the user's question, not a generic wiki summary.
+- The system may automatically extract personal facts from diaries, tasks, work logs, and project workspace content, but auto-extracted facts must be marked low confidence / pending confirmation until the user confirms or a deterministic workflow promotes them.
+- Do not let raw diary/task/work-log text silently pollute the durable personal profile or knowledge wiki. Keep provenance, confidence, source path, and confirmation state visible in the data model and review flow.
 
 ### Code Style & Standards
 
@@ -89,5 +132,7 @@ Before committing any work, and before considering any task complete, you must:
 - First think through the problem, read the codebase for relevant files.
 - Make every task and code change you do as simple as possible. We want to avoid making any massive or complex changes. Every change should impact as little code as possible. Everything is about simplicity.
 - Never speculate about code you have not opened. If the user references a specific file, you MUST read the file before answering. Make sure to investigate and read relevant files BEFORE answering questions about the codebase. Never make any claims about code before investigating unless you are certain of the correct answer - give grounded and hallucination-free answers.
+- When the user asks for a change or implementation, carry the requested work through to completion instead of stopping at a partial design, data-only change, or proposal. At the end, explicitly state what was completed and what remains unfinished.
+- If only part of the requested end-to-end behavior is implemented, do not describe the target architecture as if it already exists. Clearly distinguish "current implemented behavior" from "target behavior / not yet implemented" and list the missing pieces.
 
 @RTK.md

@@ -5,8 +5,8 @@ $sourceDir = Join-Path $root "desktop-webui-launcher"
 $outDir = Join-Path $root "dist\desktop-webui-launcher"
 $outExe = Join-Path $outDir "LLM-Wiki-WebUI-Launcher.exe"
 $desktopExe = Join-Path ([Environment]::GetFolderPath("DesktopDirectory")) "LLM-Wiki-WebUI-Launcher.exe"
+$desktopConfig = Join-Path ([Environment]::GetFolderPath("DesktopDirectory")) "launcher-config.json"
 $iconPath = Join-Path $root "desktop-webui\assets\llm-wiki.ico"
-$generatedProjectRoot = Join-Path $sourceDir "BuildProjectRoot.cs"
 
 $csc = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 if (-not (Test-Path $csc)) {
@@ -17,18 +17,6 @@ if (-not (Test-Path $csc)) {
 }
 
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
-
-$escapedRoot = $root.Replace("\", "\\")
-
-@"
-namespace LlmWikiWebUiLauncher
-{
-    internal static class BuildProjectRoot
-    {
-        internal const string Value = "$escapedRoot";
-    }
-}
-"@ | Set-Content -Path $generatedProjectRoot -Encoding UTF8
 
 $arguments = @(
   "/nologo",
@@ -56,6 +44,11 @@ if ($LASTEXITCODE -ne 0) {
   throw "csc.exe failed with exit code $LASTEXITCODE"
 }
 
+& node (Join-Path $root "scripts\assert-public-package-clean.mjs") $outDir
+if ($LASTEXITCODE -ne 0) {
+  throw "Public package cleanliness check failed."
+}
+
 $runningDesktopExe = Get-Process | Where-Object { $_.Path -eq $desktopExe }
 if ($runningDesktopExe) {
   $runningDesktopExe | Stop-Process -Force
@@ -63,8 +56,7 @@ if ($runningDesktopExe) {
 }
 
 Copy-Item $outExe $desktopExe -Force
-if (Test-Path ([System.IO.Path]::Combine([Environment]::GetFolderPath("DesktopDirectory"), "launcher-config.json"))) {
-  Remove-Item ([System.IO.Path]::Combine([Environment]::GetFolderPath("DesktopDirectory"), "launcher-config.json")) -Force
-}
+$escapedConfigRoot = $root.Replace("\", "\\").Replace('"', '\"')
+"{""projectRoot"":""$escapedConfigRoot""}" | Set-Content -Path $desktopConfig -Encoding UTF8
 Write-Host "Built: $outExe"
 Write-Host "Desktop exe: $desktopExe"

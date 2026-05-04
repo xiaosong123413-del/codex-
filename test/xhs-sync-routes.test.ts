@@ -43,6 +43,28 @@ describe("xhs sync routes", () => {
     expect(response.body.data.path).toMatch(/^raw\/剪藏\/小红书\//);
   });
 
+  it("appends manually attached media to xhs clipping markdown", async () => {
+    const cfg = makeConfig();
+    const imagePath = path.join(cfg.projectRoot, "xhs-extra.png");
+    fs.writeFileSync(imagePath, "image", "utf8");
+    const response = createResponse();
+
+    await handleXhsExtract(cfg, { fetcher: async () => sampleResponse(sampleHtml()), postFormatter: sampleFormatter })({
+      body: {
+        url: "https://www.xiaohongshu.com/explore/64f000000000000001234567",
+        body: "补充说明这条笔记怎么使用",
+        mediaPaths: [imagePath],
+      },
+    } as unknown as Request, response as Response);
+
+    expect(response.statusCode).toBe(200);
+    const markdownPath = path.join(cfg.sourceVaultRoot, ...String(response.body.data.path).split("/"));
+    const raw = fs.readFileSync(markdownPath, "utf8");
+    expect(raw).toContain("## 手动附件");
+    expect(raw).toContain("![](./assets/");
+    expect(fs.existsSync(path.join(path.dirname(markdownPath), "assets", "小红书路由测试", "xhs-extra.png"))).toBe(true);
+  });
+
   it("runs batch extraction and status route reports latest progress", async () => {
     const cfg = makeConfig();
     const batch = createResponse();

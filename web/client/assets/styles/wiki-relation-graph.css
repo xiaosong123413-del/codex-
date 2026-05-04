@@ -1,0 +1,179 @@
+/**
+ * Obsidian-like relationship graph rendering inside CRM wiki pages.
+ */
+
+.wiki-relation-graph {
+  margin: 18px 0 24px;
+  border: 1px solid #d7dde8;
+  border-radius: 14px;
+  background: #fbfcff;
+  overflow: hidden;
+}
+
+.wiki-relation-graph__toolbar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e4e8f0;
+}
+
+.wiki-relation-graph__toolbar strong {
+  color: #1f2937;
+  font-size: 15px;
+}
+
+.wiki-relation-graph__toolbar span {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.wiki-relation-graph__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 460px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(148, 163, 184, 0.16), transparent 28%),
+    #ffffff;
+  cursor: grab;
+  touch-action: none;
+}
+
+.wiki-relation-graph__svg.is-dragging {
+  cursor: grabbing;
+}
+
+.wiki-relation-graph__edge line {
+  stroke: #cbd5e1;
+  stroke-width: 1.2;
+}
+
+.wiki-relation-graph__edge-label {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.wiki-relation-graph__edge.is-relation-visible line {
+  stroke: #64748b;
+  stroke-width: 1.8;
+}
+
+.wiki-relation-graph__edge.is-relation-visible .wiki-relation-graph__edge-label {
+  opacity: 1;
+}
+
+.wiki-relation-graph__edge-label rect {
+  fill: rgba(255, 255, 255, 0.96);
+  stroke: #cbd5e1;
+  stroke-width: 1;
+}
+
+.wiki-relation-graph__edge-label text {
+  fill: #334155;
+  font-family: Inter, "Segoe UI", "Microsoft YaHei", sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.wiki-relation-graph__node-ring {
+  opacity: 0.28;
+}
+
+.wiki-relation-graph__node-fill {
+  stroke: #ffffff;
+  stroke-width: 2.5;
+}
+
+.wiki-relation-graph__node {
+  cursor: pointer;
+}
+
+.wiki-relation-graph__node.is-selected .wiki-relation-graph__node-ring {
+  opacity: 0.52;
+}
+
+.wiki-relation-graph__node:focus {
+  outline: none;
+}
+
+.wiki-relation-graph__node image {
+  opacity: 0;
+}
+
+.wiki-relation-graph__node image.is-loaded {
+  opacity: 1;
+}
+
+.wiki-relation-graph__label rect {
+  fill: rgba(255, 255, 255, 0.94);
+  stroke: #e2e8f0;
+  stroke-width: 1;
+}
+
+.wiki-relation-graph__label {
+  cursor: pointer;
+}
+
+.wiki-relation-graph__label.is-selected rect {
+  stroke: #64748b;
+  stroke-width: 1.5;
+}
+
+.wiki-relation-graph__label text {
+  fill: #334155;
+  font-family: Inter, "Segoe UI", "Microsoft YaHei", sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.wiki-relation-graph__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  padding: 12px 16px;
+  border-top: 1px solid #e4e8f0;
+}
+
+.wiki-relation-graph__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #475569;
+  font-size: 12px;
+}
+
+.wiki-relation-graph__legend-item i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+[data-relation-type="self"] .wiki-relation-graph__node-ring,
+[data-relation-type="self"] .wiki-relation-graph__node-fill,
+[data-relation-type="self"] i { fill: #111827; background: #111827; }
+
+[data-relation-type="intimate"] .wiki-relation-graph__node-ring,
+[data-relation-type="intimate"] .wiki-relation-graph__node-fill,
+[data-relation-type="intimate"] i { fill: #ef5f86; background: #ef5f86; }
+
+[data-relation-type="family"] .wiki-relation-graph__node-ring,
+[data-relation-type="family"] .wiki-relation-graph__node-fill,
+[data-relation-type="family"] i { fill: #f59e0b; background: #f59e0b; }
+
+[data-relation-type="academic"] .wiki-relation-graph__node-ring,
+[data-relation-type="academic"] .wiki-relation-graph__node-fill,
+[data-relation-type="academic"] i { fill: #3b82f6; background: #3b82f6; }
+
+[data-relation-type="mentor"] .wiki-relation-graph__node-ring,
+[data-relation-type="mentor"] .wiki-relation-graph__node-fill,
+[data-relation-type="mentor"] i { fill: #8b5cf6; background: #8b5cf6; }
+
+[data-relation-type="collaboration"] .wiki-relation-graph__node-ring,
+[data-relation-type="collaboration"] .wiki-relation-graph__node-fill,
+[data-relation-type="collaboration"] i { fill: #10b981; background: #10b981; }
+
+[data-relation-type="weak"] .wiki-relation-graph__node-ring,
+[data-relation-type="weak"] .wiki-relation-graph__node-fill,
+[data-relation-type="weak"] i { fill: #94a3b8; background: #94a3b8; }

@@ -115,6 +115,30 @@ describe("server wiki tree", () => {
     expect(serialized).toContain("modifiedAt");
   });
 
+  it("hides retired episode pages from the wiki tree", () => {
+    const sourceVaultRoot = fs.mkdtempSync(path.join(os.tmpdir(), "web-tree-retired-source-"));
+    const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "web-tree-retired-runtime-"));
+    tempRoots.push(sourceVaultRoot, runtimeRoot);
+
+    fs.mkdirSync(path.join(sourceVaultRoot, "wiki", "concepts"), { recursive: true });
+    fs.mkdirSync(path.join(sourceVaultRoot, "wiki", "episodes"), { recursive: true });
+    fs.writeFileSync(path.join(sourceVaultRoot, "wiki", "concepts", "source.md"), "# Source", "utf8");
+    fs.writeFileSync(path.join(sourceVaultRoot, "wiki", "episodes", "old.md"), "# Old Episode", "utf8");
+
+    const tree = buildTree({
+      sourceVaultRoot,
+      runtimeRoot,
+      projectRoot: runtimeRoot,
+      host: "127.0.0.1",
+      port: 4175,
+      author: "me",
+    });
+
+    const serialized = JSON.stringify(tree);
+    expect(serialized).toContain("wiki/concepts/source.md");
+    expect(serialized).not.toContain("wiki/episodes");
+  });
+
   it("keeps matching parent directories when filtering by query", () => {
     const sourceVaultRoot = fs.mkdtempSync(path.join(os.tmpdir(), "web-tree-query-source-"));
     const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "web-tree-query-runtime-"));
@@ -146,6 +170,54 @@ describe("server wiki tree", () => {
         ],
       }),
     ]);
+  });
+
+  it("includes workspace record pages in the wiki tree without treating them as compile sources", () => {
+    const sourceVaultRoot = fs.mkdtempSync(path.join(os.tmpdir(), "web-tree-workspace-source-"));
+    const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "web-tree-workspace-runtime-"));
+    tempRoots.push(sourceVaultRoot, runtimeRoot);
+
+    fs.mkdirSync(path.join(sourceVaultRoot, "wiki", "concepts"), { recursive: true });
+    fs.mkdirSync(path.join(sourceVaultRoot, "领域", "产品", "LLM Wiki WebUI"), { recursive: true });
+    fs.writeFileSync(path.join(sourceVaultRoot, "wiki", "concepts", "source.md"), "# Source", "utf8");
+    fs.writeFileSync(path.join(sourceVaultRoot, "领域", "产品", "LLM Wiki WebUI", "工作日志.md"), "# 工作日志", "utf8");
+
+    const tree = buildTree({
+      sourceVaultRoot,
+      runtimeRoot,
+      projectRoot: runtimeRoot,
+      host: "127.0.0.1",
+      port: 4175,
+      author: "me",
+    });
+
+    const serialized = JSON.stringify(tree);
+    expect(serialized).toContain("wiki/concepts/source.md");
+    expect(serialized).toContain("领域/产品/LLM Wiki WebUI/工作日志.md");
+  });
+
+  it("hides execution-topic folders from the normal wiki tree", () => {
+    const sourceVaultRoot = fs.mkdtempSync(path.join(os.tmpdir(), "web-tree-topic-source-"));
+    const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "web-tree-topic-runtime-"));
+    tempRoots.push(sourceVaultRoot, runtimeRoot);
+
+    fs.mkdirSync(path.join(sourceVaultRoot, "wiki", "专题", "案例库"), { recursive: true });
+    fs.mkdirSync(path.join(sourceVaultRoot, "wiki", "个人信息档案", "案例库"), { recursive: true });
+    fs.writeFileSync(path.join(sourceVaultRoot, "wiki", "专题", "案例库", "index.md"), "# 案例库", "utf8");
+    fs.writeFileSync(path.join(sourceVaultRoot, "wiki", "个人信息档案", "案例库", "旧案例.md"), "# 旧案例", "utf8");
+
+    const tree = buildTree({
+      sourceVaultRoot,
+      runtimeRoot,
+      projectRoot: runtimeRoot,
+      host: "127.0.0.1",
+      port: 4175,
+      author: "me",
+    });
+
+    const serialized = JSON.stringify(tree);
+    expect(serialized).not.toContain("wiki/专题");
+    expect(serialized).not.toContain("wiki/个人信息档案/案例库");
   });
 
   it("caches route responses until the tree cache is cleared", () => {

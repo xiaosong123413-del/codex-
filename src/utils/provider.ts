@@ -73,9 +73,9 @@ export function getProvider(): LLMProvider {
       return getAnthropicProvider();
     case "gemini":
       return new GeminiProvider(
-        process.env.LLMWIKI_MODEL ?? "gemini-2.5-flash",
-        process.env.LLMWIKI_OPENAI_BASE_URL,
-        process.env.OPENAI_API_KEY,
+        getModelForProvider("gemini"),
+        process.env.GEMINI_BASE_URL,
+        process.env.GOOGLE_API_KEY,
       );
     case "openai":
       return new OpenAIProvider(
@@ -97,7 +97,7 @@ export function getProvider(): LLMProvider {
   }
 }
 
-function getModelForProvider(providerName: "openai" | "ollama" | "minimax"): string {
+function getModelForProvider(providerName: "openai" | "ollama" | "minimax" | "gemini"): string {
   return process.env.LLMWIKI_MODEL ?? PROVIDER_MODELS[providerName];
 }
 
@@ -109,7 +109,11 @@ function getMiniMaxProvider(): MiniMaxProvider {
       '  Set it with: export MINIMAX_API_KEY=your_key',
     );
   }
-  return new MiniMaxProvider(getModelForProvider("minimax"), apiKey);
+  return new MiniMaxProvider(
+    getModelForProvider("minimax"),
+    apiKey,
+    resolveMiniMaxBaseURLFromEnv(),
+  );
 }
 
 function getCloudflareModel(): string {
@@ -135,6 +139,18 @@ function resolveOpenAIBaseURLFromEnv(): string | undefined {
     return url.endsWith("/") ? url : `${url}/`;
   } catch {
     throw new Error(`Invalid LLMWIKI_OPENAI_BASE_URL: "${value}"`);
+  }
+}
+
+function resolveMiniMaxBaseURLFromEnv(): string | undefined {
+  const value = process.env.MINIMAX_BASE_URL?.trim()
+    || process.env.LLMWIKI_OPENAI_BASE_URL?.trim();
+  if (!value) return undefined;
+  try {
+    const url = new URL(value).toString();
+    return url.endsWith("/") ? url.slice(0, -1) : url;
+  } catch {
+    throw new Error(`Invalid MiniMax base URL: "${value}"`);
   }
 }
 

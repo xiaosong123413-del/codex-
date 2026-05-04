@@ -10,6 +10,10 @@ interface RenderedBlock {
   nextIndex: number;
 }
 
+export interface ThinkingBlock {
+  content: string;
+}
+
 export function isCompactMessage(content: string): boolean {
   const normalized = normalizeMessageContent(content);
   return normalized.length > 0 && !normalized.includes("\n") && stripInlineMarkdown(normalized).length <= 40;
@@ -23,8 +27,34 @@ export function renderMessageHtml(content: string): string {
   return renderBlocks(normalized.split("\n"));
 }
 
+export function extractThinkingBlocks(content: string): ThinkingBlock[] {
+  const blocks: ThinkingBlock[] = [];
+  const normalized = normalizeLineEndings(content);
+  for (const match of normalized.matchAll(/<(think|thinking)>([\s\S]*?)(?:<\/\1>|$)/giu)) {
+    const thinking = (match[2] ?? "").trim();
+    if (thinking) {
+      blocks.push({ content: thinking });
+    }
+  }
+  return blocks;
+}
+
 function normalizeMessageContent(content: string): string {
-  return content.replace(/\r\n?/g, "\n").trim();
+  return stripThinkingBlocks(stripCitedComments(normalizeLineEndings(content))).trim();
+}
+
+function normalizeLineEndings(content: string): string {
+  return content.replace(/\r\n?/g, "\n");
+}
+
+function stripCitedComments(content: string): string {
+  return content.replace(/<!--\s*cited:\s*[0-9,\s]+\s*-->/gi, "");
+}
+
+function stripThinkingBlocks(content: string): string {
+  return content
+    .replace(/<(think|thinking)>\s*[\s\S]*?(?:<\/\1>|$)/giu, "")
+    .trim();
 }
 
 function renderBlocks(lines: string[]): string {
@@ -161,6 +191,12 @@ function renderInlineMarkdown(value: string): string {
   html = html.replace(/\*([^*]+)\*/g, (_match, emphasis: string) => `<em>${emphasis}</em>`);
   html = html.replace(/_([^_]+)_/g, (_match, emphasis: string) => `<em>${emphasis}</em>`);
   html = html.replace(/~~([^~]+)~~/g, (_match, deleted: string) => `<del>${deleted}</del>`);
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_match, alt: string, src: string) => {
+    const safeSrc = normalizeImageTarget(src);
+    return safeSrc
+      ? `<img src="${escapeHtml(safeSrc)}" alt="${alt}" loading="lazy" />`
+      : alt;
+  });
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label: string, href: string) => {
     const safeHref = normalizeLinkTarget(href);
     return safeHref
@@ -175,8 +211,20 @@ function normalizeLinkTarget(value: string): string | null {
   return /^(https?:\/\/|mailto:)/i.test(normalized) ? normalized : null;
 }
 
+function normalizeImageTarget(value: string): string | null {
+  const normalized = value.trim().replace(/^<|>$/g, "");
+  if (/^(https?:\/\/|data:image\/)/i.test(normalized)) {
+    return normalized;
+  }
+  if (/^(javascript:|data:)/i.test(normalized)) {
+    return null;
+  }
+  return `/api/source-gallery/media?path=${encodeURIComponent(normalized.replace(/^\/+/, ""))}`;
+}
+
 function stripInlineMarkdown(value: string): string {
   return value
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, "$1")
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
     .replace(/[*_`~>#-]/g, "")
     .replace(/\s+/g, " ")

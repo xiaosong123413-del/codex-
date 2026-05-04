@@ -808,6 +808,7 @@
 
 ## MCP
 
+- [[MCP（AI 工具连接）]]
 - [[SmartClip]]
 
 ## NVH

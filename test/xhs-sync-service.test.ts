@@ -13,6 +13,7 @@ import {
   type XhsFetcher,
 } from "../web/server/services/xhs-sync.js";
 import { readSourceMediaIndex, sourceMediaId } from "../web/server/services/source-media-index.js";
+import { readSourceOcrSidecar } from "../web/server/services/ocr-service.js";
 import { readSourceTranscriptSidecar } from "../web/server/services/transcript-service.js";
 
 const roots: string[] = [];
@@ -60,6 +61,51 @@ describe("xhs sync service", () => {
       mediaCount: 1,
       mediaKinds: ["image"],
     });
+  });
+
+  it("keeps xiaohongshu clipping successful when Cloudflare OCR writes a sidecar", async () => {
+    const wikiRoot = makeRoot();
+    const fetcher: XhsFetcher = async (url) => {
+      if (url.includes("/explore/")) {
+        return sampleResponse(sampleHtml("64f000000000000001234567"));
+      }
+      if (url.includes("img.example.com")) {
+        return new Response("fake-image-binary", {
+          status: 200,
+          headers: { "content-type": "image/jpeg" },
+        });
+      }
+      throw new Error(`unexpected xhs fetch: ${url}`);
+    };
+    const fetchSpy = vi.fn(async () => new Response(JSON.stringify({ text: "图片 OCR 文本。" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    }));
+    const previousEnv = {
+      CLOUDFLARE_WORKER_URL: process.env.CLOUDFLARE_WORKER_URL,
+      CLOUDFLARE_REMOTE_TOKEN: process.env.CLOUDFLARE_REMOTE_TOKEN,
+      CLOUDFLARE_OCR_MODEL: process.env.CLOUDFLARE_OCR_MODEL,
+    };
+
+    process.env.CLOUDFLARE_WORKER_URL = "https://worker.example.com";
+    process.env.CLOUDFLARE_REMOTE_TOKEN = "remote-token";
+    process.env.CLOUDFLARE_OCR_MODEL = "@cf/test/ocr";
+    vi.stubGlobal("fetch", fetchSpy);
+
+    try {
+      const result = await runXhsSingle(wikiRoot, {
+        url: "https://www.xiaohongshu.com/explore/64f000000000000001234567",
+        now: new Date("2026-04-23T08:00:00.000Z"),
+      }, { fetcher, cookiesPath: path.join(wikiRoot, "cookies.json"), runtimeRoot: wikiRoot });
+
+      expect(result.status).toBe("completed");
+      const sourceId = sourceMediaId(result.path!);
+      expect(readSourceOcrSidecar(wikiRoot, sourceId)).toBe("图片 OCR 文本。");
+      expect(readSourceMediaIndex(wikiRoot).records[sourceId]?.ocrTextPath).toBe(`.llmwiki/ocr/${sourceId}.txt`);
+    } finally {
+      vi.unstubAllGlobals();
+      restoreEnv(previousEnv);
+    }
   });
 
   it("records a reviewable failure when xiaohongshu extraction cannot read initial state", async () => {

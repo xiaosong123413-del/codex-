@@ -26,10 +26,10 @@ function initializeMermaidOnce(): void {
     fontFamily: "Inter, 'Noto Sans SC', 'Microsoft YaHei UI', sans-serif",
     themeVariables: {
       primaryColor: "#ffffff",
-      primaryBorderColor: "#d7defa",
-      primaryTextColor: "#172554",
-      lineColor: "#99a6f5",
-      tertiaryColor: "#f7f8ff",
+      primaryBorderColor: "#a2a9b1",
+      primaryTextColor: "#202122",
+      lineColor: "#a2a9b1",
+      tertiaryColor: "#f8f9fa",
     },
   });
   mermaidInitialized = true;

@@ -4,6 +4,7 @@ import { mountRail } from "./src/shell/rail.js";
 import { mountBrowser, type BrowserRefs } from "./src/shell/browser.js";
 import { createMainSlot } from "./src/shell/main-slot.js";
 import { createDrawer, type DrawerHandle } from "./src/shell/drawer.js";
+import { openSettingsDialog } from "./src/pages/settings/settings-dialog.js";
 import {
   applyPanelWidth,
   clampPanelWidth,
@@ -24,13 +25,28 @@ import {
   type ChatAgentRuntimeOAuthAccount,
 } from "./src/pages/chat/runtime.js";
 import { parseSseMessages } from "./src/pages/chat/stream.js";
-import { startBackgroundRun, type RunKind } from "./src/background-run.js";
+import { startBackgroundRun } from "./src/background-run.js";
 import {
   createDraftConversation,
   getDraftConversationSummary,
   isDraftConversationId,
   type DraftConversation,
 } from "./src/pages/chat/drafts.js";
+import {
+  WORKFLOW_RECORDER_OPEN_EVENT,
+  WORKFLOW_RECORDER_PENDING_KEY,
+  eventMatchesShortcut,
+  getClientKeyboardShortcut,
+  setClientKeyboardShortcuts,
+  type AppShortcuts,
+  type ShortcutId,
+} from "./src/keyboard-shortcuts.js";
+import {
+  runMiniWeChatLogin,
+  type MiniWeChatAccountSession,
+  type MiniWeChatLoginChallenge,
+  type MiniWeChatLoginPollResult,
+} from "./src/account/wechat-mini-login.js";
 
 type StartupState = "UNCONFIGURED" | "CONFIGURING" | "INITIALIZING" | "READY";
 
@@ -43,6 +59,21 @@ interface PageResponse {
   aliases?: string[];
   sizeBytes?: number;
   modifiedAt?: string;
+}
+
+interface SourceGalleryListResponse {
+  items: Array<{
+    id: string;
+    path: string;
+  }>;
+}
+
+interface SourceGalleryDetailResponse {
+  path: string;
+  title: string;
+  html: string;
+  raw: string;
+  mediaCount?: number;
 }
 
 interface ConversationSummary {
@@ -58,6 +89,22 @@ interface ChatMessage {
   content: string;
   createdAt: string;
   articleRefs?: string[];
+  references?: ChatMessageReference[];
+}
+
+interface ChatMessageReference {
+  index: number;
+  kind: "wiki" | "web";
+  title: string;
+  path?: string;
+  url?: string;
+  excerpt: string;
+  images?: ChatReferenceImage[];
+}
+
+interface ChatReferenceImage {
+  alt: string;
+  url: string;
 }
 
 interface ConversationResponse {
@@ -69,6 +116,7 @@ interface ConversationResponse {
   searchScope: "local" | "web" | "all";
   appId: string | null;
   articleRefs: string[];
+  maxHistoryMessages: number;
   messages: ChatMessage[];
 }
 
@@ -96,17 +144,51 @@ interface ApiResponse<T> {
   error?: string;
 }
 
+interface WebAccountAuthResponse {
+  ok?: boolean;
+  error?: string;
+  user?: { id?: string };
+  session?: {
+    token?: string;
+    expiresAt?: string;
+  };
+}
+
+interface MiniWeChatLoginStartResponse {
+  ok?: boolean;
+  error?: string;
+  loginId?: string;
+  pollToken?: string;
+  qrPayload?: string;
+  expiresAt?: string;
+}
+
+interface MiniWeChatLoginPollResponse extends WebAccountAuthResponse {
+  status?: "pending" | "confirmed" | "expired";
+}
+
+interface WebAccountSession {
+  accountId: string;
+  token: string;
+  expiresAt: string;
+}
+
 interface AppConfig {
+  accountIdentifier: string;
+  accountUserId: string;
+  accountServiceUrl: string;
+  accountSession: {
+    accountId: string;
+    token: string;
+    expiresAt: string;
+  };
   targetRepoPath: string;
   sourceFolders: string[];
   initialized: boolean;
+  workspaceId?: string;
   keyboardShortcuts?: AppShortcuts;
   lastSyncAt?: string;
   lastCompileAt?: string;
-}
-
-interface AppShortcuts {
-  flashDiaryCapture: string;
 }
 
 interface ShortcutStatus {
@@ -148,6 +230,7 @@ const CHAT_DRAWER_BOUNDS: PanelWidthBounds = {
 };
 
 const CHAT_BROWSER_COLLAPSED_KEY = "llmWiki.chat.browserCollapsed";
+const WEB_ACCOUNT_SESSION_KEY = "llmWiki.account.session";
 
 declare global {
   interface Window {
@@ -155,20 +238,45 @@ declare global {
       getDesktopConfig: () => Promise<DesktopConfigResponse>;
       getAppBootstrap: () => Promise<AppBootstrap>;
       getShortcuts: () => Promise<ShortcutStatus>;
-      saveShortcut: (payload: { id: "flashDiaryCapture"; accelerator: string }) => Promise<ShortcutStatus>;
+      saveShortcut: (payload: { id: ShortcutId; accelerator: string }) => Promise<ShortcutStatus>;
       chooseTargetVault: () => Promise<string | null>;
       chooseSourceFolders: () => Promise<string[]>;
+      choosePersonalTimelineSourceEntry?: () => Promise<string | null>;
       saveDesktopConfig: (targetVault: string) => Promise<DesktopConfigResponse>;
-      saveAppConfig: (payload: { targetRepoPath: string; sourceFolders: string[] }) => Promise<AppConfig>;
-      initializeApp: (payload: { targetRepoPath: string; sourceFolders: string[] }) => Promise<AppBootstrap>;
+      saveAppConfig: (payload: { accountIdentifier: string; accountPassword?: string; authMode?: "login" | "register" | "wechat"; targetRepoPath: string; sourceFolders: string[] }) => Promise<AppConfig>;
+      initializeApp: (payload: { accountIdentifier: string; accountPassword?: string; authMode?: "login" | "register" | "wechat"; targetRepoPath: string; sourceFolders: string[] }) => Promise<AppBootstrap>;
+      startWeChatMiniProgramLogin?: () => Promise<MiniWeChatLoginChallenge>;
+      pollWeChatMiniProgramLogin?: (payload: { loginId: string; pollToken: string }) => Promise<MiniWeChatLoginPollResult>;
+      initializeAppWithWeChatSession?: (payload: {
+        targetRepoPath: string;
+        sourceFolders: string[];
+        accountSession: MiniWeChatAccountSession;
+      }) => Promise<AppBootstrap>;
       onInitializationProgress: (listener: (payload: InitializationProgressEvent) => void) => () => void;
       onInstanceRedirected: (listener: () => void) => () => void;
       onFlashDiaryCapture: (listener: (payload: unknown) => void) => () => void;
+      openWorkflowRecorder?: () => Promise<void>;
+      getWorkflowRecorderTasks?: () => Promise<Array<{ id: string; title: string; domain: string; project: string }>>;
+      chooseWorkflowRecorderAttachments?: () => Promise<string[]>;
+      submitWorkflowRecorder?: (payload: {
+        text: string;
+        taskId?: string;
+        attachments: string[];
+        marker: "normal" | "issue" | "resolved" | "end-node";
+      }) => Promise<{ status: string; message: string }>;
       chooseFlashDiaryMedia: () => Promise<string[]>;
-      submitFlashDiaryEntry: (payload: { target?: "flash-diary" | "clipping"; text: string; mediaPaths: string[] }) => Promise<unknown>;
+      saveFlashDiaryMedia?: (payload: { fileName: string; mimeType: string; dataUrl: string }) => Promise<string>;
+      submitFlashDiaryEntry: (payload: {
+        target?: "flash-diary" | "clipping";
+        text: string;
+        mediaPaths: string[];
+        clippingUrl?: string;
+        clippingComment?: string;
+      }) => Promise<unknown>;
       importXiaohongshuCookie?: () => Promise<{ ok: boolean; cookie: string; count: number; message: string }>;
       openXiaohongshuLogin?: () => Promise<{ ok: boolean; message: string }>;
       openExternal: (url: string) => Promise<void>;
+      openBrowserUrl?: (url: string) => Promise<{ ok: boolean; browser?: string; error?: string }>;
     };
   }
 }
@@ -207,13 +315,20 @@ const elements = {
   chatLegacy: document.getElementById("chat-legacy") as HTMLElement,
   chatApp: document.getElementById("chat-app") as HTMLElement,
   welcomeNext: document.getElementById("welcome-next") as HTMLButtonElement,
+  setupCopy: document.getElementById("setup-copy") as HTMLElement,
+  accountIdentifier: document.getElementById("account-identifier") as HTMLInputElement,
+  accountPassword: document.getElementById("account-password") as HTMLInputElement,
+  accountAuthMode: document.getElementById("account-auth-mode") as HTMLSelectElement,
+  setupWorkspaceTarget: document.getElementById("setup-workspace-target") as HTMLElement,
   targetRepoPath: document.getElementById("target-repo-path") as HTMLInputElement,
   chooseTargetRepo: document.getElementById("choose-target-repo") as HTMLButtonElement,
+  setupWorkspaceSources: document.getElementById("setup-workspace-sources") as HTMLElement,
   addSourceFolders: document.getElementById("add-source-folders") as HTMLButtonElement,
   sourceFolderList: document.getElementById("source-folder-list") as HTMLUListElement,
   initializeStatus: document.getElementById("initialize-status") as HTMLElement,
   initializeError: document.getElementById("initialize-error") as HTMLElement,
   startInitialize: document.getElementById("start-initialize") as HTMLButtonElement,
+  startWeChatInitialize: document.getElementById("start-wechat-initialize") as HTMLButtonElement,
 };
 
 let browserRefs: BrowserRefs | null = null;
@@ -287,6 +402,18 @@ function mountShell(): void {
     onRemoveArticleRef: (path) => {
       removeArticleSelection(path);
     },
+    onRegenerate: (conversationId) => {
+      void regenerateConversation(conversationId);
+    },
+    onSaveMessageToWiki: (conversationId, messageId) => {
+      void saveMessageToWiki(conversationId, messageId);
+    },
+    onHistoryDepthChange: (conversationId, maxHistoryMessages) => {
+      void setConversationHistoryDepth(conversationId, maxHistoryMessages);
+    },
+    onOpenReference: (path) => {
+      openKnowledgePreview(path);
+    },
   });
   drawerHandle = createDrawer({
     shellRoot: elements.workspaceShell,
@@ -300,7 +427,9 @@ function mountShell(): void {
     legacyChatNode: elements.chatLegacy,
     legacyBrowser: elements.browserSlot,
     isChatBrowserCollapsed: () => state.chatBrowserCollapsed,
+    onOpenKnowledgePreview: openKnowledgePreview,
   });
+  // fallow-ignore-next-line complexity
   const router = createRouter((route: Route) => {
     try {
       railHandle.update(route.name);
@@ -310,9 +439,10 @@ function mountShell(): void {
         updateMultiSelectToggle();
         void loadTree();
       }
-      if (route.name !== "chat") {
+      if (!canShowDrawerInRoute(route.name)) {
         drawerHandle?.close();
-      } else {
+      }
+      if (route.name === "chat") {
         void syncChatRoute(route.params.id ?? null);
       }
       syncChatBrowserUi();
@@ -327,13 +457,40 @@ function mountShell(): void {
         void startBackgroundRun(route, document.body, showToast);
         return;
       }
+      if (route === "settings") {
+        railHandle.update("settings");
+        openSettingsDialog({
+          initialSection: "plugins",
+          initialPluginKind: "third-party",
+          onClose: () => railHandle.update(router.current().name),
+        });
+        return;
+      }
       router.navigate({ name: route });
     },
+  });
+  mountWebWeChatLoginButton();
+  const openWorkflowRecorder = (): void => {
+    if (window.llmWikiDesktop?.openWorkflowRecorder) {
+      void window.llmWikiDesktop.openWorkflowRecorder();
+      return;
+    }
+    markWorkflowRecorderOpenPending();
+    router.navigate({ name: "workspace", params: { section: "task-pool" } });
+    window.dispatchEvent(new CustomEvent(WORKFLOW_RECORDER_OPEN_EVENT));
+  };
+  window.addEventListener("keydown", (event) => {
+    if (!eventMatchesShortcut(event, getClientKeyboardShortcut("workflowRecorder"))) {
+      return;
+    }
+    event.preventDefault();
+    openWorkflowRecorder();
   });
   router.start();
   syncChatBrowserUi();
 }
 
+// fallow-ignore-next-line complexity
 async function bootstrapApplication(): Promise<void> {
   if (!window.llmWikiDesktop) {
     state.startupState = "READY";
@@ -342,21 +499,28 @@ async function bootstrapApplication(): Promise<void> {
     return;
   }
 
-  const bootstrap = await window.llmWikiDesktop.getAppBootstrap();
-  state.desktopConfig = bootstrap.desktopConfig;
-  state.appConfig = bootstrap.appConfig;
-  state.startupState = bootstrap.startupState;
+  try {
+    const bootstrap = await window.llmWikiDesktop.getAppBootstrap();
+    state.desktopConfig = bootstrap.desktopConfig;
+    state.appConfig = bootstrap.appConfig;
+    state.startupState = bootstrap.startupState;
+    setClientKeyboardShortcuts(bootstrap.appConfig?.keyboardShortcuts);
 
-  hydrateSetupFormFromConfig();
-  renderStartupState();
+    hydrateSetupFormFromConfig();
+    renderStartupState();
 
-  if (bootstrap.startupState === "READY") {
-    await enterReadyWorkspace();
-    return;
-  }
+    if (bootstrap.startupState === "READY") {
+      await enterReadyWorkspace();
+      return;
+    }
 
-  if (bootstrap.startupState === "CONFIGURING") {
-    openSetupScreen();
+    if (bootstrap.startupState === "CONFIGURING") {
+      openSetupScreen();
+    }
+  } catch (error) {
+    console.error("Bootstrap failed:", error);
+    state.startupState = "UNCONFIGURED";
+    renderStartupState();
   }
 }
 
@@ -389,9 +553,132 @@ function showToast(message: string, tone: "info" | "error" = "info"): void {
   }, 3600);
 }
 
+function markWorkflowRecorderOpenPending(): void {
+  try {
+    window.sessionStorage.setItem(WORKFLOW_RECORDER_PENDING_KEY, "1");
+  } catch {
+    return;
+  }
+}
+
+// fallow-ignore-next-line complexity
+function mountWebWeChatLoginButton(): void {
+  if (window.llmWikiDesktop) return;
+  const bottomRail = elements.railSlot.lastElementChild;
+  if (!(bottomRail instanceof HTMLElement)) return;
+  const button = document.createElement("button");
+  button.className = "shell-rail__btn shell-rail__wechat";
+  button.type = "button";
+  button.title = readWebAccountSession() ? "微信已登录" : "微信登录";
+  button.setAttribute("aria-label", button.title);
+  button.dataset.authenticated = readWebAccountSession() ? "true" : "false";
+  button.textContent = "微";
+  button.addEventListener("click", () => {
+    void startWebMiniWeChatLogin(button);
+  });
+  bottomRail.prepend(button);
+}
+
+// fallow-ignore-next-line complexity
+async function startWebMiniWeChatLogin(button: HTMLButtonElement): Promise<void> {
+  try {
+    const session = await runMiniWeChatLogin({
+      start: startBrowserMiniWeChatLogin,
+      poll: pollBrowserMiniWeChatLogin,
+    });
+    saveWebAccountSession(session.accountId, session.token, session.expiresAt);
+    button.dataset.authenticated = "true";
+    button.title = "微信已登录";
+    button.setAttribute("aria-label", button.title);
+    showToast("微信登录成功");
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : "微信登录失败", "error");
+  }
+}
+
+// fallow-ignore-next-line complexity
+async function startBrowserMiniWeChatLogin(): Promise<MiniWeChatLoginChallenge> {
+  const response = await postJson<MiniWeChatLoginStartResponse>("/api/account-auth/wechat/mini-login/start", {});
+  const data = response.data;
+  if (!response.success || !data?.loginId || !data.pollToken || !data.qrPayload) {
+    throw new Error(response.error ?? data?.error ?? "微信登录启动失败");
+  }
+  return {
+    loginId: data.loginId,
+    pollToken: data.pollToken,
+    qrPayload: data.qrPayload,
+    expiresAt: String(data.expiresAt ?? ""),
+  };
+}
+
+// fallow-ignore-next-line complexity
+async function pollBrowserMiniWeChatLogin(
+  challenge: MiniWeChatLoginChallenge,
+): Promise<MiniWeChatLoginPollResult> {
+  const response = await postJson<MiniWeChatLoginPollResponse>("/api/account-auth/wechat/mini-login/poll", {
+    loginId: challenge.loginId,
+    pollToken: challenge.pollToken,
+  });
+  if (!response.success || !response.data?.user?.id || !response.data.session?.token) {
+    return {
+      status: response.data?.status ?? "pending",
+      error: response.error ?? response.data?.error,
+    };
+  }
+  return {
+    status: "confirmed",
+    accountSession: {
+      accountId: response.data.user.id,
+      token: response.data.session.token,
+      expiresAt: String(response.data.session.expiresAt ?? ""),
+    },
+  };
+}
+
+function saveWebAccountSession(accountId: string, token: string, expiresAt: string | undefined): void {
+  const session: WebAccountSession = {
+    accountId,
+    token,
+    expiresAt: String(expiresAt ?? ""),
+  };
+  window.localStorage.setItem(WEB_ACCOUNT_SESSION_KEY, JSON.stringify(session));
+}
+
+function readWebAccountSession(): WebAccountSession | null {
+  try {
+    const raw = window.localStorage.getItem(WEB_ACCOUNT_SESSION_KEY);
+    return raw ? JSON.parse(raw) as WebAccountSession : null;
+  } catch {
+    return null;
+  }
+}
+
+async function postJson<T>(url: string, body: unknown): Promise<ApiResponse<T>> {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return await response.json() as ApiResponse<T>;
+}
+
+// fallow-ignore-next-line complexity
 function bindCommonEvents(): void {
   elements.welcomeNext.addEventListener("click", () => {
     openSetupScreen();
+  });
+
+  elements.accountIdentifier.addEventListener("input", () => {
+    syncSetupValidity();
+  });
+
+  elements.accountPassword.addEventListener("input", () => {
+    syncSetupValidity();
+  });
+
+  elements.accountAuthMode.addEventListener("change", () => {
+    syncSetupWorkspaceFields();
+    syncSetupValidity();
   });
 
   elements.targetRepoPath.addEventListener("input", () => {
@@ -421,6 +708,10 @@ function bindCommonEvents(): void {
 
   elements.startInitialize.addEventListener("click", async () => {
     await startInitialization();
+  });
+
+  elements.startWeChatInitialize.addEventListener("click", async () => {
+    await startWeChatInitialization();
   });
 
   window.llmWikiDesktop?.onInstanceRedirected(() => {
@@ -483,12 +774,13 @@ function bindShellPanelLayout(): void {
   let browserWidth = readPanelWidth("chat.browserWidth", CHAT_BROWSER_BOUNDS);
   let drawerWidth = readPanelWidth("chat.drawerWidth", CHAT_DRAWER_BOUNDS);
 
+  // fallow-ignore-next-line complexity
   const syncShellWidths = (): void => {
     const route = shellRoot.getAttribute("data-route");
     const browserHidden = shellRoot.hasAttribute("data-browser-hidden");
     const drawerOpen = shellRoot.getAttribute("data-drawer-open") === "true";
     const browserVisible = route === "chat" && !browserHidden;
-    const drawerVisible = route === "chat" && drawerOpen;
+    const drawerVisible = canShowDrawerInRoute(route) && drawerOpen;
     applyPanelWidth(shellRoot, "--shell-browser-width", browserVisible ? browserWidth : 0);
     applyPanelWidth(shellRoot, "--shell-browser-handle-width", browserVisible ? 12 : 0);
     applyPanelWidth(shellRoot, "--shell-drawer-width", drawerVisible ? drawerWidth : 0);
@@ -534,18 +826,18 @@ function bindShellPanelLayout(): void {
 
 function renderStartupState(): void {
   const isReady = state.startupState === "READY";
-  elements.workspaceShell.classList.toggle("hidden", !isReady);
-  elements.startupShell.classList.toggle("hidden", isReady);
+  setElementHidden(elements.workspaceShell, !isReady);
+  setElementHidden(elements.startupShell, isReady);
 
   if (isReady) {
-    elements.welcomeScreen.classList.add("hidden");
-    elements.setupScreen.classList.add("hidden");
+    setElementHidden(elements.welcomeScreen, true);
+    setElementHidden(elements.setupScreen, true);
     return;
   }
 
   if (state.startupState === "UNCONFIGURED") {
-    elements.welcomeScreen.classList.remove("hidden");
-    elements.setupScreen.classList.add("hidden");
+    setElementHidden(elements.welcomeScreen, false);
+    setElementHidden(elements.setupScreen, true);
     return;
   }
 
@@ -553,14 +845,59 @@ function renderStartupState(): void {
 }
 
 function openSetupScreen(): void {
-  elements.welcomeScreen.classList.add("hidden");
-  elements.setupScreen.classList.remove("hidden");
+  setElementHidden(elements.welcomeScreen, true);
+  setElementHidden(elements.setupScreen, false);
+  syncSetupWorkspaceFields();
+  syncSetupValidity();
 }
 
+function setElementHidden(element: HTMLElement, hidden: boolean): void {
+  element.hidden = hidden;
+  element.classList.toggle("hidden", hidden);
+}
+
+// fallow-ignore-next-line complexity
 function hydrateSetupFormFromConfig(): void {
+  elements.accountIdentifier.value = state.appConfig?.accountIdentifier ?? "";
+  elements.accountPassword.value = "";
   elements.targetRepoPath.value = state.appConfig?.targetRepoPath ?? state.desktopConfig?.targetVault ?? "";
   renderSourceFolders(state.appConfig?.sourceFolders ?? []);
+  syncSetupWorkspaceFields();
   syncSetupValidity();
+}
+
+function shouldReusePersistedWorkspace(): boolean {
+  return elements.accountAuthMode.value === "login" && hasPersistedWorkspaceConfig();
+}
+
+function hasPersistedWorkspaceConfig(): boolean {
+  return Boolean(state.appConfig?.targetRepoPath?.trim() && getPersistedSourceFolders().length > 0);
+}
+
+function getPersistedSourceFolders(): string[] {
+  return (state.appConfig?.sourceFolders ?? []).map((sourceFolder) => sourceFolder.trim()).filter(Boolean);
+}
+
+function syncSetupWorkspaceFields(): void {
+  const shouldReuseWorkspace = shouldReusePersistedWorkspace();
+  elements.setupWorkspaceTarget.classList.toggle("hidden", shouldReuseWorkspace);
+  elements.setupWorkspaceSources.classList.toggle("hidden", shouldReuseWorkspace);
+  elements.setupCopy.textContent = shouldReuseWorkspace
+    ? "\u5df2\u6709\u672c\u5730\u4ed3\u5e93\u4e0e\u540c\u6b65\u6e90\u914d\u7f6e\uff0c\u672c\u6b21\u53ea\u9700\u767b\u5f55\u8d26\u53f7\u3002"
+    : "\u9996\u6b21\u4f7f\u7528\u65f6\uff0c\u5148\u914d\u7f6e\u4f60\u7684\u76ee\u6807\u4ed3\u5e93\u4e0e\u540c\u6b65\u6e90\u6587\u4ef6\u5939\uff0c\u7136\u540e\u7531\u7cfb\u7edf\u6267\u884c\u540c\u6b65\u4e0e\u7f16\u8bd1\u3002";
+}
+
+function readSetupWorkspaceSelection(): { targetRepoPath: string; sourceFolders: string[] } {
+  if (shouldReusePersistedWorkspace() && state.appConfig) {
+    return {
+      targetRepoPath: state.appConfig.targetRepoPath.trim(),
+      sourceFolders: getPersistedSourceFolders(),
+    };
+  }
+  return {
+    targetRepoPath: elements.targetRepoPath.value.trim(),
+    sourceFolders: getSourceFolders(),
+  };
 }
 
 function getSourceFolders(): string[] {
@@ -598,19 +935,35 @@ function renderSourceFolders(folders: string[]): void {
   }
 }
 
+// fallow-ignore-next-line complexity
 function syncSetupValidity(): void {
-  const isValid = elements.targetRepoPath.value.trim().length > 0 && getSourceFolders().length > 0;
+  const workspace = readSetupWorkspaceSelection();
+  const isValid = elements.accountIdentifier.value.trim().length > 0
+    && elements.accountPassword.value.length >= 8
+    && workspace.targetRepoPath.length > 0
+    && workspace.sourceFolders.length > 0;
   elements.startInitialize.disabled = !isValid || state.startupState === "INITIALIZING";
+  elements.startWeChatInitialize.disabled = workspace.targetRepoPath.length === 0
+    || workspace.sourceFolders.length === 0
+    || state.startupState === "INITIALIZING"
+    || !window.llmWikiDesktop?.startWeChatMiniProgramLogin
+    || !window.llmWikiDesktop.pollWeChatMiniProgramLogin
+    || !window.llmWikiDesktop.initializeAppWithWeChatSession;
 }
 
+// fallow-ignore-next-line complexity
 async function startInitialization(): Promise<void> {
   if (!window.llmWikiDesktop) return;
 
+  const workspace = readSetupWorkspaceSelection();
   const payload = {
-    targetRepoPath: elements.targetRepoPath.value.trim(),
-    sourceFolders: getSourceFolders(),
+    accountIdentifier: elements.accountIdentifier.value.trim(),
+    accountPassword: elements.accountPassword.value,
+    authMode: elements.accountAuthMode.value === "register" ? "register" as const : "login" as const,
+    targetRepoPath: workspace.targetRepoPath,
+    sourceFolders: workspace.sourceFolders,
   };
-  if (!payload.targetRepoPath || payload.sourceFolders.length === 0) {
+  if (!payload.accountIdentifier || payload.accountPassword.length < 8 || !payload.targetRepoPath || payload.sourceFolders.length === 0) {
     syncSetupValidity();
     return;
   }
@@ -622,20 +975,12 @@ async function startInitialization(): Promise<void> {
   syncSetupValidity();
 
   try {
-    const draftConfig = await window.llmWikiDesktop.saveAppConfig(payload);
-    state.appConfig = draftConfig;
-    state.desktopConfig = state.desktopConfig
-      ? { ...state.desktopConfig, targetVault: payload.targetRepoPath }
-      : state.desktopConfig;
-    state.startupState = "READY";
-    renderStartupState();
-    applyDesktopConfig(state.desktopConfig);
-
     void window.llmWikiDesktop.initializeApp(payload)
       .then(async (bootstrap) => {
         state.desktopConfig = bootstrap.desktopConfig;
         state.appConfig = bootstrap.appConfig;
         state.startupState = "READY";
+        setClientKeyboardShortcuts(bootstrap.appConfig?.keyboardShortcuts);
         applyDesktopConfig(state.desktopConfig);
         renderStartupState();
         await enterReadyWorkspace();
@@ -658,6 +1003,64 @@ async function startInitialization(): Promise<void> {
     syncSetupValidity();
     renderStartupState();
   }
+}
+
+// fallow-ignore-next-line complexity
+async function startWeChatInitialization(): Promise<void> {
+  if (
+    !window.llmWikiDesktop?.startWeChatMiniProgramLogin
+    || !window.llmWikiDesktop.pollWeChatMiniProgramLogin
+    || !window.llmWikiDesktop.initializeAppWithWeChatSession
+  ) return;
+
+  const workspace = readSetupWorkspaceSelection();
+  if (!workspace.targetRepoPath || workspace.sourceFolders.length === 0) {
+    syncSetupValidity();
+    return;
+  }
+
+  beginWeChatInitialization();
+
+  try {
+    const accountSession = await runMiniWeChatLogin({
+      start: window.llmWikiDesktop.startWeChatMiniProgramLogin,
+      poll: window.llmWikiDesktop.pollWeChatMiniProgramLogin,
+    });
+    const bootstrap = await window.llmWikiDesktop.initializeAppWithWeChatSession({
+      ...workspace,
+      accountSession,
+    });
+    await finishWeChatInitialization(bootstrap);
+  } catch (error) {
+    failWeChatInitialization(error);
+  }
+}
+
+function beginWeChatInitialization(): void {
+  state.startupState = "INITIALIZING";
+  elements.initializeError.classList.add("hidden");
+  elements.initializeError.textContent = "";
+  elements.initializeStatus.textContent = "正在等待微信小程序扫码确认...";
+  syncSetupValidity();
+}
+
+async function finishWeChatInitialization(bootstrap: AppBootstrap): Promise<void> {
+  state.desktopConfig = bootstrap.desktopConfig;
+  state.appConfig = bootstrap.appConfig;
+  state.startupState = "READY";
+  setClientKeyboardShortcuts(bootstrap.appConfig?.keyboardShortcuts);
+  applyDesktopConfig(state.desktopConfig);
+  renderStartupState();
+  await enterReadyWorkspace();
+}
+
+function failWeChatInitialization(error: unknown): void {
+  state.startupState = "CONFIGURING";
+  elements.initializeStatus.textContent = "";
+  elements.initializeError.textContent = error instanceof Error ? error.message : String(error);
+  elements.initializeError.classList.remove("hidden");
+  syncSetupValidity();
+  renderStartupState();
 }
 
 async function enterReadyWorkspace(): Promise<void> {
@@ -694,32 +1097,15 @@ async function loadTree(): Promise<void> {
   });
 }
 
+// fallow-ignore-next-line complexity
 async function openDrawerForPath(pathArg: string): Promise<void> {
   if (!drawerHandle) return;
 
   drawerHandle.showLoading(pathArg);
   try {
-    const response = await fetch(`/api/page?path=${encodeURIComponent(pathArg)}`);
-    if (!response.ok) {
-      drawerHandle.open({
-        path: pathArg,
-        title: "Failed to load",
-        html: `<p class="loading">Failed to load <code>${escapeHtml(pathArg)}</code>.</p>`,
-      });
-      return;
-    }
-
-    const data = (await response.json()) as PageResponse;
-    state.previewPath = data.path;
-    drawerHandle.open({
-      path: data.path,
-      title: data.title ?? data.path,
-      html: data.html,
-      rawMarkdown: data.raw,
-      aliases: data.aliases,
-      sizeBytes: data.sizeBytes,
-      modifiedAt: data.modifiedAt,
-    });
+    const loaded = await loadDrawerContent(pathArg);
+    state.previewPath = loaded.path;
+    drawerHandle.open(loaded);
     updateTreeActivePath();
   } catch {
     drawerHandle.open({
@@ -728,6 +1114,61 @@ async function openDrawerForPath(pathArg: string): Promise<void> {
       html: '<p class="loading">Error loading page.</p>',
     });
   }
+}
+
+async function loadDrawerContent(pathArg: string): Promise<Parameters<DrawerHandle["open"]>[0]> {
+  for (const candidate of chatReferenceCandidates(pathArg)) {
+    const page = await loadWikiDrawerContent(candidate);
+    if (page) return page;
+  }
+  return await loadSourceDrawerContent(pathArg);
+}
+
+async function loadWikiDrawerContent(pathArg: string): Promise<Parameters<DrawerHandle["open"]>[0] | null> {
+  const response = await fetch(`/api/page?path=${encodeURIComponent(pathArg)}`);
+  if (!response.ok) {
+    return null;
+  }
+  const data = (await response.json()) as PageResponse;
+  return {
+    path: data.path,
+    title: data.title ?? data.path,
+    html: data.html,
+    rawMarkdown: data.raw,
+    aliases: data.aliases,
+    sizeBytes: data.sizeBytes,
+    modifiedAt: data.modifiedAt,
+  };
+}
+
+// fallow-ignore-next-line complexity
+async function loadSourceDrawerContent(pathArg: string): Promise<Parameters<DrawerHandle["open"]>[0]> {
+  const item = await findSourceGalleryItem(pathArg);
+  if (!item) return failedDrawerContent(pathArg);
+  const detailResponse = await fetch(`/api/source-gallery/${encodeURIComponent(item.id)}`);
+  if (!detailResponse.ok) return failedDrawerContent(pathArg);
+  const detail = (await detailResponse.json()) as ApiResponse<SourceGalleryDetailResponse>;
+  return {
+    path: detail.data?.path ?? pathArg,
+    title: detail.data?.title ?? pathArg,
+    html: detail.data?.html ?? "",
+    rawMarkdown: detail.data?.raw,
+  };
+}
+
+async function findSourceGalleryItem(pathArg: string): Promise<SourceGalleryListResponse["items"][number] | null> {
+  const response = await fetch(`/api/source-gallery?query=${encodeURIComponent(pathArg)}`);
+  if (!response.ok) return null;
+  const payload = await response.json() as ApiResponse<SourceGalleryListResponse>;
+  return payload.data?.items.find((candidate) => candidate.path === pathArg) ?? null;
+}
+
+function failedDrawerContent(pathArg: string): Parameters<DrawerHandle["open"]>[0] {
+  return {
+    path: pathArg,
+    title: "Failed to load",
+    html: `<p class="loading">Failed to load <code>${escapeHtml(pathArg)}</code>.</p>`,
+  };
 }
 
 async function loadConversationSummaries(selectedId: string | null = state.selectedConversationId): Promise<void> {
@@ -740,6 +1181,7 @@ async function loadConversationSummaries(selectedId: string | null = state.selec
   chatPage.renderConversationList(draft ? [getDraftConversationSummary(draft), ...items] : items, selectedId);
 }
 
+// fallow-ignore-next-line complexity
 async function loadChatApps(): Promise<void> {
   if (!chatPage) return;
   try {
@@ -776,6 +1218,7 @@ async function loadChatRuntimeSources(): Promise<void> {
   refreshChatRuntimeSummary();
 }
 
+// fallow-ignore-next-line complexity
 async function loadChatApiAccounts(): Promise<ChatAgentRuntimeApiAccount[]> {
   try {
     const response = await fetch("/api/llm/accounts");
@@ -789,6 +1232,7 @@ async function loadChatApiAccounts(): Promise<ChatAgentRuntimeApiAccount[]> {
   }
 }
 
+// fallow-ignore-next-line complexity
 async function loadChatOAuthAccounts(): Promise<ChatAgentRuntimeOAuthAccount[]> {
   try {
     const response = await fetch("/api/cliproxy/accounts");
@@ -827,6 +1271,7 @@ async function syncChatRoute(conversationId: string | null): Promise<void> {
       title: draft.title,
       messages: [],
       articleRefs: [],
+      maxHistoryMessages: draft.maxHistoryMessages,
     });
     chatPage?.setComposerDraft(draft.draft);
     chatPage?.setWebSearchEnabled(draft.webSearchEnabled);
@@ -838,6 +1283,7 @@ async function syncChatRoute(conversationId: string | null): Promise<void> {
   await loadConversation(conversationId);
 }
 
+// fallow-ignore-next-line complexity
 async function applyPendingChatArticleRefs(): Promise<void> {
   const raw = window.localStorage.getItem("llmWiki.pendingChatArticleRefs");
   if (!raw) return;
@@ -883,6 +1329,7 @@ async function loadConversation(conversationId: string): Promise<void> {
     title: payload.data.title,
     messages: payload.data.messages,
     articleRefs: payload.data.articleRefs,
+    maxHistoryMessages: payload.data.maxHistoryMessages,
   });
   chatPage.setComposerDraft("");
   chatPage.setWebSearchEnabled(payload.data.webSearchEnabled);
@@ -899,6 +1346,7 @@ async function createConversation(): Promise<void> {
   navigateToConversation(draft.id);
 }
 
+// fallow-ignore-next-line complexity
 async function sendConversationMessage(content: string): Promise<void> {
   if (!chatPage) return;
 
@@ -921,6 +1369,7 @@ async function sendConversationMessage(content: string): Promise<void> {
         searchScope: toConversationSearchScope(draft.searchScope),
         appId,
         articleRefs: state.selectedArticleRefs,
+        maxHistoryMessages: draft.maxHistoryMessages,
       }),
     });
     const createPayload = (await createResponse.json()) as { data: ConversationResponse };
@@ -952,6 +1401,7 @@ async function sendConversationMessage(content: string): Promise<void> {
   await loadConversationSummaries(conversationId!);
 }
 
+// fallow-ignore-next-line complexity
 async function consumeConversationStream(response: Response, conversationId: string): Promise<void> {
   if (!chatPage || !response.body) {
     return;
@@ -971,40 +1421,54 @@ async function consumeConversationStream(response: Response, conversationId: str
     const parsed = parseSseMessages(rest + decoder.decode(value, { stream: true }));
     rest = parsed.rest;
     for (const message of parsed.messages) {
-      const payload = JSON.parse(message.data) as {
-        token?: string;
-        conversation?: ConversationResponse;
-        error?: string;
-      };
-      if (message.event === "user" && payload.conversation) {
-        streamedConversation = payload.conversation;
-        renderStreamingConversation(streamedConversation, assistantContent);
-      }
-      if (message.event === "token" && typeof payload.token === "string") {
-        assistantContent += payload.token;
-        if (streamedConversation) {
-          renderStreamingConversation(streamedConversation, assistantContent);
-        }
-      }
-      if (message.event === "done" && payload.conversation) {
-        streamedConversation = payload.conversation;
-        chatPage.renderThread({
-          id: payload.conversation.id,
-          title: payload.conversation.title,
-          messages: payload.conversation.messages,
-          articleRefs: payload.conversation.articleRefs,
-        });
-        chatPage.setWebSearchEnabled(payload.conversation.webSearchEnabled);
-      }
-      if (message.event === "error") {
-        renderStreamingConversation(streamedConversation, payload.error ?? "Assistant stream failed.");
-      }
+      const result = handleStreamMessage(message, streamedConversation, assistantContent);
+      streamedConversation = result.conversation ?? streamedConversation;
+      assistantContent = result.content;
     }
   }
 
   if (!streamedConversation) {
     await loadConversation(conversationId);
   }
+}
+
+// fallow-ignore-next-line complexity
+function handleStreamMessage(
+  message: { event: string; data: string },
+  streamedConversation: ConversationResponse | null,
+  assistantContent: string,
+): { conversation: ConversationResponse | null; content: string } {
+  const payload = JSON.parse(message.data) as {
+    token?: string;
+    conversation?: ConversationResponse;
+    error?: string;
+  };
+  if (message.event === "user" && payload.conversation) {
+    renderStreamingConversation(payload.conversation, assistantContent);
+    return { conversation: payload.conversation, content: assistantContent };
+  }
+  if (message.event === "token" && typeof payload.token === "string") {
+    const nextContent = assistantContent + payload.token;
+    if (streamedConversation) {
+      renderStreamingConversation(streamedConversation, nextContent);
+    }
+    return { conversation: streamedConversation, content: nextContent };
+  }
+  if (message.event === "done" && payload.conversation) {
+    chatPage!.renderThread({
+      id: payload.conversation.id,
+      title: payload.conversation.title,
+      messages: payload.conversation.messages,
+      articleRefs: payload.conversation.articleRefs,
+      maxHistoryMessages: payload.conversation.maxHistoryMessages,
+    });
+    chatPage!.setWebSearchEnabled(payload.conversation.webSearchEnabled);
+    return { conversation: payload.conversation, content: assistantContent };
+  }
+  if (message.event === "error") {
+    renderStreamingConversation(streamedConversation, payload.error ?? "Assistant stream failed.");
+  }
+  return { conversation: streamedConversation, content: assistantContent };
 }
 
 function renderStreamingConversation(conversation: ConversationResponse | null, assistantContent: string): void {
@@ -1024,11 +1488,46 @@ function renderStreamingConversation(conversation: ConversationResponse | null, 
       },
     ],
     articleRefs: conversation.articleRefs,
+    maxHistoryMessages: conversation.maxHistoryMessages,
   });
 }
 
 function navigateToConversation(conversationId: string): void {
   window.location.hash = `#/chat/${conversationId}`;
+}
+
+function chatReferenceCandidates(pathArg: string): string[] {
+  const normalized = pathArg.replace(/\\/g, "/").replace(/^\/+/, "").trim();
+  const id = normalized
+    .replace(/^wiki\//, "")
+    .replace(/\.md$/i, "")
+    .split("/")
+    .filter(Boolean)
+    .at(-1);
+  if (!id) return [normalized];
+  return dedupeStrings([
+    normalized,
+    normalized.startsWith("wiki/") ? normalized : `wiki/${normalized}`,
+    `wiki/entities/${id}.md`,
+    `wiki/concepts/${id}.md`,
+    `wiki/sources/${id}.md`,
+    `wiki/queries/${id}.md`,
+    `wiki/synthesis/${id}.md`,
+    `wiki/comparisons/${id}.md`,
+    `wiki/${id}.md`,
+  ]);
+}
+
+function dedupeStrings(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function openKnowledgePreview(path: string): void {
+  void openDrawerForPath(path);
+}
+
+function canShowDrawerInRoute(routeName: string | null): boolean {
+  return routeName === "chat" || routeName === "workspace";
 }
 
 function updateLayerToggle(): void {
@@ -1048,6 +1547,7 @@ function setChatBrowserCollapsed(collapsed: boolean): void {
   syncChatBrowserUi();
 }
 
+// fallow-ignore-next-line complexity
 function syncChatBrowserUi(): void {
   const collapsed = state.chatBrowserCollapsed;
   const shouldShowRailToggle = collapsed && elements.workspaceShell.getAttribute("data-route") === "chat";
@@ -1196,6 +1696,7 @@ function refreshChatRuntimeSummary(): void {
   }));
 }
 
+// fallow-ignore-next-line complexity
 async function renameConversation(conversationId: string, title: string): Promise<void> {
   const nextTitle = title.trim();
   if (!nextTitle) {
@@ -1211,6 +1712,7 @@ async function renameConversation(conversationId: string, title: string): Promis
         title: draft.title,
         messages: [],
         articleRefs: [],
+        maxHistoryMessages: draft.maxHistoryMessages,
       });
     }
     await loadConversationSummaries(conversationId);
@@ -1253,8 +1755,69 @@ async function deleteConversationById(conversationId: string): Promise<void> {
   await loadConversationSummaries();
 }
 
+async function regenerateConversation(conversationId: string): Promise<void> {
+  if (!chatPage) return;
+  chatPage.setBusy(true);
+  const response = await fetch(`/api/chat/${encodeURIComponent(conversationId)}/regenerate`, {
+    method: "POST",
+  });
+  chatPage.setBusy(false);
+  if (!response.ok) {
+    showToast("重新生成失败", "error");
+    return;
+  }
+  const payload = (await response.json()) as ApiResponse<ConversationResponse>;
+  if (payload.data) {
+    chatPage.renderThread(toChatThreadView(payload.data));
+    await loadConversationSummaries(conversationId);
+  }
+}
+
+async function saveMessageToWiki(conversationId: string, messageId: string): Promise<void> {
+  const response = await fetch(
+    `/api/chat/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/save-to-wiki`,
+    { method: "POST" },
+  );
+  if (!response.ok) {
+    showToast("保存至维基失败", "error");
+    return;
+  }
+  showToast("已保存至维基");
+}
+
 function toConversationSearchScope(scope: ChatSearchScope): "local" | "web" | "all" {
   return scope === "both" ? "all" : scope;
+}
+
+function toChatThreadView(conversation: ConversationResponse) {
+  return {
+    id: conversation.id,
+    title: conversation.title,
+    messages: conversation.messages,
+    articleRefs: conversation.articleRefs,
+    maxHistoryMessages: conversation.maxHistoryMessages,
+  };
+}
+
+async function setConversationHistoryDepth(conversationId: string, maxHistoryMessages: number): Promise<void> {
+  const draft = isDraftConversationId(conversationId) ? ensureDraftConversation(conversationId) : null;
+  if (draft) {
+    draft.maxHistoryMessages = maxHistoryMessages;
+    draft.updatedAt = new Date().toISOString();
+    chatPage?.setHistoryDepth(maxHistoryMessages);
+    await loadConversationSummaries(conversationId);
+    return;
+  }
+  const response = await fetch(`/api/chat/${encodeURIComponent(conversationId)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ maxHistoryMessages }),
+  });
+  if (!response.ok) {
+    showToast("历史深度保存失败", "error");
+    return;
+  }
+  await loadConversation(conversationId);
 }
 
 function fromConversationSearchScope(scope: ConversationResponse["searchScope"]): ChatSearchScope {
@@ -1262,6 +1825,7 @@ function fromConversationSearchScope(scope: ConversationResponse["searchScope"])
 }
 
 function escapeHtml(value: string): string {
+  // fallow-ignore-next-line complexity
   return value.replace(/[&<>"]/g, (character) => {
     switch (character) {
       case "&":
@@ -1285,4 +1849,3 @@ function cssEscape(value: string): string {
 void main().catch((error) => {
   renderFatalScreen("应用启动失败", error);
 });
-

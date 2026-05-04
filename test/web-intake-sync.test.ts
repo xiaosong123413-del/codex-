@@ -33,6 +33,7 @@ describe("intake sync detection", () => {
     const result = showIntakeDetectionDialog(document.body, {
       items: [
         { kind: "clipping", title: "Clip A" },
+        { kind: "source", channel: "\u4e2a\u4eba\u4fe1\u606f", title: "About Me" },
         { kind: "inbox", title: "Inbox B" },
       ],
       plan: [
@@ -47,6 +48,8 @@ describe("intake sync detection", () => {
 
     expect(document.body.textContent).toContain("新源料检测");
     expect(document.body.textContent).toContain("Clip A");
+    expect(document.body.textContent).toContain("个人信息");
+    expect(document.body.textContent).toContain("About Me");
     expect(document.body.textContent).toContain("Inbox B");
     expect(document.querySelector("[data-intake-confirm]")?.textContent).toContain("开始同步编译");
 

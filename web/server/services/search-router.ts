@@ -1,9 +1,11 @@
 import type { ServerConfig } from "../config.js";
 import { loadSearchIndex, type SearchIndexEntry } from "./search-index.js";
+import type { MarkdownImageRef } from "./markdown-images.js";
 import { dedupSearchResults } from "./search-dedup.js";
-import { chooseSearchMode, type SearchMode as IntentSearchMode } from "./search-intent.js";
+import { chooseSearchMode, type IntentSearchMode } from "./search-intent.js";
 import { hybridSearch, rrfFusion, type RankedHit } from "./search-hybrid.js";
-import { embedText, queryVectorSearch } from "../../../src/services/cloudflare-vector-search.js";
+import type { SearchRetrievalSource } from "./search-hybrid.js";
+import { searchLocalVectors, type LocalVectorPageHit } from "./local-vector-search.js";
 
 export type SearchMode = IntentSearchMode;
 
@@ -15,6 +17,8 @@ export interface SearchResult {
   excerpt: string;
   tags: string[];
   modifiedAt: string | null;
+  images: MarkdownImageRef[];
+  retrievalSources: SearchRetrievalSource[];
 }
 
 export interface SearchResponse {
@@ -27,14 +31,6 @@ interface SearchIndexLookups {
   byId: Map<string, SearchIndexEntry>;
 }
 
-type VectorSearchMatch = Awaited<ReturnType<typeof queryVectorSearch>> extends { ok: true; data: Array<infer T> } ? T : never;
-
-interface VectorSearchMetadata {
-  path: string;
-  title: string;
-  excerpt: string;
-}
-
 export async function runSearch(cfg: ServerConfig | undefined, query: string, mode: SearchMode): Promise<SearchResponse> {
   const normalizedQuery = query.trim();
   if (!normalizedQuery) {
@@ -44,43 +40,48 @@ export async function runSearch(cfg: ServerConfig | undefined, query: string, mo
   const effectiveMode = mode === "direct" || mode === "hybrid" ? mode : chooseSearchMode(normalizedQuery);
   const index = loadSearchIndex(cfg);
   if (effectiveMode === "hybrid") {
-    const hybridResults = await runHybridSearch(index, normalizedQuery);
+    const hybridResults = await runHybridSearch(cfg, index, normalizedQuery);
     return {
       mode: effectiveMode,
       results: dedupSearchResults(hybridResults.map((entry) => ({
-        id: entry.id,
-        title: entry.title,
-        path: entry.path,
-        layer: entry.layer,
-        excerpt: entry.excerpt,
-        tags: entry.tags,
-        modifiedAt: entry.modifiedAt,
+        ...toSearchResult(entry),
+        retrievalSources: readEntryRetrievalSources(entry, ["token"]),
       }))),
     };
   }
   const results = dedupSearchResults(index
     .filter((entry) => matches(entry, normalizedQuery, effectiveMode))
     .slice(0, 20)
-    .map((entry) => ({
-      id: entry.id,
-      title: entry.title,
-      path: entry.path,
-      layer: entry.layer,
-      excerpt: entry.excerpt,
-      tags: entry.tags,
-      modifiedAt: entry.modifiedAt,
-    })));
+    .map((entry) => toSearchResult(entry)));
 
   return { mode: effectiveMode, results };
 }
 
-async function runHybridSearch(index: SearchIndexEntry[], query: string): Promise<SearchIndexEntry[]> {
+function toSearchResult(entry: SearchIndexEntry): SearchResult {
+  return {
+    id: entry.id,
+    title: entry.title,
+    path: entry.path,
+    layer: entry.layer,
+    excerpt: entry.excerpt,
+    tags: entry.tags,
+    modifiedAt: entry.modifiedAt,
+    images: entry.images ?? [],
+    retrievalSources: readEntryRetrievalSources(entry, ["token"]),
+  };
+}
+
+async function runHybridSearch(
+  cfg: ServerConfig | undefined,
+  index: SearchIndexEntry[],
+  query: string,
+): Promise<SearchIndexEntry[]> {
   const localResults = hybridSearch(index, query, { limit: 30 });
   const localRanked: RankedHit[] = localResults.map((entry) => ({
     ...entry,
     score: 1,
   }));
-  const vectorRanked = await runVectorSearch(index, query);
+  const vectorRanked = await runVectorSearch(cfg, index, query);
   const fused = vectorRanked.length ? rrfFusion([vectorRanked, localRanked]) : localRanked;
   return fused.slice(0, 20).map((hit) => ({
     id: hit.id,
@@ -90,16 +91,20 @@ async function runHybridSearch(index: SearchIndexEntry[], query: string): Promis
     excerpt: hit.excerpt ?? "",
     tags: hit.tags ?? [],
     modifiedAt: hit.modifiedAt ?? null,
+    images: hit.images ?? [],
+    retrievalSources: hit.retrievalSources ?? ["token"],
   }));
 }
 
-async function runVectorSearch(index: SearchIndexEntry[], query: string): Promise<RankedHit[]> {
-  const vector = await embedText(query);
-  if (!vector.ok || !vector.data.length) return [];
-  const matches = await queryVectorSearch(vector.data, 30);
-  if (!matches.ok) return [];
+async function runVectorSearch(
+  cfg: ServerConfig | undefined,
+  index: SearchIndexEntry[],
+  query: string,
+): Promise<RankedHit[]> {
+  const matches = await searchLocalVectors(cfg, query, 30);
+  if (matches.length === 0) return [];
   const lookups = createSearchIndexLookups(index);
-  return matches.data.map((match) => toRankedVectorHit(match, lookups));
+  return matches.map((match) => toRankedVectorHit(match, lookups));
 }
 
 function matches(entry: SearchIndexEntry, query: string, mode: SearchMode): boolean {
@@ -108,6 +113,7 @@ function matches(entry: SearchIndexEntry, query: string, mode: SearchMode): bool
     entry.title,
     entry.path,
     entry.excerpt,
+    entry.searchText ?? "",
     entry.tags.join(" "),
   ].map((value) => value.toLowerCase());
 
@@ -178,35 +184,45 @@ function createSearchIndexLookups(index: SearchIndexEntry[]): SearchIndexLookups
   };
 }
 
-function toRankedVectorHit(
-  match: VectorSearchMatch,
-  lookups: SearchIndexLookups,
-): RankedHit {
-  const metadata = readVectorSearchMetadata(match);
-  const indexed = findIndexedVectorEntry(lookups, match.id, metadata.path);
+function toRankedVectorHit(match: LocalVectorPageHit, lookups: SearchIndexLookups): RankedHit {
+  const normalizedPath = normalizeSearchPath(match.path);
+  const indexed = findIndexedVectorEntry(lookups, match.id, normalizedPath);
+  const base = indexedVectorHitBase(indexed, match.id, { ...match, path: normalizedPath });
   return {
-    id: pickIndexedValue(indexed?.id, match.id),
+    ...base,
+    searchText: indexed?.searchText,
+    images: indexed?.images ?? [],
+    score: match.score,
+    retrievalSources: ["vector"],
+  };
+}
+
+function readEntryRetrievalSources(
+  entry: SearchIndexEntry,
+  fallback: SearchRetrievalSource[],
+): SearchRetrievalSource[] {
+  const value = (entry as SearchIndexEntry & { retrievalSources?: unknown }).retrievalSources;
+  return Array.isArray(value) && value.every(isSearchRetrievalSource) ? value : fallback;
+}
+
+function isSearchRetrievalSource(value: unknown): value is SearchRetrievalSource {
+  return value === "token" || value === "vector" || value === "graph";
+}
+
+function indexedVectorHitBase(
+  indexed: SearchIndexEntry | null,
+  fallbackId: string,
+  metadata: LocalVectorPageHit,
+): Omit<RankedHit, "score" | "searchText" | "images"> {
+  return {
+    id: pickIndexedValue(indexed?.id, fallbackId),
     title: pickIndexedValue(indexed?.title, metadata.title),
     path: pickIndexedValue(indexed?.path, metadata.path),
     layer: pickIndexedValue(indexed?.layer, "wiki"),
     excerpt: pickIndexedValue(indexed?.excerpt, metadata.excerpt),
     tags: pickIndexedValue(indexed?.tags, []),
     modifiedAt: pickIndexedValue(indexed?.modifiedAt, null),
-    score: match.score,
   };
-}
-
-function readVectorSearchMetadata(match: VectorSearchMatch): VectorSearchMetadata {
-  const metadata = match.metadata ?? {};
-  return {
-    path: normalizeSearchPath(readMetadataText(metadata.path, match.id)),
-    title: readMetadataText(metadata.title, match.id),
-    excerpt: readMetadataText(metadata.excerpt, ""),
-  };
-}
-
-function readMetadataText(value: unknown, fallback: string): string {
-  return typeof value === "string" ? value : fallback;
 }
 
 function findIndexedVectorEntry(

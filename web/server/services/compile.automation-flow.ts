@@ -1,3 +1,5 @@
+// fallow-ignore-file duplicate-export
+
 /**
  * Source-owned automation flow for the compile chain.
  *
@@ -12,6 +14,10 @@ import {
   flowEdge,
   flowNode,
 } from "./code-derived-automation-builders.js";
+import {
+  compileChainSourceInsight,
+  syncCompileOverviewSourceInsight,
+} from "./compile-source-insights.js";
 
 const SYNC_COMPILE_OVERVIEW_MERMAID = `
 flowchart TD
@@ -22,7 +28,7 @@ flowchart TD
     E -->|没有| F["写最终结果并发布当前 wiki<br/>writeFinalCompileResult() + publishWikiToCloudflare()"]
     E -->|有| G["按批次执行 llmwiki compile<br/>prepareActiveSources() + runCompile()"]
     G --> H["抽取概念<br/>compile() -> runCompilePipeline()"]
-    H --> I["更新 claims / episodes / procedures<br/>updateTieredMemory()"]
+    H --> I["更新 claims / procedures<br/>updateTieredMemory()"]
     I --> J["生成或更新 wiki 页面<br/>generateMergedPage()"]
     J --> K["修复页面间链接并重建导航<br/>resolveLinks() + rebuildNavigation()"]
     K --> L["发布 staging 结果<br/>publishStagingRun() + writeBatchState()"]
@@ -70,6 +76,7 @@ export const codeDerivedAutomationSeeds: readonly CodeDerivedAutomationSeed[] = 
       "src/compiler/index.ts",
     ],
     mermaid: SYNC_COMPILE_OVERVIEW_MERMAID,
+    sourceInsight: syncCompileOverviewSourceInsight,
     flow: {
       nodes: [
         flowNode("overview-trigger", "trigger", "点击同步按钮", "运行页进入同步前置检查。", "bindRunPage() startButton.click"),
@@ -89,7 +96,7 @@ export const codeDerivedAutomationSeeds: readonly CodeDerivedAutomationSeed[] = 
         flowNode("overview-no-batches", "action", "写最终结果并发布当前 wiki", "零批次时直接写结果、发布只读 wiki、刷新实体快照。", "writeFinalCompileResult() + publishWikiToCloudflare()"),
         flowNode("overview-batch-compile", "action", "按批次执行 llmwiki compile", "每个 batch 都先准备 staging sources，再执行 compile。", "prepareActiveSources() + runCompile()"),
         flowNode("overview-extract", "action", "抽取概念并检测真实变化", "进入 compile orchestrator，做变更检测和概念提取。", "compile() -> runCompilePipeline()"),
-        flowNode("overview-memory", "action", "更新 claims / episodes / procedures", "把 tiered memory 写回到 .llmwiki 和对应页面。", "updateTieredMemory()"),
+        flowNode("overview-memory", "action", "更新 claims / procedures", "把 tiered memory 写回到 .llmwiki 和对应页面。", "updateTieredMemory()"),
         flowNode("overview-pages", "action", "生成或更新 wiki 页面并修复互链", "生成概念页、解析互链并重建导航页。", "generateMergedPage() + resolveLinks() + rebuildNavigation()"),
         flowNode("overview-publish", "action", "发布 staging 结果", "全部批次成功后发布 staging、更新 batch state 和 final result。", "publishStagingRun() + writeBatchState() + writeFinalCompileResult()"),
         flowNode("overview-cloudflare", "action", "发布 Cloudflare wiki 并输出结果", "发布只读 wiki、刷新实体索引并写最终摘要。", "publishWikiToCloudflare() + refreshEntityIndexSnapshot()"),
@@ -135,6 +142,7 @@ export const codeDerivedAutomationSeeds: readonly CodeDerivedAutomationSeed[] = 
       "src/compiler/index.ts",
     ],
     mermaid: COMPILE_CHAIN_MERMAID,
+    sourceInsight: compileChainSourceInsight,
     flow: {
       nodes: [
         flowNode("compile-trigger", "trigger", "启动 sync compile", "运行同步编译脚本并进入 compile 主链路。", "scripts/sync-compile.mjs main()"),
@@ -155,7 +163,7 @@ export const codeDerivedAutomationSeeds: readonly CodeDerivedAutomationSeed[] = 
         flowNode("compile-branch-changes", "branch", "toCompile / deleted 是否为空", "无变化时只重建导航；有变化时继续提取和生成页面。", "if (toCompile.length === 0 && deleted.length === 0)"),
         flowNode("compile-no-changes", "action", "只重建导航并记录 compile", "无增删改时仅更新 index/MOC 和 maintenance log。", "rebuildNavigation() + logCompile()"),
         flowNode("compile-extract", "action", "提取概念并补 late affected sources", "逐个 source 抽取概念，并把新共享概念导致的 late affected source 再补进来。", "extractForSource() + findLateAffectedSources() + freezeFailedExtractions()"),
-        flowNode("compile-memory", "action", "更新 tiered memory", "合并 claims / episodes / procedures 并写出对应页面。", "updateTieredMemory()"),
+        flowNode("compile-memory", "action", "更新 tiered memory", "合并 claims / procedures 并写出对应页面。", "updateTieredMemory()"),
         flowNode("compile-pages", "action", "生成概念页并解析互链", "按 merged concept 生成页面，随后 resolve interlinks。", "mergeExtractions() + generateMergedPage() + resolveLinks()"),
         flowNode("compile-finish-batch", "action", "重建导航并记录 compile", "批次编译完成后重建导航、写 maintenance log 并返回外层循环。", "rebuildNavigation() + logCompile()"),
         flowNode("compile-batch-complete", "merge", "当前 batch compile 返回", "每个 batch 的 compile 返回后继续下一个 batch，全部完成后再发布 staging。", "for (const batch of batches)"),

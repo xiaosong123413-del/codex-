@@ -116,6 +116,7 @@ export async function startXiaohongshuImport(projectRoot: string, options: Xiaoh
     updatedAt: createdAt,
   };
   await writeTask(projectRoot, task);
+  // fallow-ignore-next-line complexity
   const job = async () => {
     await updateTask(projectRoot, task.id, {
       progress: 20,

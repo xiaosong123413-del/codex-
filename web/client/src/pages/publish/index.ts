@@ -138,6 +138,7 @@ function renderRemoteBrainPanelBody(): string {
   `;
 }
 
+// fallow-ignore-next-line complexity
 function bindRemoteBrainSection(root: RemoteBrainSectionElement, autoload: boolean): void {
   const mode = root.querySelector<HTMLElement>("[data-publish-mode]");
   const endpoint = root.querySelector<HTMLElement>("[data-publish-endpoint]");
@@ -178,6 +179,7 @@ function bindRemoteBrainSection(root: RemoteBrainSectionElement, autoload: boole
     void refreshStatus();
   }
 
+  // fallow-ignore-next-line complexity
   async function refreshStatus(): Promise<void> {
     try {
       const response = await fetch("/api/remote-brain/status");
@@ -206,6 +208,7 @@ function bindRemoteBrainSection(root: RemoteBrainSectionElement, autoload: boole
     }
   }
 
+  // fallow-ignore-next-line complexity
   async function runAction(action: RemoteBrainAction): Promise<void> {
     if (busy) {
       return;
@@ -245,6 +248,7 @@ function bindRemoteBrainSection(root: RemoteBrainSectionElement, autoload: boole
     }
   }
 
+  // fallow-ignore-next-line complexity
   function renderStatus(status: RemoteBrainStatusPayload): void {
     if (mode) {
       mode.textContent = status.mode;

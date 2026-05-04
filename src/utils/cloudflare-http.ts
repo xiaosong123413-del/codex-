@@ -77,10 +77,12 @@ export function extractTextResponse(payload: unknown): string {
   if (typeof payload === "string") return payload;
   const record = asRecord(payload);
   const result = asRecord(record.result);
+  const choiceText = firstChoiceText(record) || firstChoiceText(result);
   return firstString(
     record.text,
     record.response,
     record.output,
+    choiceText,
     result.text,
     result.response,
     result.output,
@@ -131,9 +133,35 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function firstString(...values: unknown[]): string {
   for (const value of values) {
-    if (typeof value === "string") return value;
+    if (typeof value === "string" && value.length > 0) return value;
   }
   return "";
+}
+
+function firstChoiceText(record: Record<string, unknown>): string {
+  const choices = record.choices;
+  if (!Array.isArray(choices)) {
+    return "";
+  }
+  const first = asRecord(choices[0]);
+  const message = asRecord(first.message);
+  const delta = asRecord(first.delta);
+  return readContentText(message.content) || readContentText(delta.content) || firstString(first.text);
+}
+
+function readContentText(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (!Array.isArray(value)) {
+    return "";
+  }
+  return value.map(readContentPartText).filter(Boolean).join("");
+}
+
+function readContentPartText(value: unknown): string {
+  const record = asRecord(value);
+  return firstString(record.text);
 }
 
 function isNumberArray(value: unknown): value is number[] {
@@ -142,4 +170,89 @@ function isNumberArray(value: unknown): value is number[] {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+interface CloudflareStreamChunk {
+  choices?: { delta?: { content?: string; tool_calls?: unknown[] } }[];
+  result?: { response?: string };
+}
+
+/** Post a JSON payload and return an async iterable of SSE stream chunks. */
+export async function postJsonStream(
+  endpoint: string,
+  payload: unknown,
+  headers: Record<string, string> = {},
+): Promise<AsyncGenerator<CloudflareStreamChunk>> {
+  const response = await fetchWithOptionalProxy(endpoint, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...headers,
+    },
+    body: JSON.stringify({ ...(payload as Record<string, unknown>), stream: true }),
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Cloudflare stream failed: HTTP ${response.status} - ${text}`);
+  }
+  return readSSEChunks(response);
+}
+
+async function* readSSEChunks(response: Response): AsyncGenerator<CloudflareStreamChunk> {
+  const reader = response.body?.getReader();
+  if (!reader) return;
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const parsed = parseSSEBuffer(buffer);
+      buffer = parsed.remainder;
+      for (const chunk of parsed.chunks) {
+        yield chunk;
+      }
+      if (parsed.done) {
+        return;
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+function parseSSEBuffer(buffer: string): {
+  chunks: CloudflareStreamChunk[];
+  done: boolean;
+  remainder: string;
+} {
+  const lines = buffer.split("\n");
+  const remainder = lines.pop() ?? "";
+  const chunks: CloudflareStreamChunk[] = [];
+  let done = false;
+  for (const line of lines) {
+    const parsed = parseSSELine(line);
+    if (parsed === "done") {
+      done = true;
+      break;
+    }
+    if (parsed) chunks.push(parsed);
+  }
+  return { chunks, done, remainder };
+}
+
+function parseSSELine(line: string): CloudflareStreamChunk | "done" | null {
+  const trimmed = line.trim();
+  if (!trimmed || trimmed.startsWith(":")) return null;
+  const data = trimmed.startsWith("data: ") ? trimmed.slice(6) : trimmed;
+  if (data === "[DONE]") return "done";
+  try {
+    return JSON.parse(data) as CloudflareStreamChunk;
+  } catch {
+    return null;
+  }
 }

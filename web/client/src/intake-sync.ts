@@ -1,3 +1,9 @@
+/**
+ * Intake sync detection client.
+ *
+ * The desktop shell calls this before a sync run so the user can see which raw
+ * queues were detected and whether there is a batch compile plan to confirm.
+ */
 interface ApiResponse<T> {
   success: boolean;
   data?: T;
@@ -12,7 +18,8 @@ interface IntakePlanRow {
 }
 
 interface IntakeScanItem {
-  kind: "clipping" | "flash" | "inbox";
+  kind: "clipping" | "flash" | "source" | "inbox";
+  channel?: string;
   title: string;
 }
 
@@ -66,7 +73,7 @@ export function showIntakeDetectionDialog(root: HTMLElement, scan: IntakeScan): 
 function renderScanItem(item: IntakeScanItem): string {
   return `
     <div class="intake-source-item">
-      <span class="intake-source-item__kind">${formatKind(item.kind)}</span>
+      <span class="intake-source-item__kind">${formatKind(item)}</span>
       <span class="intake-source-item__title">${escapeHtml(item.title)}</span>
     </div>
   `;
@@ -113,13 +120,14 @@ function bindIntakeDialog(overlay: HTMLElement, resolve: (value: boolean) => voi
   });
 }
 
-function formatKind(kind: IntakeScanItem["kind"]): string {
+function formatKind(item: IntakeScanItem): string {
   const labels: Record<IntakeScanItem["kind"], string> = {
     clipping: "\u526a\u85cf",
     flash: "\u95ea\u5ff5\u65e5\u8bb0",
+    source: item.channel?.trim() || "\u540c\u6b65\u6e90",
     inbox: "inbox",
   };
-  return labels[kind];
+  return escapeHtml(labels[item.kind]);
 }
 
 function escapeHtml(value: string): string {

@@ -111,6 +111,35 @@ describe("source media index", () => {
     expect(item?.transcriptPath).toBe(".llmwiki/transcripts/source-id.txt");
   });
 
+  it("matches source gallery queries against OCR sidecar text", async () => {
+    const { sourceVaultRoot, runtimeRoot } = makeRoots();
+    write(sourceVaultRoot, "raw/\u526a\u85cf/article.md", [
+      "---",
+      "title: Indexed Item",
+      "---",
+      "",
+      "# Indexed Item",
+      "",
+      "![cover](images/cover.png)",
+    ].join("\n"));
+    write(sourceVaultRoot, "raw/\u526a\u85cf/images/cover.png", "png");
+
+    const index = await scanSourceMediaIndex(sourceVaultRoot, runtimeRoot);
+    const record = Object.values(index.records).find((item) => item.path === "raw/\u526a\u85cf/article.md");
+    if (!record) throw new Error("expected source media record");
+    const sidecar = await writeSourceOcrSidecar(runtimeRoot, record.id, "图片里的白板文字");
+    record.ocrTextPath = sidecar.path;
+    await fs.promises.writeFile(
+      path.join(runtimeRoot, ".llmwiki", "source-media-index.json"),
+      `${JSON.stringify(index, null, 2)}\n`,
+      "utf8",
+    );
+
+    const { items } = await listSourceGalleryItems(sourceVaultRoot, runtimeRoot, "白板文字");
+
+    expect(items.map((item) => item.path)).toEqual(["raw/\u526a\u85cf/article.md"]);
+  });
+
   it("returns embedded media entries in source gallery detail", async () => {
     const { sourceVaultRoot, runtimeRoot } = makeRoots();
     write(sourceVaultRoot, "raw/\u526a\u85cf/article.md", [

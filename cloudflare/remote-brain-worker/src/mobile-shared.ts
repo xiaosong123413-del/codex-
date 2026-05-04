@@ -92,6 +92,14 @@ export interface MobileAiProviderRequest {
   model?: unknown;
 }
 
+export interface MobileWebSearchRequest {
+  enabled?: unknown;
+  mode?: unknown;
+  endpoint?: unknown;
+  token?: unknown;
+  model?: unknown;
+}
+
 export interface MobileWikiPagePayload {
   path?: string;
 }
@@ -113,7 +121,10 @@ export interface MobileChatPayload extends MobileOwnerPayload {
   chatId?: string;
   message?: string;
   mode?: unknown;
+  workspaceId?: unknown;
+  selectedWikiPaths?: unknown;
   aiProvider?: MobileAiProviderRequest;
+  webSearch?: MobileWebSearchRequest | null;
 }
 
 export interface MobileChatMessage {

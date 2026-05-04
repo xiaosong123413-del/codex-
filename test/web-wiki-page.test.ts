@@ -323,6 +323,68 @@ describe("wiki page search", () => {
     expect(fileItem?.parentElement?.firstElementChild).toBe(factsItem);
   });
 
+  it("deletes single and selected pages from the wiki sidebar", async () => {
+    const deletedBodies: Array<{ paths?: string[] }> = [];
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/api/tree?")) {
+        return rawOk({
+          name: "wiki",
+          path: "wiki",
+          kind: "dir",
+          children: [{
+            name: "wiki",
+            path: "wiki",
+            kind: "dir",
+            children: [{
+              name: "案例库",
+              path: "wiki/案例库",
+              kind: "dir",
+              children: [
+                { name: "A.md", path: "wiki/案例库/A.md", kind: "file" },
+                { name: "B.md", path: "wiki/案例库/B.md", kind: "file" },
+              ],
+            }],
+          }],
+        });
+      }
+      if (url.includes("/api/page?")) {
+        return rawOk({
+          path: "wiki/案例库/A.md",
+          title: "A",
+          html: "<h1>A</h1><p>Overview</p>",
+          raw: "# A",
+          frontmatter: null,
+          modifiedAt: "2026-04-29T00:00:00.000Z",
+        });
+      }
+      if (url.endsWith("/api/page") && init?.method === "DELETE") {
+        deletedBodies.push(JSON.parse(String(init.body ?? "{}")) as { paths?: string[] });
+        return ok({ paths: deletedBodies.at(-1)?.paths ?? [] });
+      }
+      return ok({});
+    }));
+
+    const page = renderWikiPage("wiki/案例库/A.md");
+    document.body.appendChild(page);
+    await waitForText(page.querySelector<HTMLElement>("[data-wiki-navigation]")!, "案例库");
+
+    page.querySelector<HTMLButtonElement>("[data-wiki-delete-path='wiki/案例库/A.md']")?.click();
+    await waitForCondition(() => deletedBodies.length === 1);
+    expect(deletedBodies[0]).toEqual({ paths: ["wiki/案例库/A.md"] });
+
+    page.querySelector<HTMLButtonElement>("[data-wiki-delete-select]")?.click();
+    page.querySelector<HTMLInputElement>("[data-wiki-delete-check='wiki/案例库/A.md']")?.click();
+    page.querySelector<HTMLInputElement>("[data-wiki-delete-check='wiki/案例库/B.md']")?.click();
+    page.querySelector<HTMLButtonElement>("[data-wiki-delete-selected]")?.click();
+    await waitForCondition(() => deletedBodies.length === 2);
+    await waitForCondition(() => page.querySelector<HTMLButtonElement>("[data-wiki-delete-selected]")?.hidden === true);
+
+    expect(deletedBodies[1]).toEqual({ paths: ["wiki/案例库/A.md", "wiki/案例库/B.md"] });
+    expect(page.querySelector<HTMLButtonElement>("[data-wiki-delete-selected]")?.hidden).toBe(true);
+  });
+
   it("shows a linked wiki page preview after hovering a wikilink for one second", async () => {
     vi.stubGlobal("fetch", vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
       const url = String(input);

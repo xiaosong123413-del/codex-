@@ -7,7 +7,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { lint } from "../src/linter/index.js";
@@ -29,6 +29,12 @@ afterEach(async () => {
 
 async function writeConcept(slug: string, content: string): Promise<string> {
   const filePath = path.join(tmpDir, "wiki", "concepts", `${slug}.md`);
+  await writeFile(filePath, content, "utf8");
+  return filePath;
+}
+
+async function writeQuery(slug: string, content: string): Promise<string> {
+  const filePath = path.join(tmpDir, "wiki", "queries", `${slug}.md`);
   await writeFile(filePath, content, "utf8");
   return filePath;
 }
@@ -72,6 +78,66 @@ describe("deterministic lint autofix integration", () => {
       repairer: "alias-backfill",
       status: "applied",
     }));
+  });
+
+  it("creates concept seed pages for missing wikilinks in query drafts", async () => {
+    const queryPath = await writeQuery(
+      "research-ai-human-work",
+      [
+        "---",
+        "title: Research AI Human Work",
+        "type: query",
+        "summary: Research draft.",
+        "---",
+        "",
+        "# Research AI Human Work",
+        "",
+        "草稿连接 [[组织设计/未来工作]] 和 [[Human-on-the-Loop|人工监督循环]]。",
+        "",
+        "这是一段足够长的研究草稿内容，用来避免空页规则干扰。",
+      ].join("\n"),
+    );
+
+    const summary = await lint(tmpDir);
+    const queryContent = await readFile(queryPath, "utf8");
+    const organizationSeed = await readFile(path.join(tmpDir, "wiki", "concepts", "组织设计未来工作.md"), "utf8");
+    const humanLoopSeed = await readFile(path.join(tmpDir, "wiki", "concepts", "human-on-the-loop.md"), "utf8");
+
+    expect(summary.errors).toBe(0);
+    expect(summary.results.some((result) => result.rule === "broken-wikilink")).toBe(false);
+    expect(summary.autofix.details).toContainEqual(expect.objectContaining({
+      repairer: "query-concept-seed",
+      status: "applied",
+      reason: "created-query-concept-seed",
+    }));
+    expect(queryContent).toContain("[[组织设计/未来工作]]");
+    expect(queryContent).toContain("[[Human-on-the-Loop|人工监督循环]]");
+    expect(organizationSeed).toContain("title: 组织设计/未来工作");
+    expect(organizationSeed).toContain("[[Research AI Human Work]]");
+    expect(humanLoopSeed).toContain("title: Human-on-the-Loop");
+    expect(humanLoopSeed).toContain("[[Research AI Human Work]]");
+  });
+
+  it("keeps missing wikilinks in concept pages for human review", async () => {
+    const conceptPath = await writeConcept(
+      "consumer",
+      [
+        "---",
+        "title: Consumer",
+        "summary: 消费页。",
+        "---",
+        "",
+        "See [[Missing Concept]] before making a new page.",
+      ].join("\n"),
+    );
+
+    const summary = await lint(tmpDir);
+    const preserved = await readFile(conceptPath, "utf8");
+
+    expect(summary.errors).toBeGreaterThan(0);
+    expect(summary.results.some((result) => result.rule === "broken-wikilink")).toBe(true);
+    expect(summary.autofix.details.some((detail) => detail.repairer === "query-concept-seed")).toBe(false);
+    expect(preserved).toContain("[[Missing Concept]]");
   });
 
   it("skips alias writes when more than one deterministic target exists", async () => {

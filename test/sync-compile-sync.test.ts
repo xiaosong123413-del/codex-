@@ -8,7 +8,11 @@ import {
   syncMarkdownSources,
   syncNonMarkdownAssets,
 } from "../scripts/sync-compile/sync-files.mjs";
-import { canClearStaleLock } from "../scripts/sync-compile/lock.mjs";
+import {
+  canClearStaleLock,
+  createLockFileContent,
+  formatLockOwner,
+} from "../scripts/sync-compile/lock.mjs";
 
 async function makeTempDir(prefix: string): Promise<string> {
   return mkdtemp(path.join(os.tmpdir(), prefix));
@@ -196,5 +200,44 @@ describe("sync compile raw sync", () => {
   it("treats a dead lock pid as removable", async () => {
     const removable = await canClearStaleLock("999999");
     expect(removable).toBe(true);
+  });
+
+  it("writes structured lock metadata for the active sync process", () => {
+    const lock = JSON.parse(
+      createLockFileContent(new Date("2026-05-03T00:00:00.000Z")),
+    ) as {
+      pid: number;
+      script: string;
+      createdAt: string;
+    };
+
+    expect(lock.pid).toBe(process.pid);
+    expect(lock.script.length).toBeGreaterThan(0);
+    expect(lock.createdAt).toBe("2026-05-03T00:00:00.000Z");
+  });
+
+  it("treats a reused pid with a different command as removable", async () => {
+    const scriptPath = "D:/Desktop/llm-wiki-compiler-main/scripts/sync-compile.mjs";
+    const lockText = JSON.stringify({ pid: 123, script: scriptPath });
+
+    await expect(
+      canClearStaleLock(lockText, {
+        processExists: () => true,
+        readCommandLine: async () => "node D:/Desktop/other-script.mjs",
+      }),
+    ).resolves.toBe(true);
+  });
+
+  it("keeps a live matching structured lock", async () => {
+    const scriptPath = "D:/Desktop/llm-wiki-compiler-main/scripts/sync-compile.mjs";
+    const lockText = JSON.stringify({ pid: 123, script: scriptPath });
+
+    await expect(
+      canClearStaleLock(lockText, {
+        processExists: () => true,
+        readCommandLine: async () => `node ${scriptPath}`,
+      }),
+    ).resolves.toBe(false);
+    expect(formatLockOwner(lockText)).toContain("sync-compile.mjs");
   });
 });

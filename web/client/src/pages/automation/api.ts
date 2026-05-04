@@ -13,7 +13,7 @@ export interface AutomationListItem {
   enabled: boolean;
   trigger: string;
   updatedAt?: string;
-  sourceKind: "automation" | "app" | "code";
+  sourceKind: "automation" | "app" | "code" | "information";
 }
 
 interface AutomationDocumentStepResponse {
@@ -42,6 +42,7 @@ interface AutomationFlowNodeResponse {
   type: "trigger" | "action" | "branch" | "merge";
   title: string;
   description: string;
+  standard?: string;
   implementation?: string;
   appId?: string;
   modelMode: "explicit" | "default";
@@ -78,6 +79,7 @@ export interface AutomationCommentResponse {
   manualY?: number;
 }
 
+// fallow-ignore-next-line unused-type
 export type AutomationCommentTargetType = "node" | "edge" | "canvas";
 
 export interface AutomationCommentDraftTarget {
@@ -87,7 +89,7 @@ export interface AutomationCommentDraftTarget {
   pinnedY: number;
 }
 
-export interface AutomationCommentPatchInput extends Partial<Pick<
+interface AutomationCommentPatchInput extends Partial<Pick<
   AutomationCommentResponse,
   "text" | "targetType" | "targetId" | "pinnedX" | "pinnedY"
 >> {
@@ -95,9 +97,83 @@ export interface AutomationCommentPatchInput extends Partial<Pick<
   manualY?: number | null;
 }
 
-export interface AutomationLayoutResponse {
+interface AutomationLayoutResponse {
   automationId: string;
   branchOffsets: Record<string, { x: number; y: number }>;
+}
+
+type AutomationSourceInsightScope = "page" | "cross-page";
+
+export type AutomationSourceInsightNodeKind = "trigger" | "decision" | "input" | "process" | "result";
+
+interface AutomationPotentialDestinationResponse {
+  id: string;
+  automationId: string;
+  nodeId: string;
+  label: string;
+  intendedOutcome: string;
+  note: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface AutomationSourceInsightMissingLinkResponse {
+  to: string;
+  statusNote: string;
+}
+
+interface AutomationSourceInsightNodeResponse {
+  id: string;
+  kind: AutomationSourceInsightNodeKind;
+  label: string;
+  displayId?: string;
+}
+
+interface AutomationSourceInsightEdgeResponse {
+  source: string;
+  target: string;
+  label?: string;
+}
+
+interface AutomationSourceInsightPageHotspotViewResponse {
+  title: string;
+  description: string;
+  svg: string;
+}
+
+export interface AutomationSourceInsightNodeInsightResponse {
+  summary: string;
+  upstream: string[];
+  downstream: string[];
+  shownIn: string[];
+  sourcePaths: string[];
+  missingLinks: AutomationSourceInsightMissingLinkResponse[];
+  specRows?: Array<{
+    label: string;
+    value: string;
+  }>;
+  potentialDestinations: AutomationPotentialDestinationResponse[];
+}
+
+interface AutomationSourceInsightResponse {
+  scope: AutomationSourceInsightScope;
+  page: {
+    id: string;
+    title: string;
+    routeLabel: string;
+  };
+  graph: {
+    mermaid: string;
+    nodes: AutomationSourceInsightNodeResponse[];
+    edges: AutomationSourceInsightEdgeResponse[];
+  };
+  pageHotspotView?: AutomationSourceInsightPageHotspotViewResponse;
+  nodeInsights: Record<string, AutomationSourceInsightNodeInsightResponse>;
+  appendices?: Array<{
+    id: string;
+    title: string;
+    content: string;
+  }>;
 }
 
 interface AutomationLogResponse {
@@ -117,7 +193,7 @@ export interface AutomationDetailResponse {
     icon: string;
     enabled: boolean;
     trigger: string;
-    sourceKind: "automation" | "app" | "code";
+    sourceKind: "automation" | "app" | "code" | "information";
     viewMode: "flow";
     documentSteps: AutomationDocumentStepResponse[];
     apps: AutomationResolvedApp[];
@@ -127,6 +203,7 @@ export interface AutomationDetailResponse {
       branches: AutomationFlowBranchResponse[];
     };
     mermaid?: string;
+    sourceInsight?: AutomationSourceInsightResponse;
   };
   comments: AutomationCommentResponse[];
   layout: AutomationLayoutResponse;
@@ -177,7 +254,7 @@ export async function deleteAutomationComment(automationId: string, commentId: s
   });
 }
 
-export async function saveAutomationLayout(
+async function saveAutomationLayout(
   automationId: string,
   branchOffsets: AutomationLayoutResponse["branchOffsets"],
 ): Promise<AutomationLayoutResponse> {

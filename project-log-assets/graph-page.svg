@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1120" height="560" viewBox="0 0 1120 560" role="img" aria-label="Graphy 独立图谱页">
-  <rect width="1120" height="560" fill="#ffffff"/>
+  <rect width="1120" height="560" fill="#FFFFFF"/>
   <rect x="0" y="0" width="64" height="560" fill="#f8f9fa" stroke="#a2a9b1"/>
-  <circle cx="32" cy="38" r="18" fill="#ffffff" stroke="#a2a9b1"/>
+  <circle cx="32" cy="38" r="18" fill="#FFFFFF" stroke="#a2a9b1"/>
   <text x="32" y="45" text-anchor="middle" font-family="Georgia, serif" font-size="20" fill="#202122">W</text>
 
   <rect x="92" y="24" width="92" height="36" fill="#f8f9fa" stroke="#a2a9b1"/>
@@ -11,12 +11,12 @@
   <rect x="760" y="24" width="70" height="36" fill="#f8f9fa" stroke="#a2a9b1"/>
   <text x="795" y="47" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#202122">Type</text>
   <rect x="830" y="24" width="110" height="36" fill="#3366cc" stroke="#a2a9b1"/>
-  <text x="885" y="47" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#ffffff">Community</text>
+  <text x="885" y="47" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#FFFFFF">Community</text>
   <rect x="958" y="24" width="110" height="36" rx="0" fill="#eaecf0" stroke="#a2a9b1"/>
   <text x="1013" y="47" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#202122">Insights</text>
   <line x1="92" y1="78" x2="1088" y2="78" stroke="#a2a9b1"/>
 
-  <rect x="92" y="102" width="544" height="420" fill="#ffffff" stroke="#a2a9b1"/>
+  <rect x="92" y="102" width="544" height="420" fill="#FFFFFF" stroke="#a2a9b1"/>
   <rect x="112" y="122" width="504" height="360" fill="#f8f9fa" stroke="#eaecf0"/>
   <g stroke="#c8ccd1" stroke-width="1.5">
     <line x1="364" y1="302" x2="208" y2="188"/>
@@ -41,7 +41,7 @@
   <text x="180" y="166" font-family="Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#202122">Glycerol</text>
   <text x="535" y="164" font-family="Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#202122">Biodiesel</text>
   <text x="558" y="368" font-family="Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#202122">denitrification</text>
-  <rect x="128" y="366" width="178" height="98" fill="#ffffff" fill-opacity="0.94" stroke="#a2a9b1"/>
+  <rect x="128" y="366" width="178" height="98" fill="#FFFFFF" fill-opacity="0.94" stroke="#a2a9b1"/>
   <text x="142" y="388" font-family="Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#202122">Communities</text>
   <circle cx="148" cy="407" r="5" fill="#60a5fa"/>
   <text x="160" y="412" font-family="Segoe UI, sans-serif" font-size="12" fill="#54595d">Glycerol</text>
@@ -55,28 +55,28 @@
   <text x="276" y="457" text-anchor="end" font-family="Segoe UI, sans-serif" font-size="12" fill="#54595d">5</text>
   <text x="112" y="504" font-family="Segoe UI, sans-serif" font-size="12" fill="#54595d">137 pages · 363 links · labels on</text>
 
-  <rect x="654" y="102" width="212" height="420" fill="#ffffff" stroke="#a2a9b1"/>
+  <rect x="654" y="102" width="212" height="420" fill="#FFFFFF" stroke="#a2a9b1"/>
   <rect x="654" y="102" width="212" height="58" fill="#f8f9fa" stroke="#a2a9b1"/>
   <text x="674" y="126" font-family="Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#54595d">GRAPH INSIGHTS</text>
   <text x="674" y="150" font-family="Georgia, serif" font-size="24" fill="#202122">Insights</text>
   <text x="674" y="188" font-family="Segoe UI, sans-serif" font-size="15" font-weight="700" fill="#202122">意外连接</text>
-  <rect x="674" y="202" width="172" height="72" fill="#ffffff" stroke="#3366cc"/>
+  <rect x="674" y="202" width="172" height="72" fill="#FFFFFF" stroke="#3366cc"/>
   <rect x="674" y="202" width="4" height="72" fill="#3366cc"/>
   <text x="688" y="224" font-family="Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#202122">Glycerol ↔ denitrification</text>
   <text x="688" y="246" font-family="Segoe UI, sans-serif" font-size="12" fill="#54595d">跨社区 · 高权重</text>
   <text x="674" y="314" font-family="Segoe UI, sans-serif" font-size="15" font-weight="700" fill="#202122">知识空白</text>
-  <rect x="674" y="328" width="172" height="104" fill="#ffffff" stroke="#c8ccd1"/>
+  <rect x="674" y="328" width="172" height="104" fill="#FFFFFF" stroke="#c8ccd1"/>
   <text x="688" y="350" font-family="Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#202122">稀疏社区：Community 3</text>
   <text x="688" y="374" font-family="Segoe UI, sans-serif" font-size="12" fill="#54595d">补一页社区总览</text>
   <rect x="688" y="394" width="108" height="28" fill="#f8f9fa" stroke="#a2a9b1"/>
   <text x="742" y="413" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#202122">Deep Research</text>
 
-  <rect x="884" y="102" width="204" height="420" fill="#ffffff" stroke="#a2a9b1"/>
+  <rect x="884" y="102" width="204" height="420" fill="#FFFFFF" stroke="#a2a9b1"/>
   <rect x="884" y="102" width="204" height="70" fill="#f8f9fa" stroke="#a2a9b1"/>
   <text x="904" y="126" font-family="Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#54595d">WIKI PREVIEW</text>
   <text x="904" y="150" font-family="Georgia, serif" font-size="22" fill="#202122">glycerol.md</text>
   <text x="904" y="166" font-family="Segoe UI, sans-serif" font-size="11" fill="#54595d">wiki/.../glycerol.md</text>
-  <rect x="904" y="192" width="164" height="130" fill="#ffffff" stroke="#c8ccd1"/>
+  <rect x="904" y="192" width="164" height="130" fill="#FFFFFF" stroke="#c8ccd1"/>
   <text x="920" y="216" font-family="Segoe UI, sans-serif" font-size="12" font-weight="700" fill="#54595d">title</text>
   <text x="964" y="216" font-family="Segoe UI, sans-serif" font-size="12" fill="#202122">Glycerol</text>
   <text x="920" y="244" font-family="Segoe UI, sans-serif" font-size="12" font-weight="700" fill="#54595d">type</text>
@@ -85,7 +85,7 @@
   <text x="964" y="272" font-family="Segoe UI, sans-serif" font-size="12" fill="#202122">biodiesel · by-product</text>
   <text x="920" y="300" font-family="Segoe UI, sans-serif" font-size="12" font-weight="700" fill="#54595d">related</text>
   <text x="964" y="300" font-family="Segoe UI, sans-serif" font-size="12" fill="#202122">denitrification</text>
-  <rect x="904" y="344" width="164" height="146" fill="#ffffff" stroke="#c8ccd1"/>
+  <rect x="904" y="344" width="164" height="146" fill="#FFFFFF" stroke="#c8ccd1"/>
   <text x="920" y="372" font-family="Georgia, serif" font-size="20" fill="#202122">Glycerol</text>
   <line x1="920" y1="382" x2="1048" y2="382" stroke="#a2a9b1"/>
   <text x="920" y="410" font-family="Georgia, serif" font-size="15" fill="#202122">Overview</text>

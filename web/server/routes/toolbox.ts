@@ -44,7 +44,7 @@ interface ToolboxAssetSource {
   path?: string;
 }
 
-interface ToolboxAssetRecord {
+export interface ToolboxAssetRecord {
   id: string;
   entityType: "asset";
   title: string;
@@ -87,7 +87,7 @@ interface LegacyToolboxItemRecord {
   modifiedAt: string | null;
 }
 
-interface ToolboxListPayload {
+interface ToolboxPageData {
   page: ToolboxPageMeta;
   workflows: ToolboxWorkflowRecord[];
   assets: ToolboxAssetRecord[];
@@ -96,6 +96,23 @@ interface ToolboxListPayload {
 }
 
 type ToolboxManagedRecord = ToolboxWorkflowRecord | ToolboxAssetRecord;
+
+interface ToolboxWorkspacePatch {
+  title?: string;
+  summary?: string;
+  category?: string;
+  href?: string;
+  badge?: string;
+  agentName?: string;
+  ratioLabel?: string;
+}
+
+interface ToolboxCandidateAssetInput {
+  id: string;
+  title: string;
+  summary: string;
+  href: string;
+}
 
 const DEFAULT_WORKFLOWS: readonly ToolboxWorkflowRecord[] = [
   {
@@ -183,14 +200,82 @@ const DEFAULT_FAVORITES: readonly ToolboxFavoriteRecord[] = [
 
 export function handleToolboxList(cfg: ServerConfig) {
   return (_req: Request, res: Response) => {
-    ensureToolboxScaffold(cfg.projectRoot);
-    const primaryModel = loadPrimaryModel(cfg.projectRoot);
-    const payload = buildToolboxListPayload(cfg.projectRoot, primaryModel, String(_req.query.q ?? ""));
+    const payload = readToolboxPageData(cfg.projectRoot, String(_req.query.q ?? ""));
     res.json({
       success: true,
       data: payload,
     });
   };
+}
+
+export function readToolboxPageData(projectRoot: string, query = ""): ToolboxPageData {
+  ensureToolboxScaffold(projectRoot);
+  const primaryModel = loadPrimaryModel(projectRoot);
+  return buildToolboxListPayload(projectRoot, primaryModel, query);
+}
+
+export function updateToolboxWorkflowFromWorkspace(projectRoot: string, id: string, raw: string): boolean {
+  ensureToolboxScaffold(projectRoot);
+  const model = loadPrimaryModel(projectRoot);
+  const index = model.workflows.findIndex((item) => item.id === id);
+  if (index < 0) return false;
+  const patch = parseToolboxWorkspacePatch(raw);
+  const workflow = model.workflows[index];
+  model.workflows[index] = {
+    ...workflow,
+    title: patch.title ?? workflow.title,
+    summary: patch.summary ?? workflow.summary,
+    agentName: patch.agentName ?? workflow.agentName,
+    ratioLabel: patch.ratioLabel ?? workflow.ratioLabel,
+  };
+  savePrimaryModel(projectRoot, model);
+  return true;
+}
+
+export function updateToolboxAssetFromWorkspace(projectRoot: string, id: string, raw: string): boolean {
+  ensureToolboxScaffold(projectRoot);
+  const patch = parseToolboxWorkspacePatch(raw);
+  if (id.startsWith("legacy:")) return updateLegacyToolboxAsset(projectRoot, id.slice("legacy:".length), patch);
+  return updateManagedToolboxAsset(projectRoot, id, patch);
+}
+
+export function updateToolboxAssetBadge(projectRoot: string, id: string, badge: string): boolean {
+  ensureToolboxScaffold(projectRoot);
+  const model = loadPrimaryModel(projectRoot);
+  const index = model.assets.findIndex((item) => item.id === id);
+  if (index >= 0) {
+    model.assets[index] = { ...model.assets[index], badge };
+    savePrimaryModel(projectRoot, model);
+    return true;
+  }
+  const legacyRecord = readLegacyToolboxAsset(projectRoot, id);
+  if (!legacyRecord) return false;
+  savePrimaryModel(projectRoot, {
+    ...model,
+    assets: [{ ...legacyRecord, badge }, ...model.assets],
+  });
+  return true;
+}
+
+export function upsertToolboxCandidateAsset(projectRoot: string, input: ToolboxCandidateAssetInput): ToolboxAssetRecord {
+  ensureToolboxScaffold(projectRoot);
+  const model = loadPrimaryModel(projectRoot);
+  const existing = model.assets.find((item) => item.id === input.id);
+  const record: ToolboxAssetRecord = {
+    id: input.id,
+    entityType: "asset",
+    title: input.title,
+    summary: input.summary,
+    category: "软件",
+      badge: "待验证",
+    href: input.href,
+    source: existing?.source ?? { type: "managed" },
+  };
+  const assets = existing
+    ? model.assets.map((item) => (item.id === input.id ? { ...item, ...record } : item))
+    : [record, ...model.assets];
+  savePrimaryModel(projectRoot, { ...model, assets });
+  return record;
 }
 
 export function handleToolboxCreate(cfg: ServerConfig) {
@@ -257,7 +342,7 @@ export function handleToolboxDelete(cfg: ServerConfig) {
   };
 }
 
-function buildToolboxListPayload(projectRoot: string, primaryModel: ToolboxPrimaryModel, query: string): ToolboxListPayload {
+function buildToolboxListPayload(projectRoot: string, primaryModel: ToolboxPrimaryModel, query: string): ToolboxPageData {
   const legacyItems = listLegacyToolboxItems(projectRoot);
   const assets = filterAssets(
     mergeLegacyAssets(primaryModel.assets, legacyItems),
@@ -338,6 +423,14 @@ function toLegacyAssetRecord(item: LegacyToolboxItemRecord): ToolboxAssetRecord 
       path: item.path,
     },
   };
+}
+
+function readLegacyToolboxAsset(projectRoot: string, id: string): ToolboxAssetRecord | null {
+  if (!id.startsWith("legacy:")) return null;
+  const relativePath = id.slice("legacy:".length);
+  const fullPath = path.join(projectRoot, relativePath);
+  if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) return null;
+  return toLegacyAssetRecord(readLegacyToolboxItem(projectRoot, relativePath));
 }
 
 function mapLegacyKindToAssetCategory(kind: LegacyToolboxKind): string {
@@ -624,6 +717,63 @@ function normalizeAssetSource(sourceInput: Record<string, unknown>): ToolboxAsse
     type: sourceInput.type === "legacy-markdown" ? "legacy-markdown" : "managed",
     path: typeof sourceInput.path === "string" ? sourceInput.path : undefined,
   };
+}
+
+function updateManagedToolboxAsset(projectRoot: string, id: string, patch: ToolboxWorkspacePatch): boolean {
+  const model = loadPrimaryModel(projectRoot);
+  const index = model.assets.findIndex((item) => item.id === id);
+  if (index < 0) return false;
+  const asset = model.assets[index];
+  model.assets[index] = {
+    ...asset,
+    title: patch.title ?? asset.title,
+    summary: patch.summary ?? asset.summary,
+    category: patch.category ?? asset.category,
+    badge: patch.badge ?? patch.category ?? asset.badge,
+    href: patch.href ?? asset.href,
+  };
+  savePrimaryModel(projectRoot, model);
+  return true;
+}
+
+function updateLegacyToolboxAsset(projectRoot: string, relativePath: string, patch: ToolboxWorkspacePatch): boolean {
+  const fullPath = path.join(projectRoot, relativePath);
+  if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) return false;
+  const current = readLegacyToolboxItem(projectRoot, relativePath);
+  const kind = normalizeLegacyKind(patch.category ?? current.kind) ?? current.kind;
+  const next = stringifyLegacyToolboxItem({
+    kind,
+    title: patch.title ?? current.title,
+    solves: patch.summary ?? current.solves,
+    url: patch.href ?? current.url,
+    tags: current.tags,
+    body: current.body,
+  });
+  fs.writeFileSync(fullPath, next, "utf-8");
+  return true;
+}
+
+function parseToolboxWorkspacePatch(raw: string): ToolboxWorkspacePatch {
+  return {
+    title: readMarkdownTitle(raw),
+    summary: readLineValue(raw, "摘要"),
+    category: readLineValue(raw, "分类"),
+    href: readLineValue(raw, "链接"),
+    badge: readLineValue(raw, "标记"),
+    agentName: readLineValue(raw, "Agent"),
+    ratioLabel: readLineValue(raw, "比例"),
+  };
+}
+
+function readMarkdownTitle(raw: string): string | undefined {
+  const title = /^#\s+(.+)$/mu.exec(raw)?.[1]?.trim();
+  return title || undefined;
+}
+
+function readLineValue(raw: string, label: string): string | undefined {
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  const value = new RegExp(`^${escaped}[:：]\\s*(.+)$`, "mu").exec(raw)?.[1]?.trim();
+  return value || undefined;
 }
 
 function ensureLegacyToolboxFile(

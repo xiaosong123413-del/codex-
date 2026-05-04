@@ -1,7 +1,9 @@
-import { renderWorkspacePanel } from "../../components/workspace-panel.js";
+import { showRunProgress, type RunProgressHandle } from "../../run-progress.js";
 
 type ReviewKind = "deep-research" | "run" | "state" | "inbox" | "flash-diary-failure" | "xhs-sync-failure";
 type ReviewSeverity = "info" | "suggest" | "warn" | "error";
+type ReviewRunKind = "check" | "sync";
+type ReviewRunStatus = "running" | "succeeded" | "failed" | "stopped";
 type DeepResearchCategory = "outdated-source" | "missing-citation" | "needs-deep-research" | "suggestion";
 type DeepResearchScope = "claim" | "page";
 type DeepResearchStatus = "pending" | "running" | "confirming-write" | "done-await-confirm" | "failed" | "ignored" | "completed";
@@ -47,6 +49,12 @@ interface ReviewStateInfo {
   suspiciousFrozenSlugs: string[];
 }
 
+interface ReviewRunInfo {
+  kind: ReviewRunKind;
+  status: ReviewRunStatus;
+  exitCode?: number | null;
+}
+
 interface ReviewItem {
   id: string;
   kind: ReviewKind;
@@ -57,6 +65,7 @@ interface ReviewItem {
   target?: string;
   deepResearch?: DeepResearchReviewData;
   stateInfo?: ReviewStateInfo;
+  run?: ReviewRunInfo;
 }
 
 interface ReviewSummary {
@@ -95,6 +104,16 @@ interface BulkConfirmResponse {
   confirmed: number;
   failed: number;
   skipped: number;
+}
+
+interface RunSnapshot {
+  id: string;
+  kind: ReviewRunKind;
+  status: ReviewRunStatus;
+}
+
+interface RunStatusEvent {
+  run?: RunSnapshot;
 }
 
 interface ChatThreadMessage {
@@ -165,12 +184,9 @@ export function renderReviewPage(): HTMLElement {
           </div>
         </section>
       </main>
-      <aside class="review-page__workspace" data-review-workspace></aside>
+      <aside class="review-page__workspace" data-review-workspace hidden></aside>
     </div>
   `;
-  const workspace = root.querySelector<HTMLElement>("[data-review-workspace]")!;
-  workspace.dataset.reviewPane = "workspace";
-  workspace.appendChild(renderWorkspacePanel());
   bindReviewPage(root);
   return root;
 }
@@ -182,9 +198,7 @@ export function renderReviewItems(root: HTMLElement, items: ReviewItem[]): void 
   state.selectedIds = new Set(
     [...state.selectedIds].filter((id) => state.items.some((item) => item.id === id && isReviewItemDeletable(item))),
   );
-  if (state.activeItemId && !state.items.some((item) => item.id === state.activeItemId && isWorkspaceDetailItem(item))) {
-    state.activeItemId = null;
-  }
+  state.activeItemId = resolveReviewActiveItemId(state.items, state.activeItemId);
   renderReviewState(root);
 }
 
@@ -299,6 +313,13 @@ function handleReviewToolbarClick(root: HTMLElement, target: HTMLElement, event:
 }
 
 function handleReviewItemClick(root: HTMLElement, target: HTMLElement, event: Event): boolean {
+  const autofixButton = target.closest<HTMLButtonElement>("[data-run-autofix-check]");
+  if (autofixButton) {
+    event.preventDefault();
+    void startSystemCheckAutofix(root, autofixButton);
+    return true;
+  }
+
   const confirmButton = target.closest<HTMLButtonElement>("[data-review-confirm]");
   if (confirmButton?.dataset.reviewConfirm) {
     event.preventDefault();
@@ -324,6 +345,10 @@ function handleReviewItemClick(root: HTMLElement, target: HTMLElement, event: Ev
 }
 
 function handleReviewWorkspaceOpenClick(root: HTMLElement, target: HTMLElement, event: Event): boolean {
+  if (target.closest("[data-inbox-guide],[data-inbox-batch],[data-flash-diary-retry]")) {
+    return false;
+  }
+
   const openCard = target.closest<HTMLElement>("[data-review-open]");
   if (!openCard?.dataset.reviewOpen) {
     return false;
@@ -461,9 +486,9 @@ function renderReviewCard(item: ReviewItem, selected: boolean, active: boolean):
     return renderDeepResearchCard(item, active);
   }
   const sections = getReviewCardSections(item);
-  const openable = isStateDetailItem(item);
+  const openable = isWorkspaceDetailItem(item);
   return `
-    <article class="review-card severity-${item.severity}${openable ? ` review-card--state-detail${active ? " is-active" : ""}` : ""}" ${openable ? `data-review-open="${escapeHtml(item.id)}"` : ""}>
+    <article class="review-card severity-${item.severity}${openable ? ` review-card--workspace-detail${active ? " is-active" : ""}` : ""}" ${openable ? `data-review-open="${escapeHtml(item.id)}"` : ""}>
       <div class="review-card__topline">
         <div class="review-card__tags">
           ${renderReviewSelection(item, selected)}
@@ -527,6 +552,13 @@ function renderReviewSelection(item: ReviewItem, selected: boolean): string {
 }
 
 function renderReviewActions(item: ReviewItem): string {
+  if (isSystemCheckRunItem(item)) {
+    return `
+      <div class="review-card__actions">
+        <button type="button" class="btn btn-primary btn-inline" data-run-autofix-check>自动补齐双链</button>
+      </div>
+    `;
+  }
   if (item.kind === "flash-diary-failure") {
     return `
       <div class="review-card__actions">
@@ -632,32 +664,45 @@ function renderReviewPagination(currentPage: number, pageCount: number): string 
 }
 
 function renderWorkspaceRail(root: HTMLElement): void {
-  const workspace = root.querySelector<HTMLElement>("[data-review-workspace]")!;
+  const workspace = root.querySelector<HTMLElement>("[data-review-workspace]");
+  if (!workspace) {
+    return;
+  }
   const state = getReviewPageState(root);
   if (state.guidedIngest) {
-    workspace.dataset.reviewPane = "guided-ingest";
-    workspace.innerHTML = renderGuidedIngestWorkspace(state.guidedIngest);
+    showReviewWorkspace(root, workspace, "guided-ingest", renderGuidedIngestWorkspace(state.guidedIngest));
     return;
   }
   const activeItem = state.activeItemId
     ? state.items.find((item) => item.id === state.activeItemId)
     : null;
   if (activeItem && isDeepResearchItem(activeItem)) {
-    workspace.dataset.reviewPane = "detail";
-    workspace.innerHTML = renderDeepResearchDetail(activeItem);
+    showReviewWorkspace(root, workspace, "detail", renderDeepResearchDetail(activeItem));
     return;
   }
   if (activeItem && isStateDetailItem(activeItem)) {
-    workspace.dataset.reviewPane = "detail";
-    workspace.innerHTML = renderStateDetail(activeItem);
+    showReviewWorkspace(root, workspace, "detail", renderStateDetail(activeItem));
     return;
   }
-  if (workspace.dataset.reviewPane === "workspace") {
+  if (isInboxDetailItem(activeItem)) {
+    showReviewWorkspace(root, workspace, "detail", renderInboxDetail(activeItem));
     return;
   }
-  workspace.dataset.reviewPane = "workspace";
+  hideReviewWorkspace(root, workspace);
+}
+
+function showReviewWorkspace(root: HTMLElement, workspace: HTMLElement, pane: string, markup: string): void {
+  root.classList.add("review-page--workspace-open");
+  workspace.hidden = false;
+  workspace.dataset.reviewPane = pane;
+  workspace.innerHTML = markup;
+}
+
+function hideReviewWorkspace(root: HTMLElement, workspace: HTMLElement): void {
+  root.classList.remove("review-page--workspace-open");
+  workspace.hidden = true;
+  workspace.dataset.reviewPane = "idle";
   workspace.innerHTML = "";
-  workspace.appendChild(renderWorkspacePanel());
 }
 
 function renderGuidedIngestWorkspace(workspaceState: GuidedIngestWorkspaceState): string {
@@ -839,6 +884,45 @@ function renderStateDetail(item: ReviewItem & { stateInfo: ReviewStateInfo }): s
   `;
 }
 
+function renderInboxDetail(item: ReviewItem): string {
+  const sections = getReviewCardSections(item);
+  return `
+    <div class="review-detail-panel" data-review-detail-panel>
+      <div class="review-detail__header">
+        <div>
+          <div class="eyebrow">INBOX MATERIAL</div>
+          <h2>${escapeHtml(item.title)}</h2>
+          <p class="review-detail__subcopy">${escapeHtml(sections.problemSummary)}</p>
+        </div>
+        <span class="review-card__severity">${escapeHtml(formatSeverity(item.severity))}</span>
+      </div>
+      <div class="review-detail__body">
+        <section class="review-detail__section">
+          <div class="review-detail__section-head">
+            <strong>来源路径</strong>
+          </div>
+          <p class="review-detail__value">${escapeHtml(item.target ?? "未提供")}</p>
+        </section>
+        <section class="review-detail__section">
+          <div class="review-detail__section-head">
+            <strong>问题</strong>
+          </div>
+          <p class="review-detail__value">${escapeHtml(sections.problem)}</p>
+        </section>
+        <section class="review-detail__section">
+          <div class="review-detail__section-head">
+            <strong>下一步建议</strong>
+          </div>
+          <p class="review-detail__value">${escapeHtml(sections.nextStep)}</p>
+        </section>
+      </div>
+      <footer class="review-detail__actions">
+        ${renderReviewActions(item)}
+      </footer>
+    </div>
+  `;
+}
+
 function getReviewCardSections(item: ReviewItem): ReviewCardSections {
   const detail = item.detail || "无详细说明";
   switch (item.kind) {
@@ -917,6 +1001,16 @@ function parseReviewFailureDetail(detail: string): { fullProblem: string; visibl
     fullProblem: sourceLine ? `${errorLine} 链接：${sourceLine}` : errorLine,
     visibleProblem: errorLine,
   };
+}
+
+function resolveReviewActiveItemId(items: readonly ReviewItem[], activeItemId: string | null): string | null {
+  if (activeItemId && items.some((item) => item.id === activeItemId && isWorkspaceDetailItem(item))) {
+    return activeItemId;
+  }
+  if (items.length !== 1 || !isInboxDetailItem(items[0]!)) {
+    return null;
+  }
+  return items[0]!.id;
 }
 
 function getReviewPageState(root: HTMLElement): ReviewPageState {
@@ -1529,6 +1623,76 @@ function setReviewStatus(root: HTMLElement, message: string, tone: "info" | "err
   status.textContent = message;
 }
 
+async function startSystemCheckAutofix(root: HTMLElement, button: HTMLButtonElement): Promise<void> {
+  const originalText = button.textContent ?? "自动补齐双链";
+  const progress = showRunProgress({
+    key: "review-system-check-autofix",
+    title: "自动补齐双链",
+    message: "正在启动系统检查...",
+    percent: 1,
+  });
+  button.disabled = true;
+  button.textContent = "补齐中...";
+  setReviewStatus(root, "正在自动补齐双链并重新检查...");
+  try {
+    const run = await requestSystemCheckRun();
+    const completedRun = run.status === "running" ? await waitForRunCompletion(run, progress) : run;
+    settleSystemCheckAutofix(root, progress, completedRun);
+    await loadReview(root);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    progress.fail(`自动补齐失败：${message}`);
+    setReviewStatus(root, `自动补齐失败：${message}`, "error");
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
+async function requestSystemCheckRun(): Promise<RunSnapshot> {
+  const response = await fetch("/api/runs/check", { method: "POST" });
+  const payload = await readApiResponse<RunSnapshot>(response, "系统检查接口返回了无效内容。");
+  if (!response.ok || !payload.success || !payload.data) {
+    throw new Error(payload.error ?? "system check start failed");
+  }
+  return payload.data;
+}
+
+function waitForRunCompletion(run: RunSnapshot, progress: RunProgressHandle): Promise<RunSnapshot> {
+  progress.update("系统检查运行中...", 8);
+  return new Promise((resolve, reject) => {
+    const eventSource = new EventSource(`/api/runs/${encodeURIComponent(run.id)}/events`);
+    let settled = false;
+    const finish = (result: RunSnapshot | null, error?: Error): void => {
+      if (settled) return;
+      settled = true;
+      eventSource.close();
+      if (error) reject(error);
+      else resolve(result ?? run);
+    };
+    eventSource.addEventListener("status", (event) => {
+      try {
+        const payload = JSON.parse((event as MessageEvent).data) as RunStatusEvent;
+        if (!payload.run || payload.run.status === "running") return;
+        finish(payload.run);
+      } catch (error) {
+        finish(null, error instanceof Error ? error : new Error(String(error)));
+      }
+    });
+    eventSource.onerror = () => finish(null, new Error("运行进度连接中断"));
+  });
+}
+
+function settleSystemCheckAutofix(root: HTMLElement, progress: RunProgressHandle, run: RunSnapshot): void {
+  if (run.status === "succeeded") {
+    progress.complete("自动补齐完成，系统检查通过");
+    setReviewStatus(root, "自动补齐完成，系统检查通过。");
+    return;
+  }
+  progress.fail("已自动补齐，仍有检查项未通过");
+  setReviewStatus(root, "已运行自动补齐，仍有检查项未通过，已刷新列表。", "error");
+}
+
 async function readApiResponse<T>(response: Response, htmlFallbackMessage: string): Promise<ApiResponse<T>> {
   const raw = await response.text();
   try {
@@ -1706,8 +1870,16 @@ function isStateDetailItem(item: ReviewItem): item is ReviewItem & { stateInfo: 
   return item.kind === "state" && Boolean(item.stateInfo) && item.stateInfo.frozenSlugs.length > 0;
 }
 
+function isInboxDetailItem(item: ReviewItem | null | undefined): item is ReviewItem {
+  return item?.kind === "inbox";
+}
+
+function isSystemCheckRunItem(item: ReviewItem): boolean {
+  return item.kind === "run" && item.run?.kind === "check";
+}
+
 function isWorkspaceDetailItem(item: ReviewItem): boolean {
-  return isDeepResearchItem(item) || isStateDetailItem(item);
+  return isDeepResearchItem(item) || isStateDetailItem(item) || isInboxDetailItem(item);
 }
 
 function basename(value: string): string {

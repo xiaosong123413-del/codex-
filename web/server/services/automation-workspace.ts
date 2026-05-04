@@ -8,13 +8,23 @@
 
 import type { AutomationDefinition } from "./automation-config.js";
 import { readAutomationConfig } from "./automation-config.js";
-import type { AutomationFlow, AutomationFlowBranch, AutomationFlowEdge, AutomationFlowNode } from "./automation-flow.js";
+import type { AutomationFlowBranch, AutomationFlowEdge, AutomationFlowNode } from "./automation-flow.js";
 import { readAppConfig, type AppDefinition } from "./app-config.js";
+import { createDerivedAutomationFromApp } from "./app-derived-automation.js";
 import {
   listCodeDerivedAutomations,
   type CodeDerivedAutomationDefinition,
 } from "./code-derived-automations.js";
+import type {
+  CodeDerivedSourceInsight,
+  CodeDerivedSourceInsightNodeInsight,
+  CodeDerivedSourceInsightPotentialDestination,
+} from "./code-derived-automation-types.js";
 import { readLlmProviderConfig } from "./llm-config.js";
+import {
+  listAutomationPotentialDestinations,
+  type AutomationPotentialDestinationRecord,
+} from "./automation-source-insight-store.js";
 import {
   listAutomationWorkspaceComments,
   listAutomationWorkspaceLogs,
@@ -24,15 +34,14 @@ import {
   type AutomationWorkspaceLog,
 } from "./automation-workspace-store.js";
 
-const DERIVED_AUTOMATION_PREFIX = "app-workflow-";
-
-type AutomationSourceKind = "automation" | "app" | "code";
+type AutomationSourceKind = "automation" | "app" | "code" | "information";
 
 interface WorkspaceAutomation extends AutomationDefinition {
   sourceKind: AutomationSourceKind;
   viewMode: "flow";
   documentSteps: [];
   mermaid?: string;
+  sourceInsight?: CodeDerivedSourceInsight;
 }
 
 interface EffectiveAutomationModel {
@@ -56,6 +65,7 @@ interface AutomationWorkspaceDetail {
       branches: AutomationFlowBranch[];
     };
     mermaid?: string;
+    sourceInsight?: CodeDerivedSourceInsight;
   };
   comments: AutomationWorkspaceComment[];
   layout: AutomationWorkspaceLayout;
@@ -105,6 +115,7 @@ export async function readAutomationWorkspaceDetail(
         branches: automation.flow.branches,
       },
       ...(automation.mermaid ? { mermaid: automation.mermaid } : {}),
+      ...(automation.sourceInsight ? { sourceInsight: enrichSourceInsight(automation.sourceInsight, runtimeRoot, automation.id) } : {}),
     },
     comments: listAutomationWorkspaceComments(runtimeRoot, automationId),
     layout: readAutomationWorkspaceLayout(runtimeRoot, automationId),
@@ -128,13 +139,13 @@ async function listWorkspaceAutomations(projectRoot: string): Promise<WorkspaceA
     createWorkspaceAutomation(automation, "automation")
   ));
   const codeDerivedAutomations = (await listCodeDerivedAutomations(projectRoot)).map((automation) => (
-    createWorkspaceAutomation(automation, "code")
+    createWorkspaceAutomation(automation, automation.sourceKind ?? "code")
   ));
   const apps = readAppConfig(projectRoot).apps;
   const configuredAppIds = new Set(configuredAutomations.map((automation) => automation.appId));
   const derivedAppAutomations = apps
     .filter((app) => !configuredAppIds.has(app.id))
-    .map(createDerivedAutomationFromApp);
+    .map((app) => createWorkspaceAutomation(createDerivedAutomationFromApp(app), "app"));
   return [...configuredAutomations, ...codeDerivedAutomations, ...derivedAppAutomations];
 }
 
@@ -147,6 +158,185 @@ function createWorkspaceAutomation(
     sourceKind,
     viewMode: "flow",
     documentSteps: [],
+    ...(automation.sourceInsight ? { sourceInsight: automation.sourceInsight } : {}),
+  };
+}
+
+function enrichSourceInsight(
+  sourceInsight: CodeDerivedSourceInsight,
+  runtimeRoot: string,
+  automationId: string,
+): CodeDerivedSourceInsight {
+  const nodes = sourceInsight.graph.nodes.map((node, index) => ({
+    ...node,
+    displayId: node.displayId ?? createSpecNodeDisplayId(index),
+  }));
+  const nodeLookup = new Map(nodes.map((node) => [node.id, node]));
+  return {
+    ...sourceInsight,
+    graph: {
+      ...sourceInsight.graph,
+      nodes,
+      mermaid: sourceInsight.graph.preserveMermaid
+        ? sourceInsight.graph.mermaid
+        : buildSourceInsightSkeletonMermaid(nodes, sourceInsight.graph.edges),
+    },
+    nodeInsights: Object.fromEntries(Object.entries(sourceInsight.nodeInsights).map(([nodeId, insight]) => [
+      nodeId,
+      enrichSourceInsightNode(insight, runtimeRoot, automationId, nodeId, nodeLookup.get(nodeId)),
+    ])),
+    appendices: sourceInsight.appendices ?? createDefaultSourceInsightAppendices(sourceInsight),
+  };
+}
+
+function enrichSourceInsightNode(
+  insight: CodeDerivedSourceInsightNodeInsight,
+  runtimeRoot: string,
+  automationId: string,
+  nodeId: string,
+  node?: CodeDerivedSourceInsight["graph"]["nodes"][number],
+): CodeDerivedSourceInsightNodeInsight {
+  const storedPotentials = listAutomationPotentialDestinations(runtimeRoot, automationId, nodeId);
+  return {
+    ...insight,
+    specRows: insight.specRows ?? createDefaultSpecRows(insight, node),
+    potentialDestinations: [
+      ...(insight.potentialDestinations ?? []),
+      ...storedPotentials.map(toSourceInsightPotentialDestination),
+    ],
+  };
+}
+
+function createSpecNodeDisplayId(index: number): string {
+  const letterCode = "A".charCodeAt(0) + (index % 26);
+  const cycle = Math.floor(index / 26) + 1;
+  return `${String.fromCharCode(letterCode)}${cycle}`;
+}
+
+function buildSourceInsightSkeletonMermaid(
+  nodes: CodeDerivedSourceInsight["graph"]["nodes"],
+  edges: CodeDerivedSourceInsight["graph"]["edges"],
+): string {
+  const nodeLines = nodes.map((node) => renderSourceInsightSkeletonNode(node));
+  const edgeLines = edges.map((edge) => {
+    const label = edge.label ? `|${escapeMermaidLabel(edge.label)}|` : "";
+    return `    ${edge.source} -->${label} ${edge.target}`;
+  });
+  return [
+    "flowchart TD",
+    ...nodeLines,
+    ...edgeLines,
+  ].join("\n");
+}
+
+function renderSourceInsightSkeletonNode(node: CodeDerivedSourceInsight["graph"]["nodes"][number]): string {
+  const label = `${node.displayId ?? node.id} ${readShortSourceInsightLabel(node.label)}`;
+  const escapedLabel = `"${escapeMermaidLabel(label)}"`;
+  if (node.kind === "decision") {
+    return `    ${node.id}{${escapedLabel}}`;
+  }
+  return `    ${node.id}[${escapedLabel}]`;
+}
+
+function readShortSourceInsightLabel(label: string): string {
+  const normalized = label
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/^(触发|判断|输入|处理|结果)：/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized.length <= 18 ? normalized : `${normalized.slice(0, 17).trimEnd()}…`;
+}
+
+function escapeMermaidLabel(value: string): string {
+  return value.replace(/"/g, "&quot;").replace(/\|/g, "/");
+}
+
+function createDefaultSpecRows(
+  insight: CodeDerivedSourceInsightNodeInsight,
+  node?: CodeDerivedSourceInsight["graph"]["nodes"][number],
+): Array<{ label: string; value: string }> {
+  return [
+    { label: "作用", value: insight.summary },
+    { label: "输入", value: insight.upstream.join(" / ") || "无" },
+    { label: "输出", value: insight.downstream.join(" / ") || "无" },
+    { label: "标准", value: createDefaultNodeStandard(node) },
+    { label: "源码", value: insight.sourcePaths.join(" / ") || "无" },
+  ];
+}
+
+function createDefaultNodeStandard(node?: CodeDerivedSourceInsight["graph"]["nodes"][number]): string {
+  switch (node?.kind) {
+    case "trigger":
+      return "只描述真实触发入口，不把后续处理细节塞进节点。";
+    case "decision":
+      return "只描述分支判断，具体阈值和规则放到规则附录。";
+    case "input":
+      return "只标明读取来源，字段和文件结构放到 Schema 附录。";
+    case "process":
+      return "只描述处理动作，prompt 和实现细节放到右侧说明或附录。";
+    case "result":
+      return "只标明最终落点，不把上游过程重复写进节点。";
+    default:
+      return "图上只保留骨架，细节统一放到节点说明与附录。";
+  }
+}
+
+function createDefaultSourceInsightAppendices(
+  sourceInsight: CodeDerivedSourceInsight,
+): NonNullable<CodeDerivedSourceInsight["appendices"]> {
+  return [
+    {
+      id: "prompt",
+      title: "Prompt 附录",
+      content: [
+        "这类源码真实流程通常不等于单一 Prompt。",
+        "阅读方式：先点左侧节点，再在节点说明中查看作用、输入、输出、标准和源码位置。",
+        "如果某个节点确实调用 AI Prompt，应在该节点的 specRows 或本附录里单独写明。",
+      ].join("\n"),
+    },
+    {
+      id: "schema",
+      title: "Schema 附录",
+      content: JSON.stringify({
+        page: sourceInsight.page,
+        node: {
+          displayId: "A1/B1/C1",
+          id: "源码节点 id",
+          kind: "trigger|decision|input|process|result",
+          label: "短节点名",
+        },
+        edge: {
+          source: "上游节点 id",
+          target: "下游节点 id",
+          label: "可选流转说明",
+        },
+      }, null, 2),
+    },
+    {
+      id: "rules",
+      title: "规则附录",
+      content: [
+        "1. Mermaid 主图只展示主骨架和节点编号。",
+        "2. 节点标准、字段、prompt、异常和源码位置不写在图里。",
+        "3. 点击节点后，右侧节点说明必须能解释该节点的作用、输入、输出和标准。",
+        "4. 信息流转流程描述信息从输入到产物的转移；源码真实流程描述按钮、接口、函数和文件写入的真实反应链。",
+      ].join("\n"),
+    },
+  ];
+}
+
+function toSourceInsightPotentialDestination(
+  record: AutomationPotentialDestinationRecord,
+): CodeDerivedSourceInsightPotentialDestination {
+  return {
+    id: record.id,
+    automationId: record.automationId,
+    nodeId: record.nodeId,
+    label: record.label,
+    intendedOutcome: record.intendedOutcome,
+    note: record.note,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
   };
 }
 
@@ -260,120 +450,4 @@ function uniqueApps(
     result.push(node.app);
   }
   return result;
-}
-
-function createDerivedAutomationFromApp(app: AppDefinition): WorkspaceAutomation {
-  const id = `${DERIVED_AUTOMATION_PREFIX}${app.id}`;
-  const summary = summarizeAutomationPurpose(app);
-  return createWorkspaceAutomation({
-    id,
-    name: app.name,
-    summary,
-    icon: iconForAppMode(app.mode),
-    trigger: "message",
-    appId: app.id,
-    enabled: app.enabled,
-    schedule: "",
-    webhookPath: "",
-    updatedAt: app.updatedAt,
-    flow: createDerivedFlow(app, id, summary),
-  }, "app");
-}
-
-function summarizeAutomationPurpose(app: AppDefinition): string {
-  return app.purpose.trim() || `查看 ${app.name} 的自动化工作流。`;
-}
-
-function iconForAppMode(mode: AppDefinition["mode"]): string {
-  switch (mode) {
-    case "workflow":
-      return "git-branch";
-    case "knowledge":
-      return "book-open";
-    case "hybrid":
-      return "sparkles";
-    default:
-      return "bot";
-  }
-}
-
-function createDerivedFlow(app: AppDefinition, automationId: string, summary: string): AutomationFlow {
-  const triggerId = `trigger-${automationId}`;
-  const workflowSteps = parseWorkflowSteps(app);
-  const nodes: AutomationFlowNode[] = [
-    {
-      id: triggerId,
-      type: "trigger",
-      title: triggerTitleForApp(app),
-      description: summary,
-      modelMode: "default",
-    },
-    ...workflowSteps.map((step, index) => createDerivedActionNode(app, automationId, step, index)),
-  ];
-  return {
-    nodes,
-    edges: createDerivedEdges(nodes),
-    branches: [],
-  };
-}
-
-function parseWorkflowSteps(app: AppDefinition): string[] {
-  const steps = normalizeMultilineText(app.workflow)
-    .split(/\r?\n/)
-    .map((step) => step.trim())
-    .filter(Boolean);
-  return steps.length > 0 ? steps : [`执行 ${app.name}`];
-}
-
-function triggerTitleForApp(app: AppDefinition): string {
-  return app.mode === "workflow" ? "工作流触发" : "调用应用时触发";
-}
-
-function createDerivedActionNode(
-  app: AppDefinition,
-  automationId: string,
-  step: string,
-  index: number,
-): AutomationFlowNode {
-  return {
-    id: `action-${automationId}-${index + 1}`,
-    type: "action",
-    title: step,
-    description: describeDerivedAction(app, index),
-    appId: app.id,
-    modelMode: "default",
-  };
-}
-
-function describeDerivedAction(app: AppDefinition, index: number): string {
-  if (index === 0 && app.prompt.trim()) {
-    return `应用 ${app.name} · ${summarizePrompt(app.prompt)}`;
-  }
-  return `应用 ${app.name} 的内置工作流步骤。`;
-}
-
-function summarizePrompt(prompt: string): string {
-  const normalized = normalizeMultilineText(prompt).replace(/\s+/g, " ").trim();
-  return normalized.length > 80 ? `${normalized.slice(0, 77)}...` : normalized;
-}
-
-function normalizeMultilineText(value: string): string {
-  return value.replace(/\\n/g, "\n");
-}
-
-function createDerivedEdges(nodes: AutomationFlowNode[]): AutomationFlowEdge[] {
-  const edges: AutomationFlowEdge[] = [];
-  for (let index = 1; index < nodes.length; index += 1) {
-    const source = nodes[index - 1];
-    const target = nodes[index];
-    if (!source || !target) {
-      continue;
-    }
-    edges.push({
-      id: `edge-${source.id}-${target.id}`,
-      source: source.id,
-      target: target.id,
-    });
-  }
-  return edges;
 }

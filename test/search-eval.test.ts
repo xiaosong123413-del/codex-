@@ -28,7 +28,6 @@ describe("search eval", () => {
 
     expect(qrelsDocIds.some((id) => documentById.get(id)?.path.startsWith("wiki/concepts/"))).toBe(true);
     expect(qrelsDocIds.some((id) => documentById.get(id)?.path.startsWith("wiki/procedures/"))).toBe(true);
-    expect(qrelsDocIds.some((id) => documentById.get(id)?.path.startsWith("wiki/episodes/"))).toBe(true);
     expect(qrelsDocIds.some((id) => documentById.get(id)?.path.startsWith("sources_full/"))).toBe(true);
     expect(queriesData.documents.some((document) => document.path.startsWith("raw/"))).toBe(true);
     expect(queriesData.queries.some((query) => String(query.query).toLowerCase().includes("incident"))).toBe(true);
@@ -71,7 +70,6 @@ describe("search eval", () => {
 
     expect(benchmarkQrelDocIds.some((id) => (benchmarkDocumentById.get(id) as { path?: string } | undefined)?.path?.startsWith("wiki/concepts/"))).toBe(true);
     expect(benchmarkQrelDocIds.some((id) => (benchmarkDocumentById.get(id) as { path?: string } | undefined)?.path?.startsWith("wiki/procedures/"))).toBe(true);
-    expect(benchmarkQrelDocIds.some((id) => (benchmarkDocumentById.get(id) as { path?: string } | undefined)?.path?.startsWith("wiki/episodes/"))).toBe(true);
     expect(benchmarkQrelDocIds.some((id) => (benchmarkDocumentById.get(id) as { path?: string } | undefined)?.path?.startsWith("sources_full/"))).toBe(true);
     expect(benchmarkQueriesData.documents.some((document: { path: string }) => document.path.startsWith("raw/"))).toBe(true);
   });

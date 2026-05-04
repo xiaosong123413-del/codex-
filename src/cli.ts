@@ -96,41 +96,42 @@ program
 const PROVIDER_KEY_VARS: Record<string, string | null> = {
   anthropic: "ANTHROPIC_API_KEY",
   cloudflare: null,
+  gemini: "GOOGLE_API_KEY",
   openai: "OPENAI_API_KEY",
   ollama: null,
   minimax: "MINIMAX_API_KEY",
 };
 
-/** Exit with a helpful message if the selected provider's API key is missing. */
-function requireProvider(): void {
-  const provider = process.env.LLMWIKI_PROVIDER ?? DEFAULT_PROVIDER;
-
-  if (provider === "anthropic") {
-    const auth = resolveAnthropicAuthFromEnv();
-    if (!auth.apiKey && !auth.authToken) {
-      console.error(
-        `\x1b[31mError:\x1b[0m Anthropic credentials are required for the "anthropic" provider.\n` +
-          `  Set one of: export ANTHROPIC_API_KEY=<your-key> OR export ANTHROPIC_AUTH_TOKEN=<your-token>`,
-      );
-      process.exit(1);
-    }
-    return;
+/** Exit if Anthropic credentials are not configured. */
+function requireAnthropicCredentials(): void {
+  const auth = resolveAnthropicAuthFromEnv();
+  if (!auth.apiKey && !auth.authToken) {
+    console.error(
+      `\x1b[31mError:\x1b[0m Anthropic credentials are required for the "anthropic" provider.\n` +
+        `  Set one of: export ANTHROPIC_API_KEY=<your-key> OR export ANTHROPIC_AUTH_TOKEN=<your-token>`,
+    );
+    process.exit(1);
   }
+}
 
-  if (provider === "cloudflare") {
-    const cfg = readCloudflareServicesConfig();
-    const hasWorkerConfig = Boolean(cfg.workerUrl && cfg.remoteToken);
-    const hasDirectAiConfig = Boolean(cfg.accountId && cfg.apiToken);
-    if (!hasWorkerConfig && !hasDirectAiConfig) {
-      console.error(
-        `\x1b[31mError:\x1b[0m Cloudflare credentials are required for the "cloudflare" provider.\n` +
-          "  Set CLOUDFLARE_WORKER_URL and CLOUDFLARE_REMOTE_TOKEN, or CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN.",
-      );
-      process.exit(1);
-    }
-    return;
+/** Exit if Cloudflare credentials are not configured. */
+function requireCloudflareCredentials(): void {
+  const cfg = readCloudflareServicesConfig();
+  if (!hasCloudflareCredentials(cfg)) {
+    console.error(
+      `\x1b[31mError:\x1b[0m Cloudflare credentials are required for the "cloudflare" provider.\n` +
+        "  Set CLOUDFLARE_WORKER_URL and CLOUDFLARE_REMOTE_TOKEN, or CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN.",
+    );
+    process.exit(1);
   }
+}
 
+function hasCloudflareCredentials(cfg: ReturnType<typeof readCloudflareServicesConfig>): boolean {
+  return Boolean((cfg.workerUrl && cfg.remoteToken) || (cfg.accountId && cfg.apiToken));
+}
+
+/** Exit if the named provider is unknown or its API key env var is missing. */
+function requireGenericProviderKey(provider: string): void {
   const keyVar = PROVIDER_KEY_VARS[provider];
 
   if (keyVar === undefined) {
@@ -148,6 +149,20 @@ function requireProvider(): void {
     );
     process.exit(1);
   }
+}
+
+/** Exit with a helpful message if the selected provider's API key is missing. */
+function requireProvider(): void {
+  const provider = process.env.LLMWIKI_PROVIDER ?? DEFAULT_PROVIDER;
+  if (provider === "anthropic") {
+    requireAnthropicCredentials();
+    return;
+  }
+  if (provider === "cloudflare") {
+    requireCloudflareCredentials();
+    return;
+  }
+  requireGenericProviderKey(provider);
 }
 
 program.parse();

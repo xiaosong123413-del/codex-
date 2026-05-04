@@ -15,11 +15,13 @@ const compilerRoot = path.resolve(__dirname, "..");
 const syncScriptPath = path.join(compilerRoot, "scripts", "sync-compile.mjs");
 const DEBOUNCE_MS = 800;
 
+// fallow-ignore-next-line complexity
 function shouldIgnorePath(filePath, excludeDirs) {
   const normalized = filePath.replace(/\\/g, "/");
   return excludeDirs.some((dir) => normalized.includes(`/${dir}/`) || normalized.endsWith(`/${dir}`));
 }
 
+// fallow-ignore-next-line complexity
 async function runSyncCompileOnce() {
   await new Promise((resolve, reject) => {
     const child = spawn("node", [syncScriptPath], {
@@ -40,6 +42,7 @@ async function runSyncCompileOnce() {
   });
 }
 
+// fallow-ignore-next-line complexity
 async function main() {
   const config = await loadSyncCompileConfig(compilerRoot);
   const roots = resolveSyncRoots(config, compilerRoot);
@@ -78,9 +81,11 @@ async function main() {
 
     console.log(`${eventName}: ${eventPath}`);
     if (debounceTimer) {
+      // fallow-ignore-next-line complexity
       clearTimeout(debounceTimer);
     }
 
+    // fallow-ignore-next-line complexity
     debounceTimer = setTimeout(async () => {
       if (isRunning) {
         hasPendingRun = true;

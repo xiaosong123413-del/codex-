@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "llmwiki": {
+      "command": "node",
+      "args": ["D:/Desktop/llm-wiki-compiler-main/dist/mcp-server.js"],
+      "env": {}
+    }
+  }
+}

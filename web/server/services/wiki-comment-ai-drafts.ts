@@ -224,6 +224,7 @@ function readStore(runtimeRoot: string): WikiCommentAiDraftStore {
   }
 }
 
+// fallow-ignore-next-line complexity
 function normalizeDraft(value: unknown): WikiCommentAiDraftRecord | null {
   if (!value || typeof value !== "object") {
     return null;

@@ -14,6 +14,8 @@ import {
   toSurfacePoint,
   type MermaidTargetAnchor,
 } from "./mermaid-comments.js";
+import { disposeAutomationMermaidViewport } from "./mermaid-viewport.js";
+import { appendAutomationApiConsumptionFlow } from "./mermaid-api-flow.js";
 import { renderMermaidSvg } from "./mermaid-runtime.js";
 
 type MermaidAutomation = AutomationDetailResponse["automation"];
@@ -30,15 +32,22 @@ export interface RenderedMermaidSurface {
   svg: SVGSVGElement;
   anchors: MermaidTargetAnchor[];
   pinsHost: HTMLElement;
+  viewport: HTMLElement;
+  frame: HTMLElement;
   surface: HTMLElement;
+  zoomLabel: HTMLElement | null;
+  zoomInButton: HTMLButtonElement | null;
+  zoomOutButton: HTMLButtonElement | null;
+  zoomFitButton: HTMLButtonElement | null;
+  commentToggleButton: HTMLButtonElement | null;
 }
 
-export interface MermaidPinDragPosition {
+interface MermaidPinDragPosition {
   x: number;
   y: number;
 }
 
-export interface MermaidPinDragHandlers {
+interface MermaidPinDragHandlers {
   onMoveComment: (commentId: string, position: MermaidPinDragPosition) => Promise<void>;
 }
 
@@ -47,6 +56,7 @@ export async function renderAutomationMermaidView(
   automation: MermaidAutomation,
 ): Promise<RenderedMermaidSurface | null> {
   disposeCommentPinDrag(host as MermaidHostElement);
+  disposeAutomationMermaidViewport(host);
   const key = `${automation.id}:${Date.now()}`;
   host.dataset.automationMermaidKey = key;
   host.innerHTML = `<div class="automation-detail__mermaid-loading">正在渲染流程图...</div>`;
@@ -57,10 +67,21 @@ export async function renderAutomationMermaidView(
     }
     host.innerHTML = `
       <div class="automation-detail__mermaid-diagram" data-automation-mermaid-diagram>
-        <div class="automation-detail__mermaid-surface" data-automation-mermaid-surface>
-          ${svg}
-          <div class="automation-detail__comment-pins" data-automation-comment-pins></div>
-          <button type="button" class="automation-detail__canvas-target" data-automation-canvas-target hidden></button>
+        <div class="automation-detail__mermaid-toolbar" data-automation-mermaid-toolbar>
+          <div class="automation-detail__mermaid-zoom-controls">
+            <button type="button" class="btn btn-secondary" data-automation-zoom="out" aria-label="缩小流程图">-</button>
+            <span class="automation-detail__mermaid-zoom-label" data-automation-zoom-label>100%</span>
+            <button type="button" class="btn btn-secondary" data-automation-zoom="in" aria-label="放大流程图">+</button>
+            <button type="button" class="btn btn-secondary" data-automation-zoom="fit">适应</button>
+          </div>
+        </div>
+        <div class="automation-detail__mermaid-viewport" data-automation-mermaid-viewport>
+          <div class="automation-detail__mermaid-frame" data-automation-mermaid-frame>
+            <div class="automation-detail__mermaid-surface" data-automation-mermaid-surface>
+              ${svg}
+              <div class="automation-detail__comment-pins" data-automation-comment-pins></div>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -75,17 +96,26 @@ export async function renderAutomationMermaidView(
 }
 
 function getRenderedMermaidSurface(host: HTMLElement): RenderedMermaidSurface | null {
+  const viewport = host.querySelector<HTMLElement>("[data-automation-mermaid-viewport]");
+  const frame = host.querySelector<HTMLElement>("[data-automation-mermaid-frame]");
   const surface = host.querySelector<HTMLElement>("[data-automation-mermaid-surface]");
   const svg = surface?.querySelector<SVGSVGElement>("svg");
   const pinsHost = host.querySelector<HTMLElement>("[data-automation-comment-pins]");
-  if (!surface || !svg || !pinsHost) {
+  if (!viewport || !frame || !surface || !svg || !pinsHost) {
     return null;
   }
   return {
     svg,
     anchors: collectMermaidTargetAnchors(svg),
     pinsHost,
+    viewport,
+    frame,
     surface,
+    zoomLabel: host.querySelector<HTMLElement>("[data-automation-zoom-label]"),
+    zoomInButton: host.querySelector<HTMLButtonElement>("[data-automation-zoom=\"in\"]"),
+    zoomOutButton: host.querySelector<HTMLButtonElement>("[data-automation-zoom=\"out\"]"),
+    zoomFitButton: host.querySelector<HTMLButtonElement>("[data-automation-zoom=\"fit\"]"),
+    commentToggleButton: host.querySelector<HTMLButtonElement>("[data-automation-comment-toggle]"),
   };
 }
 
@@ -238,16 +268,16 @@ function readPinCoordinate(value: string): number {
 }
 
 function buildAutomationMermaidDiagram(automation: MermaidAutomation): string {
-  const customMermaid = normalizeCustomMermaid(automation.mermaid);
+  const customMermaid = normalizeCustomMermaid(automation.sourceInsight?.graph.mermaid ?? automation.mermaid);
   if (customMermaid) {
-    return customMermaid;
+    return appendAutomationApiConsumptionFlow(customMermaid, automation);
   }
-  return [
+  return appendAutomationApiConsumptionFlow([
     COMPACT_MERMAID_INIT,
     "flowchart TD",
     ...automation.flow.nodes.map(renderMermaidNode),
     ...renderMermaidEdges(automation),
-  ].filter(Boolean).join("\n");
+  ].filter(Boolean).join("\n"), automation);
 }
 
 function createMermaidRenderId(automationId: string): string {

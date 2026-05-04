@@ -194,9 +194,102 @@ describe("Cloudflare Remote Brain Worker routes", () => {
     ]);
   });
 
+  it("removes a mobile chat source from the stored chat", async () => {
+    const dbHarness = createDbHarness(async (sql) => {
+      if (sql.includes("FROM mobile_chats WHERE id = ? AND owner_uid = ?")) {
+        return {
+          first: {
+            id: "chat-1",
+            ownerUid: "owner-1",
+            title: "测试对话",
+            mode: "wiki",
+            messagesJson: "[]",
+            sourcesJson: JSON.stringify([
+              { id: "wiki/a.md", type: "wiki", title: "A", path: "wiki/a.md" },
+              { id: "wiki/b.md", type: "wiki", title: "B", path: "wiki/b.md" },
+            ]),
+            createdAt: "2026-04-25T00:00:00.000Z",
+            updatedAt: "2026-04-25T00:02:00.000Z",
+          },
+        };
+      }
+      return {};
+    });
+    const env = createEnv({ DB: dbHarness.db });
+
+    const response = await worker.fetch(
+      createAuthorizedRequest("/mobile/chat/source/remove", {
+        ownerUid: "owner-1",
+        chatId: "chat-1",
+        sourceId: "wiki/a.md",
+      }),
+      env,
+    );
+    const payload = await response.json() as {
+      chat: { sources: Array<{ id: string }> };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.chat.sources).toEqual([{ id: "wiki/b.md", type: "wiki", title: "B", path: "wiki/b.md" }]);
+    const saveCall = dbHarness.calls.find((call) => call.sql.includes("INSERT INTO mobile_chats"));
+    expect(String(saveCall?.params[5])).not.toContain("wiki/a.md");
+  });
+
+  it("uses manually selected wiki pages when sending mobile chat messages", async () => {
+    const dbHarness = createDbHarness(async (sql) => {
+      if (sql.includes("ALTER TABLE mobile_chats ADD COLUMN mode")) {
+        return {};
+      }
+      if (sql.includes("FROM wiki_pages WHERE path IN")) {
+        return {
+          results: [{
+            path: "wiki/manual.md",
+            title: "手动页面",
+            content: "手动选择的 Wiki 内容",
+          }],
+        };
+      }
+      if (sql.includes("FROM wiki_pages WHERE content LIKE")) {
+        return {
+          results: [{
+            path: "wiki/search.md",
+            title: "搜索页面",
+            content: "自动搜索的 Wiki 内容",
+          }],
+        };
+      }
+      return {};
+    });
+    const env = createEnv({
+      DB: dbHarness.db,
+      LLM_MODEL: "@cf/fake-model",
+      AI: {
+        run: async () => ({ response: "回答" }),
+      } as WorkerEnv["AI"],
+    });
+
+    const response = await worker.fetch(
+      createAuthorizedRequest("/mobile/chat/send", {
+        ownerUid: "owner-1",
+        message: "问题",
+        mode: "wiki",
+        selectedWikiPaths: ["wiki/manual.md"],
+      }),
+      env,
+    );
+    const payload = await response.json() as {
+      chat: { sources: Array<{ path: string; title: string }> };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.chat.sources.map((source) => source.path)).toEqual(["wiki/manual.md", "wiki/search.md"]);
+    expect(payload.chat.sources[0]?.title).toBe("手动页面");
+  });
+
   it("saves and lists mobile task schedule items", async () => {
     let rows: Array<Record<string, unknown>> = [];
     const reviewSettings = new Map<string, boolean>();
+    // fallow-ignore-next-line complexity
     const dbHarness = createDbHarness(async (sql, params) => {
       if (sql.includes("CREATE TABLE IF NOT EXISTS mobile_task_schedule")) {
         return {};

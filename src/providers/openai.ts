@@ -8,6 +8,11 @@
 import OpenAI from "openai";
 import type { LLMProvider, LLMMessage, LLMTool } from "../utils/provider.js";
 
+interface StreamTextState {
+  fullText: string;
+  reasoningOpen: boolean;
+}
+
 /** Translate an Anthropic-style LLMTool to an OpenAI ChatCompletionTool. */
 export function translateToolToOpenAI(
   tool: LLMTool,
@@ -47,7 +52,7 @@ export class OpenAIProvider implements LLMProvider {
       messages: [{ role: "system", content: system }, ...messages],
     });
 
-    return response.choices[0]?.message?.content ?? "";
+    return readMessageText(response.choices[0]?.message);
   }
 
   /** Stream a completion, invoking onToken for each text chunk. */
@@ -64,16 +69,13 @@ export class OpenAIProvider implements LLMProvider {
       stream: true,
     });
 
-    let fullText = "";
+    const state: StreamTextState = { fullText: "", reasoningOpen: false };
     for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta?.content;
-      if (delta) {
-        fullText += delta;
-        onToken?.(delta);
-      }
+      appendStreamDelta(state, chunk.choices[0]?.delta, onToken);
     }
+    closeReasoningBlock(state, onToken, "");
 
-    return fullText;
+    return state.fullText;
   }
 
   /** Call the model with tool definitions and return the parsed tool input as JSON. */
@@ -97,6 +99,104 @@ export class OpenAIProvider implements LLMProvider {
       return toolCalls[0].function.arguments;
     }
 
-    return response.choices[0]?.message?.content ?? "";
+    return readMessageText(response.choices[0]?.message);
   }
+}
+
+function appendStreamDelta(
+  state: StreamTextState,
+  deltaRecord: unknown,
+  onToken?: (text: string) => void,
+): void {
+  const reasoning = readReasoningText(deltaRecord);
+  if (reasoning) {
+    appendReasoningToken(state, reasoning, onToken);
+    return;
+  }
+  closeReasoningBlock(state, onToken, "\n");
+  appendChatToken(state, readChatText(readDeltaContent(deltaRecord)), onToken);
+}
+
+function appendReasoningToken(
+  state: StreamTextState,
+  reasoning: string,
+  onToken?: (text: string) => void,
+): void {
+  const token = state.reasoningOpen ? reasoning : `<thinking>${reasoning}`;
+  state.reasoningOpen = true;
+  appendToken(state, token, onToken);
+}
+
+function closeReasoningBlock(
+  state: StreamTextState,
+  onToken: ((text: string) => void) | undefined,
+  suffix: string,
+): void {
+  if (!state.reasoningOpen) return;
+  state.reasoningOpen = false;
+  appendToken(state, `</thinking>${suffix}`, onToken);
+}
+
+function appendChatToken(
+  state: StreamTextState,
+  token: string,
+  onToken?: (text: string) => void,
+): void {
+  if (token) appendToken(state, token, onToken);
+}
+
+function appendToken(
+  state: StreamTextState,
+  token: string,
+  onToken?: (text: string) => void,
+): void {
+  state.fullText += token;
+  onToken?.(token);
+}
+
+function readMessageText(message: unknown): string {
+  if (!message || typeof message !== "object") {
+    return "";
+  }
+  const record = message as { content?: unknown };
+  const reasoning = readReasoningText(record);
+  const content = readChatText(record.content);
+  return reasoning ? `<thinking>${reasoning}</thinking>\n${content}` : content;
+}
+
+function readReasoningText(value: unknown): string {
+  if (!value || typeof value !== "object") {
+    return "";
+  }
+  const record = value as {
+    reasoning?: unknown;
+    reasoning_content?: unknown;
+    reasoningContent?: unknown;
+  };
+  return readChatText(record.reasoning_content ?? record.reasoningContent ?? record.reasoning);
+}
+
+function readDeltaContent(value: unknown): unknown {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+  return (value as { content?: unknown }).content;
+}
+
+function readChatText(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (!Array.isArray(value)) {
+    return "";
+  }
+  return value.map(readChatTextPart).filter(Boolean).join("");
+}
+
+function readChatTextPart(value: unknown): string {
+  if (!value || typeof value !== "object") {
+    return "";
+  }
+  const record = value as { text?: unknown };
+  return typeof record.text === "string" ? record.text : "";
 }

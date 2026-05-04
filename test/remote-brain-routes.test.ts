@@ -67,6 +67,7 @@ describe("remote brain routes", () => {
     write(cfg.sourceVaultRoot, "wiki/concepts/cloudflare.md", "# Cloudflare\n\nWorker content.");
     write(cfg.runtimeRoot, ".llmwiki/claims.json", JSON.stringify({ claims: [{ id: "claim-1" }] }));
     const response = createResponse();
+    // fallow-ignore-next-line complexity
     const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = String(input);
       if (url === "https://worker.example.com/remote-brain/publish") {

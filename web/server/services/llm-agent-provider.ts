@@ -9,9 +9,16 @@ import type { Conversation } from "./chat-store.js";
 import { readAgentConfig, type AgentDefinition } from "./agent-config.js";
 import { readCLIProxyConfig } from "./cliproxy-config.js";
 import { readLlmApiAccount } from "./llm-accounts.js";
+import {
+  ACCOUNT_CODEX_OAUTH_REF,
+  accountAiOpenAiBaseUrl,
+  readAccountAiSyncConfig,
+} from "./account-ai-env.js";
 import { getProvider, type LLMProvider } from "../../../src/utils/provider.js";
 import { AnthropicProvider } from "../../../src/providers/anthropic.js";
+import { CloudflareProvider } from "../../../src/providers/cloudflare.js";
 import { GeminiProvider } from "../../../src/providers/gemini.js";
+import { MiniMaxProvider } from "../../../src/providers/minimax.js";
 import { OpenAIProvider } from "../../../src/providers/openai.js";
 import { OllamaProvider } from "../../../src/providers/ollama.js";
 
@@ -23,7 +30,7 @@ interface CodexAgentProviderRoute {
 }
 
 interface ParsedAgentAccountRef {
-  kind: "api" | "oauth";
+  kind: "api" | "oauth" | "cloudflare";
   provider: string;
   key: string;
 }
@@ -91,6 +98,9 @@ function resolveAgentAccountProvider(
   if (route.kind === "api") {
     return resolveApiAccountProvider(projectRoot, agent, route);
   }
+  if (route.kind === "cloudflare") {
+    return resolveCloudflareAccountProvider(agent);
+  }
   return resolveOAuthAccountProvider(projectRoot, agent, route, sessionKey);
 }
 
@@ -104,12 +114,26 @@ function resolveApiAccountProvider(
   return buildApiAccountProvider(account.provider, account.url, account.key, agent.model.trim() || account.model);
 }
 
+function resolveCloudflareAccountProvider(agent: AgentDefinition): LLMProvider {
+  return new CloudflareProvider(agent.model.trim() || null);
+}
+
 function resolveOAuthAccountProvider(
   projectRoot: string,
   agent: AgentDefinition,
   route: ParsedAgentAccountRef,
   sessionKey: string,
 ): LLMProvider {
+  if (`oauth:${route.provider}:${route.key}` === ACCOUNT_CODEX_OAUTH_REF) {
+    const accountConfig = readAccountAiSyncConfig();
+    if (!accountConfig) throw new Error("请先登录桌面账号，才能使用 Worker Codex OAuth。");
+    return new OpenAIProvider(
+      agent.model.trim() || "gpt-5.5",
+      accountAiOpenAiBaseUrl(accountConfig.workerUrl),
+      accountConfig.sessionToken,
+      { "X-Session-ID": `agent:${agent.id}:oauth:codex:worker:${sessionKey}` },
+    );
+  }
   const config = readCLIProxyConfig(projectRoot);
   return new OpenAIProvider(
     agent.model.trim() || config.model,
@@ -126,6 +150,9 @@ function buildApiAccountProvider(provider: string, url: string, key: string, mod
   if (provider === "gemini") {
     return new GeminiProvider(model, url, key);
   }
+  if (provider === "minimax") {
+    return new MiniMaxProvider(model, key, url);
+  }
   if (provider === "ollama") {
     return new OllamaProvider(model, url);
   }
@@ -134,6 +161,9 @@ function buildApiAccountProvider(provider: string, url: string, key: string, mod
 
 function parseAgentAccountRef(value: string | null): ParsedAgentAccountRef | null {
   if (!value) return null;
+  if (value === "cloudflare:workers-ai") {
+    return { kind: "cloudflare", provider: "cloudflare", key: "workers-ai" };
+  }
   if (value.startsWith("api:")) {
     const key = value.slice(4).trim();
     if (!key) return null;

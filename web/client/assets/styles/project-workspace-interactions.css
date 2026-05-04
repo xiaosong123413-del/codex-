@@ -1,0 +1,172 @@
+/**
+ * Interaction and state styling for the project workspace execution graph.
+ * Kept separate from the base layout so the main stylesheet stays small.
+ */
+
+.project-workspace-node[draggable="true"] {
+  cursor: grab;
+}
+
+.project-workspace-node-frame,
+.project-workspace-node {
+  position: relative;
+}
+
+.project-workspace-node-frame {
+  display: block;
+  min-width: 0;
+}
+
+.project-workspace-node--deletable {
+  padding-right: 40px;
+}
+
+.project-workspace-node.is-dragging {
+  opacity: 0.55;
+}
+
+.project-workspace-graph__controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.project-workspace-filter,
+.project-workspace-graph__tools {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid #d7e0ef;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.project-workspace-filter button,
+.project-workspace-graph__tools button {
+  min-width: 34px;
+  height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #0f172a;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.project-workspace-filter button {
+  min-width: 58px;
+}
+
+.project-workspace-filter button.is-active {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.project-workspace-filter button:hover,
+.project-workspace-filter button:focus-visible,
+.project-workspace-graph__tools button:hover,
+.project-workspace-graph__tools button:focus-visible {
+  background: #e0ecff;
+  outline: none;
+}
+
+.project-workspace-node__line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.project-workspace-node__fold {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  border-right: 2px solid #64748b;
+  border-bottom: 2px solid #64748b;
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+
+.project-workspace-node[aria-expanded="false"] .project-workspace-node__fold {
+  transform: rotate(-45deg);
+}
+
+.project-workspace-node[aria-expanded="false"] {
+  border-style: dashed;
+}
+
+.project-workspace-node--done {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.project-workspace-node--active {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.project-workspace-node--uncertain {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+}
+
+.project-workspace-node__state {
+  display: inline-flex;
+  margin-top: 6px;
+  padding: 2px 7px;
+  border: 1px solid #d7e0ef;
+  border-radius: 999px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.project-workspace-node__delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.project-workspace-node__delete:hover,
+.project-workspace-node__delete:focus-visible {
+  border-color: #ef4444;
+  color: #b91c1c;
+  outline: none;
+}
+
+.project-workspace-windows > header small {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.project-workspace-window-list {
+  min-height: 112px;
+  padding: 8px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.project-workspace-window-list__empty {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+}

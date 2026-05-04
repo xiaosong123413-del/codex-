@@ -56,9 +56,9 @@ describe("parseHash", () => {
   });
 
   it("parses workspace child routes", () => {
-    expect(parseHash("#/workspace/toolbox/assets")).toEqual({
+    expect(parseHash("#/workspace/task-pool/domain/health")).toEqual({
       name: "workspace",
-      params: { section: "toolbox/assets" },
+      params: { section: "task-pool/domain/health" },
     });
   });
 
@@ -163,8 +163,8 @@ describe("createRouter", () => {
     const onChange = vi.fn();
     const router = createRouter(onChange);
     router.start();
-    router.navigate({ name: "workspace", params: { section: "toolbox/workflows" } });
-    expect(window.location.hash).toBe("#/workspace/toolbox/workflows");
+    router.navigate({ name: "workspace", params: { section: "task-pool/domain/health" } });
+    expect(window.location.hash).toBe("#/workspace/task-pool/domain/health");
   });
 });
 

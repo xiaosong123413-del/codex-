@@ -61,7 +61,7 @@ describe("web runtime roots", () => {
     expect("wikiRoot" in cfg).toBe(false);
   });
 
-  it("reads source-backed pages from the source vault and generated pages from runtime", () => {
+  it("reads source-backed pages from the source vault and falls back to runtime pages", () => {
     const sourceVaultRoot = makeDir("llmwiki-web-source-vault-");
     const runtimeRoot = makeDir("llmwiki-web-runtime-root-");
     fs.mkdirSync(path.join(sourceVaultRoot, "wiki", "concepts"), { recursive: true });
@@ -80,8 +80,8 @@ describe("web runtime roots", () => {
     const runtimeJson = captureJson();
     handler({ query: { path: "wiki/index.md" } } as never, runtimeJson.response as never);
     expect(runtimeJson.body?.path).toBe("wiki/index.md");
-    expect(runtimeJson.body?.raw).toContain("Runtime Index");
-    expect(runtimeJson.body?.raw).not.toContain("Source Index");
+    expect(runtimeJson.body?.raw).toContain("Source Index");
+    expect(runtimeJson.body?.raw).not.toContain("Runtime Index");
   });
 
   it("reads runtime-only wiki pages from the runtime root when the source vault does not contain them", () => {
@@ -103,7 +103,7 @@ describe("web runtime roots", () => {
     expect(runtimeJson.body?.raw).toContain("Served from runtime.");
   });
 
-  it("prefers the runtime wiki homepage for directory requests", () => {
+  it("prefers the source wiki homepage for directory requests when it exists", () => {
     const sourceVaultRoot = makeDir("llmwiki-web-source-vault-dir-");
     const runtimeRoot = makeDir("llmwiki-web-runtime-root-dir-");
     fs.mkdirSync(path.join(sourceVaultRoot, "wiki"), { recursive: true });
@@ -117,8 +117,8 @@ describe("web runtime roots", () => {
     handler({ query: { path: "wiki" } } as never, runtimeJson.response as never);
 
     expect(runtimeJson.body?.path).toBe("wiki/index.md");
-    expect(runtimeJson.body?.raw).toContain("Runtime Index");
-    expect(runtimeJson.body?.raw).not.toContain("Source Index");
+    expect(runtimeJson.body?.raw).toContain("Source Index");
+    expect(runtimeJson.body?.raw).not.toContain("Runtime Index");
   });
 
   it("loads the search index from the runtime root", () => {

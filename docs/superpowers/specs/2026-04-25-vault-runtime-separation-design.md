@@ -1,8 +1,8 @@
-# Vault Runtime Separation Design
+﻿# Vault Runtime Separation Design
 
 ## Goal
 
-Make `D:\Desktop\ai的仓库` the only source of truth and turn Farzapedia into a read-only wiki projection.
+Make `D:\Desktop\ai的仓库` the only source of truth and turn Peiweipedia into a read-only wiki projection.
 
 This design keeps the user's maintained content in the Obsidian vault while moving machine-generated runtime artifacts out of the vault.
 
@@ -12,7 +12,7 @@ The source-of-truth model is fixed as:
 
 - `D:\Desktop\ai的仓库` is the only editable knowledge root.
 - `D:\Desktop\ai的仓库\wiki\...` remains editable source content, not generated output.
-- Farzapedia does not own a second copy of the knowledge base.
+- Peiweipedia does not own a second copy of the knowledge base.
 - Generated runtime artifacts live under the compiler workspace, not inside the vault.
 
 ## Problem
@@ -25,7 +25,7 @@ The current structure mixes two different responsibilities inside the vault:
 This creates the feeling that the same knowledge exists twice:
 
 - once as editable Obsidian content
-- again as wiki/runtime output for Farzapedia
+- again as wiki/runtime output for Peiweipedia
 
 That duplication makes the vault feel bloated and weakens the user's mental model of what is safe to edit.
 
@@ -105,9 +105,9 @@ The compile pipeline must stop writing generated wiki/runtime artifacts back int
 
 The only exception is user-authored content explicitly stored in the vault as source.
 
-## Farzapedia Reading Model
+## Peiweipedia Reading Model
 
-Farzapedia should read from two roots with different responsibilities:
+Peiweipedia should read from two roots with different responsibilities:
 
 ### Source root
 
@@ -208,16 +208,16 @@ No source markdown should be relocated or rewritten during this migration.
 The user-facing behavior should remain:
 
 - Obsidian remains the place where source knowledge is maintained
-- Farzapedia keeps the current visual reading experience
+- Peiweipedia keeps the current visual reading experience
 - comments, search, navigation, directory views, and article jumps continue to work
 
-The user should experience Farzapedia as a view over the vault, not as a separate competing knowledge base.
+The user should experience Peiweipedia as a view over the vault, not as a separate competing knowledge base.
 
 ## Out Of Scope
 
 This design does not include:
 
-- redesigning the Farzapedia UI
+- redesigning the Peiweipedia UI
 - changing the wiki information architecture
 - removing `D:\Desktop\ai的仓库\wiki\...` as source content
 - replacing compiled runtime output with fully dynamic on-demand rendering
@@ -230,7 +230,7 @@ The system is correct only if all of the following are true:
 2. user-maintained pages under `wiki/` remain editable source content
 3. machine-generated runtime artifacts no longer clutter the vault
 4. deleting `.runtime\ai-vault\` does not lose knowledge, only rebuildable output
-5. Farzapedia still renders the same wiki reading experience from source + runtime data
+5. Peiweipedia still renders the same wiki reading experience from source + runtime data
 6. the user never needs to wonder whether a generated file inside the vault is safe to edit
 
 ## Recommended Implementation Direction
@@ -239,7 +239,7 @@ The implementation should follow the shortest path:
 
 1. separate source and runtime roots in config
 2. redirect all generated output writes to `.runtime\ai-vault`
-3. update Farzapedia read paths to use source markdown plus runtime indexes
+3. update Peiweipedia read paths to use source markdown plus runtime indexes
 4. stop publishing generated special pages back into the vault
 
 This preserves the current product model while removing the structural duplication that makes the vault feel heavier than it should.

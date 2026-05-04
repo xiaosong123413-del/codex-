@@ -19,6 +19,7 @@ export interface AutomationFlowNode {
   type: AutomationFlowNodeType;
   title: string;
   description: string;
+  standard?: string;
   implementation?: string;
   appId?: string;
   modelMode: AutomationFlowModelMode;
@@ -139,7 +140,6 @@ function normalizeFlowNode(input: unknown, automationName: string, index: number
     throw new Error(`Automation ${automationName} has an invalid flow node.`);
   }
   const title = requireText(input.title, `Automation ${automationName} has a node missing title.`);
-  const implementation = normalizeText(input.implementation) ?? undefined;
   const modelMode = normalizeModelMode(input.modelMode);
   const model = normalizeText(input.model) ?? undefined;
   if (modelMode === "explicit" && !model) {
@@ -150,10 +150,20 @@ function normalizeFlowNode(input: unknown, automationName: string, index: number
     type: normalizeFlowNodeType(input.type, automationName),
     title,
     description: requireText(input.description, `Automation ${automationName} node ${title} is missing description.`),
-    ...(implementation ? { implementation } : {}),
-    ...(normalizeText(input.appId) ? { appId: normalizeText(input.appId)! } : {}),
+    ...normalizeOptionalFlowNodeFields(input),
     modelMode,
     ...(model ? { model } : {}),
+  };
+}
+
+function normalizeOptionalFlowNodeFields(input: Record<string, unknown>): Partial<AutomationFlowNode> {
+  const standard = normalizeText(input.standard);
+  const implementation = normalizeText(input.implementation);
+  const appId = normalizeText(input.appId);
+  return {
+    ...(standard ? { standard } : {}),
+    ...(implementation ? { implementation } : {}),
+    ...(appId ? { appId } : {}),
   };
 }
 

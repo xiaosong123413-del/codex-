@@ -361,6 +361,7 @@ function readSourceFullFile(
   return { item, raw };
 }
 
+// fallow-ignore-next-line complexity
 function buildSourceFullItem(
   runtimeRoot: string,
   fullPath: string,

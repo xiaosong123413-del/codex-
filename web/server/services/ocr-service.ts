@@ -1,3 +1,11 @@
+/**
+ * Cloudflare OCR adapter and source OCR sidecar persistence.
+ *
+ * The rest of the WebUI treats OCR output as a local sidecar under
+ * `.llmwiki/ocr`. This module owns both the remote Worker call and the stable
+ * sidecar path so callers can either request raw OCR text or persist it for a
+ * source record.
+ */
 import fs from "node:fs";
 import path from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -12,6 +20,10 @@ const OCR_DIR = ".llmwiki/ocr";
 
 type CloudflareOcrResult =
   | { ok: true; path: string; text: string }
+  | { ok: false; error: CloudflareClientError };
+
+type CloudflareOcrTextResult =
+  | { ok: true; text: string }
   | { ok: false; error: CloudflareClientError };
 
 export async function writeSourceOcrSidecar(
@@ -36,11 +48,14 @@ export function getSourceOcrSidecarPath(sourceId: string): string {
   return `${OCR_DIR}/${safeId(sourceId)}.txt`;
 }
 
-export async function runCloudflareOcr(input: {
-  runtimeRoot: string;
-  sourceId: string;
+export function isCloudflareOcrConfigured(): boolean {
+  const cfg = readCloudflareServicesConfig();
+  return Boolean(cfg.workerUrl && cfg.remoteToken);
+}
+
+export async function extractCloudflareOcrText(input: {
   filePath: string;
-}): Promise<CloudflareOcrResult> {
+}): Promise<CloudflareOcrTextResult> {
   const cfg = readCloudflareServicesConfig();
   if (!cfg.workerUrl || !cfg.remoteToken) {
     return {
@@ -52,15 +67,23 @@ export async function runCloudflareOcr(input: {
     };
   }
   const result = await postWorkerJson<unknown>(cfg, "ocr", {
-    sourceId: input.sourceId,
     model: cfg.ocrModel,
     filename: path.basename(input.filePath),
     contentBase64: fs.readFileSync(input.filePath).toString("base64"),
   });
   if (!result.ok) return result;
-  const text = extractTextResponse(result.data).trim();
-  const sidecar = await writeSourceOcrSidecar(input.runtimeRoot, input.sourceId, text);
-  return { ok: true, path: sidecar.path, text };
+  return { ok: true, text: extractTextResponse(result.data).trim() };
+}
+
+export async function runCloudflareOcr(input: {
+  runtimeRoot: string;
+  sourceId: string;
+  filePath: string;
+}): Promise<CloudflareOcrResult> {
+  const result = await extractCloudflareOcrText({ filePath: input.filePath });
+  if (!result.ok) return result;
+  const sidecar = await writeSourceOcrSidecar(input.runtimeRoot, input.sourceId, result.text);
+  return { ok: true, path: sidecar.path, text: result.text };
 }
 
 function safeId(sourceId: string): string {

@@ -1,8 +1,8 @@
-# About Me Profile Page Implementation Plan
+﻿# About Me Profile Page Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Turn `wiki/about-me.md` into a dedicated high-fidelity personal profile page, entered from the Wiki brand mark, while keeping every other wiki page on the existing Farzapedia article renderer.
+**Goal:** Turn `wiki/about-me.md` into a dedicated high-fidelity personal profile page, entered from the Wiki brand mark, while keeping every other wiki page on the existing Peiweipedia article renderer.
 
 **Architecture:** Keep the existing `#/wiki/<path>` route family and special-case only `wiki/about-me.md`. Add one focused markdown-to-profile parser plus one focused profile renderer module, then keep `web/client/src/pages/wiki/index.ts` as a thin switchboard that decides between the normal article view and the dedicated about-me layout.
 
@@ -35,9 +35,9 @@ it("renders the wiki brand as a link to the about-me page", async () => {
     if (url === INDEX_URL) {
       return jsonResponse({
         path: "wiki/index.md",
-        title: "Farzapedia",
-        html: "<h1>Farzapedia</h1>",
-        raw: "# Farzapedia",
+        title: "Peiweipedia",
+        html: "<h1>Peiweipedia</h1>",
+        raw: "# Peiweipedia",
         frontmatter: null,
         modifiedAt: "2026-04-26T08:00:00.000Z",
       });
@@ -48,7 +48,7 @@ it("renders the wiki brand as a link to the about-me page", async () => {
   const page = renderWikiPage();
   document.body.appendChild(page);
 
-  await waitForText(page, "Farzapedia");
+  await waitForText(page, "Peiweipedia");
 
   const brandLink = page.querySelector<HTMLAnchorElement>("[data-wiki-brand-link]");
   expect(brandLink).toBeTruthy();
@@ -410,7 +410,7 @@ function isAboutMePath(path: string): boolean {
 ```ts
 <a class="wiki-page__brand" data-wiki-brand-link href="${wikiHref(ABOUT_ME_PATH)}">
   <div class="wiki-page__mark">F</div>
-  <strong>Farzapedia</strong>
+  <strong>Peiweipedia</strong>
   <span>The Personal Encyclopedia</span>
 </a>
 ```

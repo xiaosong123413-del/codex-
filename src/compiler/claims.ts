@@ -11,6 +11,7 @@ import { slugify } from "../utils/markdown.js";
 import type {
   ClaimCandidate,
   ClaimRecord,
+  ClaimSourceReference,
   ClaimType,
   ProcedureRecord,
 } from "../utils/types.js";
@@ -89,7 +90,8 @@ export function consolidateClaims(
   return { claims, assignments };
 }
 
-export function deriveProcedures(claims: ClaimRecord[]): ProcedureRecord[] {
+/** Group non-superseded workflow claims by their composite key. */
+function groupWorkflowClaims(claims: ClaimRecord[]): Map<string, ClaimRecord[]> {
   const grouped = new Map<string, ClaimRecord[]>();
   for (const claim of claims) {
     if (claim.claimType !== "workflow" || claim.status === "superseded") continue;
@@ -101,44 +103,57 @@ export function deriveProcedures(claims: ClaimRecord[]): ProcedureRecord[] {
       grouped.set(key, [claim]);
     }
   }
+  return grouped;
+}
 
+/** Compute confidence for a procedure derived from a group of supporting claims. */
+function calculateProcedureConfidence(group: ClaimRecord[]): number {
+  return clamp(
+    Math.max(
+      group.reduce((max, claim) => Math.max(max, claim.confidence), 0),
+      0.55 + 0.05 * (group.length - 1),
+    ),
+    MIN_CONFIDENCE,
+    MAX_CONFIDENCE,
+  );
+}
+
+/** Attempt to build a procedure record from a group of matching workflow claims. Returns null if evidence thresholds are not met. */
+function buildProcedureFromGroup(group: ClaimRecord[]): ProcedureRecord | null {
+  const sourceFiles = dedupe(group.flatMap((claim) => claim.sourceFiles));
+  const observedDates = dedupe(group.flatMap((claim) => claim.sources.map((source) => source.observedAt.slice(0, 10))));
+  const sourceEvidenceCount = group.reduce((count, claim) => count + claim.sources.length, 0);
+  if (sourceEvidenceCount < 3 || sourceFiles.length < 2 || observedDates.length < 2) return null;
+
+  const representative = group
+    .slice()
+    .sort((left, right) => right.confidence - left.confidence)[0]!;
+  return {
+    id: createHash("sha1")
+      .update(`procedure:${representative.conceptSlug}:${representative.claimKey}:${representative.claimText}`)
+      .digest("hex")
+      .slice(0, 16),
+    conceptSlug: representative.conceptSlug,
+    procedureKey: representative.claimKey,
+    title: representative.claimText,
+    summary: representative.claimText,
+    supportingClaimIds: dedupe(group.map((claim) => claim.id)).sort(),
+    sourceFiles: sourceFiles.sort(),
+    confidence: calculateProcedureConfidence(group),
+    lastConfirmedAt: group
+      .map((claim) => claim.lastConfirmedAt)
+      .sort()
+      .at(-1)!,
+  };
+}
+
+export function deriveProcedures(claims: ClaimRecord[]): ProcedureRecord[] {
+  const grouped = groupWorkflowClaims(claims);
   const procedures: ProcedureRecord[] = [];
   for (const group of grouped.values()) {
-    const episodeIds = dedupe(group.flatMap((claim) => claim.episodeIds));
-    const sourceFiles = dedupe(group.flatMap((claim) => claim.sourceFiles));
-    const observedDates = dedupe(group.map((claim) => claim.lastConfirmedAt.slice(0, 10)));
-    if (episodeIds.length < 3 || sourceFiles.length < 2 || observedDates.length < 2) continue;
-
-    const representative = group
-      .slice()
-      .sort((left, right) => right.confidence - left.confidence)[0]!;
-    procedures.push({
-      id: createHash("sha1")
-        .update(`procedure:${representative.conceptSlug}:${representative.claimKey}:${representative.claimText}`)
-        .digest("hex")
-        .slice(0, 16),
-      conceptSlug: representative.conceptSlug,
-      procedureKey: representative.claimKey,
-      title: representative.claimText,
-      summary: representative.claimText,
-      supportingClaimIds: dedupe(group.map((claim) => claim.id)).sort(),
-      sourceFiles: sourceFiles.sort(),
-      episodeIds: episodeIds.sort(),
-      confidence: clamp(
-        Math.max(
-          group.reduce((max, claim) => Math.max(max, claim.confidence), 0),
-          0.55 + 0.05 * (group.length - 1),
-        ),
-        MIN_CONFIDENCE,
-        MAX_CONFIDENCE,
-      ),
-      lastConfirmedAt: group
-        .map((claim) => claim.lastConfirmedAt)
-        .sort()
-        .at(-1)!,
-    });
+    const procedure = buildProcedureFromGroup(group);
+    if (procedure) procedures.push(procedure);
   }
-
   return procedures.sort((left, right) => left.title.localeCompare(right.title));
 }
 
@@ -146,14 +161,14 @@ function cloneClaim(claim: ClaimRecord): ClaimRecord {
   return {
     ...claim,
     sourceFiles: [...claim.sourceFiles],
-    episodeIds: [...claim.episodeIds],
+    sources: claim.sources.map((source) => ({ ...source })),
     supersedes: [...claim.supersedes],
   };
 }
 
 function reinforceClaim(claim: ClaimRecord, candidate: ClaimCandidate): void {
-  claim.sourceFiles = dedupe([...claim.sourceFiles, candidate.sourceFile]).sort();
-  claim.episodeIds = dedupe([...claim.episodeIds, candidate.episodeId]).sort();
+  claim.sources = mergeClaimSources(claim.sources, candidate.source);
+  claim.sourceFiles = claim.sources.map((source) => source.file).sort();
   claim.supportCount = claim.sourceFiles.length;
   claim.lastConfirmedAt = maxIso(claim.lastConfirmedAt, candidate.observedAt);
   if (claim.status === "stale") {
@@ -171,8 +186,8 @@ function createClaimRecord(candidate: ClaimCandidate): ClaimRecord {
     claimKey: candidate.claimKey,
     claimText: candidate.claimText,
     claimType: candidate.claimType,
-    sourceFiles: [candidate.sourceFile],
-    episodeIds: [candidate.episodeId],
+    sourceFiles: [candidate.source.file],
+    sources: [{ ...candidate.source }],
     firstSeenAt: candidate.observedAt,
     lastConfirmedAt: candidate.observedAt,
     supportCount: 1,
@@ -185,6 +200,28 @@ function createClaimRecord(candidate: ClaimCandidate): ClaimRecord {
   };
 }
 
+/** Mark existing claims as superseded by the new claim. */
+function markExistingClaimsSuperseded(existingClaims: ClaimRecord[], newClaim: ClaimRecord): void {
+  for (const claim of existingClaims) {
+    if (claim.status === "superseded") continue;
+    claim.status = "superseded";
+    claim.supersededBy = newClaim.id;
+    newClaim.supersedes = dedupe([...newClaim.supersedes, claim.id]);
+  }
+}
+
+/** Mark both existing claims and the new claim as contested. */
+function markAllClaimsContested(existingClaims: ClaimRecord[], newClaim: ClaimRecord): void {
+  newClaim.status = "contested";
+  newClaim.contradictionCount = 1;
+  for (const claim of existingClaims) {
+    if (claim.status !== "superseded") {
+      claim.status = "contested";
+      claim.contradictionCount += 1;
+    }
+  }
+}
+
 function reconcileClaimStatus(existingClaims: ClaimRecord[], newClaim: ClaimRecord): void {
   if (existingClaims.length === 0) return;
 
@@ -195,35 +232,16 @@ function reconcileClaimStatus(existingClaims: ClaimRecord[], newClaim: ClaimReco
   const hasSameTimestamp = newClaim.lastConfirmedAt === latestExisting.lastConfirmedAt;
 
   if (hasSameTimestamp) {
-    newClaim.status = "contested";
-    for (const claim of existingClaims) {
-      if (claim.status !== "superseded") {
-        claim.status = "contested";
-        claim.contradictionCount += 1;
-      }
-    }
-    newClaim.contradictionCount = 1;
+    markAllClaimsContested(existingClaims, newClaim);
     return;
   }
 
   if (isNewer) {
-    for (const claim of existingClaims) {
-      if (claim.status === "superseded") continue;
-      claim.status = "superseded";
-      claim.supersededBy = newClaim.id;
-      newClaim.supersedes = dedupe([...newClaim.supersedes, claim.id]);
-    }
+    markExistingClaimsSuperseded(existingClaims, newClaim);
     return;
   }
 
-  newClaim.status = "contested";
-  newClaim.contradictionCount = 1;
-  for (const claim of existingClaims) {
-    if (claim.status !== "superseded") {
-      claim.status = "contested";
-      claim.contradictionCount += 1;
-    }
-  }
+  markAllClaimsContested(existingClaims, newClaim);
 }
 
 function refreshClaimScores(claim: ClaimRecord, now: Date): void {
@@ -253,6 +271,15 @@ export function normalizeClaimKey(value: string): string {
 
 function dedupe(values: string[]): string[] {
   return [...new Set(values)];
+}
+
+function mergeClaimSources(
+  existingSources: ClaimSourceReference[],
+  nextSource: ClaimSourceReference,
+): ClaimSourceReference[] {
+  const sourcesByFile = new Map(existingSources.map((source) => [source.file, { ...source }]));
+  sourcesByFile.set(nextSource.file, { ...nextSource });
+  return [...sourcesByFile.values()].sort((left, right) => left.file.localeCompare(right.file));
 }
 
 function maxIso(left: string, right: string): string {

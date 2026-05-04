@@ -14,12 +14,14 @@ import type {
   TaskPlanRoadmapState,
   TaskPlanScheduleItem,
   TaskPlanScheduleState,
+  TaskPlanStageItem,
   TaskPlanState,
   TaskPlanStoreOptions,
 } from "./task-plan-store.js";
 import type { LLMMessage, LLMProvider } from "../../../src/utils/provider.js";
 import { postJson } from "../../../src/utils/cloudflare-http.js";
 import { readCloudflareRemoteBrainConfig } from "./cloudflare-remote-brain-config.js";
+import { registerSharedTaskTaxonomy } from "./task-taxonomy.js";
 
 const taskPlanMutationQueues = new Map<string, Promise<void>>();
 const TASK_PLAN_MAX_TOKENS = 1200;
@@ -75,6 +77,7 @@ interface SaveTaskPlanStatusSummaryResult {
 
 interface SaveTaskPlanPoolInput extends TaskPlanStoreOptions {
   items: TaskPlanPoolItem[];
+  stages?: TaskPlanStageItem[];
 }
 
 interface SaveTaskPlanPoolResult {
@@ -173,6 +176,7 @@ export async function generateTaskPlan(
   const storageRoot = resolveStorageRoot(input);
   const state = await readTaskPlanState({ storageRoot });
   const voiceTranscript = state.voice.transcript.trim();
+  const currentPoolItems = state.pool.items.filter((item) => item.zone !== "candidate");
   if (!voiceTranscript) {
     return {
       ok: false,
@@ -182,7 +186,7 @@ export async function generateTaskPlan(
       },
     };
   }
-  if (state.pool.items.length === 0) {
+  if (currentPoolItems.length === 0) {
     return {
       ok: false,
       error: {
@@ -216,7 +220,7 @@ export async function generateTaskPlan(
 
   const raw = await provider.complete(
     buildTaskPlanSystemPrompt(),
-    buildTaskPlanMessages(voiceTranscript, diaryContext, state.pool.items),
+    buildTaskPlanMessages(voiceTranscript, diaryContext, currentPoolItems),
     TASK_PLAN_MAX_TOKENS,
   );
   const parsedItems = parseGeneratedScheduleItems(raw);
@@ -390,12 +394,22 @@ export async function saveTaskPlanPool(
     const nextState: TaskPlanState = {
       ...state,
       pool: {
+        ...state.pool,
         items: input.items,
+        stages: input.stages ?? [],
       },
     };
-    await writeTaskPlanState(nextState, { storageRoot });
-    return { state: nextState };
+    const savedState = await writeTaskPlanState(nextState, { storageRoot });
+    registerTaskPlanPoolTaxonomy(storageRoot, input.items);
+    return { state: savedState };
   });
+}
+
+function registerTaskPlanPoolTaxonomy(storageRoot: string, items: TaskPlanPoolItem[]): void {
+  for (const item of items) {
+    if (!item.domain || !item.project) continue;
+    registerSharedTaskTaxonomy("", { domain: item.domain, name: item.project }, storageRoot);
+  }
 }
 
 function createRevisionId(): string {
@@ -638,7 +652,7 @@ function buildTaskPlanStatusSummaryMessages(
 }
 
 function parseGeneratedScheduleItems(raw: string): TaskPlanScheduleItem[] {
-  const parsed = JSON.parse(raw) as unknown;
+  const parsed = JSON.parse(normalizeGeneratedJsonPayload(raw)) as unknown;
   const items = Array.isArray(parsed)
     ? parsed
     : isRecord(parsed) && Array.isArray(parsed.items)
@@ -648,6 +662,12 @@ function parseGeneratedScheduleItems(raw: string): TaskPlanScheduleItem[] {
     throw new Error("task plan generation returned invalid JSON shape");
   }
   return items.map(parseGeneratedScheduleItem);
+}
+
+function normalizeGeneratedJsonPayload(raw: string): string {
+  const trimmed = raw.trim();
+  const fenceMatch = /^```\s*(?:json)?\s*([\s\S]*?)\s*```$/i.exec(trimmed);
+  return fenceMatch?.[1]?.trim() ?? trimmed;
 }
 
 function parseGeneratedScheduleItem(input: unknown): TaskPlanScheduleItem {

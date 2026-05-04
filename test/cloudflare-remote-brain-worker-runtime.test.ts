@@ -21,6 +21,7 @@ import {
   createAuthorizedRequest,
   createBucketHarness,
   createDbHarness,
+  createDurableObjectNamespaceHarness,
   createEnv,
   type WorkerEnv,
 } from "./cloudflare-remote-brain-worker-test-helpers.js";
@@ -29,9 +30,11 @@ describe("Cloudflare Remote Brain Worker runtime", () => {
   it("publishes pages into D1 and R2 through the worker fetch entrypoint", async () => {
     const dbHarness = createDbHarness(async () => ({}));
     const bucketHarness = createBucketHarness();
+    const eventsHarness = createDurableObjectNamespaceHarness();
     const env = createEnv({
       DB: dbHarness.db,
       WIKI_BUCKET: bucketHarness.bucket,
+      WIKI_PUBLISH_EVENTS: eventsHarness.namespace,
     });
 
     const response = await worker.fetch(
@@ -66,6 +69,11 @@ describe("Cloudflare Remote Brain Worker runtime", () => {
     expect(bucketHarness.puts).toEqual([{ key: "wiki/example.md", value: "# Example" }]);
     expect(dbHarness.calls.some((call) => call.sql.includes("INSERT INTO publish_runs"))).toBe(true);
     expect(dbHarness.calls.some((call) => call.sql.includes("INSERT INTO wiki_pages"))).toBe(true);
+    expect(eventsHarness.broadcasts[0]).toMatchObject({
+      publishVersion: "2026-04-25T12:00:00.000Z",
+      pageCount: 1,
+      scope: "global",
+    });
   });
 
   it("stores D1-safe preview content for oversized wiki pages while keeping the full body in R2", async () => {
@@ -332,6 +340,13 @@ describe("Cloudflare Remote Brain Worker runtime", () => {
       sourceName: "相册",
     });
 
+    expect(normalizeMobileEntry({
+      ownerUid: "owner-1",
+      createdAt: "2026-04-29T16:30:00.000Z",
+    })).toMatchObject({
+      targetDate: "2026-04-30",
+    });
+
     expect(mobileEntryFromRow({
       id: "entry-1",
       owner_uid: "owner-2",
@@ -436,6 +451,86 @@ describe("Cloudflare Remote Brain Worker runtime", () => {
     }
   });
 
+  it("routes mobile Codex OAuth chat through the Worker-stored token", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toBe("https://chatgpt.com/backend-api/codex/responses");
+      expect(init?.headers).toEqual(expect.objectContaining({
+        Authorization: "Bearer access-token",
+        "Chatgpt-Account-Id": "account-id",
+        Originator: "codex-tui",
+        Session_id: expect.any(String),
+        "User-Agent": expect.stringContaining("codex-tui/"),
+      }));
+      return new Response([
+        "data: {\"type\":\"response.output_item.done\",\"output_index\":0,\"item\":{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"云端 Codex 回答\"}]}}",
+        "data: {\"type\":\"response.completed\",\"response\":{\"output\":[]}}",
+        "",
+      ].join("\n"), {
+        status: 200,
+        headers: { "content-type": "text/event-stream" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const dbHarness = createDbHarness(async (sql, params) => {
+      if (sql.includes("ALTER TABLE mobile_chats ADD COLUMN mode")) {
+        return {};
+      }
+      if (sql.includes("FROM wiki_pages WHERE content LIKE")) {
+        return {
+          results: [{
+            path: "wiki/provider.md",
+            title: "Provider",
+            content: "Provider 内容",
+          }],
+        };
+      }
+      if (sql.includes("FROM mobile_codex_tokens")) {
+        expect(params).toEqual(["owner-1"]);
+        return {
+          first: {
+            ownerUid: "owner-1",
+            accountName: "codex.json",
+            email: "me@example.com",
+            accessToken: "access-token",
+            refreshToken: "refresh-token",
+            accountId: "account-id",
+          },
+        };
+      }
+      return {};
+    });
+    const env = createEnv({ DB: dbHarness.db });
+
+    try {
+      const response = await worker.fetch(
+        createAuthorizedRequest("/mobile/chat/send", {
+          ownerUid: "owner-1",
+          message: "外部模型问题",
+          mode: "wiki",
+          aiProvider: {
+            mode: "codex_oauth",
+            apiBaseUrl: "http://127.0.0.1:8317/v1",
+            apiKey: "desktop-client-key",
+            model: "gpt-5-codex",
+          },
+        }),
+        env,
+      );
+      const payload = await response.json() as {
+        chat: { messages: Array<{ role: string; content: string }> };
+      };
+
+      expect(response.status).toBe(200);
+      expect(payload.chat.messages.at(-1)).toMatchObject({
+        role: "assistant",
+        content: "云端 Codex 回答",
+      });
+      expect(dbHarness.calls.some((call) => call.sql.includes("INSERT INTO mobile_chats"))).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("generates a diary cover image for today's entries without images", async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({
       data: [{ b64_json: "ZmFrZS1pbWFnZQ==" }],
@@ -489,6 +584,626 @@ describe("Cloudflare Remote Brain Worker runtime", () => {
       const update = dbHarness.calls.find((call) => call.sql.includes("UPDATE mobile_entries SET media_files_json"));
       expect(update?.params[1]).toBe("entry-1");
       expect(JSON.parse(String(update?.params[0]))[0]).toMatch(/^https:\/\/remote-brain\.example\/media\//);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("generates a diary cover image on demand for a selected date", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      data: [{ b64_json: "ZmFrZS1pbWFnZQ==" }],
+    }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const bucketHarness = createBucketHarness();
+    const dbHarness = createDbHarness(async (sql) => {
+      if (sql.includes("FROM mobile_ai_providers")) {
+        return {
+          first: {
+            ownerUid: "owner-1",
+            apiName: "主 API",
+            apiBaseUrl: "https://api.example.com",
+            apiKey: "key-1",
+            model: "gpt-image-1",
+          },
+        };
+      }
+      if (sql.includes("FROM mobile_entries")) {
+        return {
+          results: [{
+            id: "entry-1",
+            text: "今天在校园散步，阳光很好。",
+            mediaFilesJson: "[]",
+            createdAt: "2026-04-27T08:00:00.000Z",
+          }],
+        };
+      }
+      return {};
+    });
+    const env = createEnv({
+      DB: dbHarness.db,
+      MEDIA_BUCKET: bucketHarness.bucket,
+      PUBLIC_MEDIA_BASE_URL: "https://remote-brain.example",
+    });
+
+    try {
+      const response = await worker.fetch(
+        createAuthorizedRequest("/mobile/diary-image/generate", {
+          ownerUid: "owner-1",
+          targetDate: "2026-04-27",
+        }),
+        env,
+      );
+      const payload = await response.json() as { generated: boolean; mediaUrl?: string };
+
+      expect(response.status).toBe(200);
+      expect(payload.generated).toBe(true);
+      expect(payload.mediaUrl).toMatch(/^https:\/\/remote-brain\.example\/media\//);
+      expect(fetchMock).toHaveBeenCalledWith("https://api.example.com/v1/images/generations", expect.objectContaining({
+        method: "POST",
+      }));
+      expect(dbHarness.calls.find((call) => call.sql.includes("UPDATE mobile_entries SET media_files_json"))?.params[1]).toBe("entry-1");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("uses the Grsai draw endpoint for Grsai diary images", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === "https://grsai.dakka.com.cn/v1/draw/completions") {
+        const body = JSON.parse(String(init?.body)) as { model: string; size: string; webHook?: string };
+        expect(body.model).toBe("gpt-image-2");
+        expect(body.size).toBe("3:2");
+        expect(body.webHook).toBe("-1");
+        return new Response("data: {\"data\":{\"task_id\":\"task-1\",\"status\":\"processing\"}}\n", {
+          status: 200,
+          headers: { "content-type": "text/event-stream" },
+        });
+      }
+      if (String(input) === "https://grsai.dakka.com.cn/v1/draw/result") {
+        const body = JSON.parse(String(init?.body)) as { id: string };
+        expect(body.id).toBe("task-1");
+        return new Response(JSON.stringify({
+          data: {
+            status: "succeeded",
+            image_url: "https://image.example/generated.png",
+          },
+        }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      if (String(input) === "https://image.example/generated.png") {
+        return new Response("fake-image", {
+          status: 200,
+          headers: { "content-type": "image/png" },
+        });
+      }
+      throw new Error(`unexpected fetch ${String(input)}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const bucketHarness = createBucketHarness();
+    const dbHarness = createDbHarness(async (sql) => {
+      if (sql.includes("FROM mobile_ai_providers")) {
+        return {
+          first: {
+            ownerUid: "owner-1",
+            apiName: "Grsai",
+            apiBaseUrl: "https://grsai.dakka.com.cn",
+            apiKey: "key-1",
+            model: "gpt-image-2",
+          },
+        };
+      }
+      if (sql.includes("FROM mobile_entries")) {
+        return {
+          results: [{
+            id: "entry-1",
+            text: "今天在校园散步，阳光很好。",
+            mediaFilesJson: "[]",
+            createdAt: "2026-04-27T08:00:00.000Z",
+          }],
+        };
+      }
+      return {};
+    });
+    const env = createEnv({
+      DB: dbHarness.db,
+      MEDIA_BUCKET: bucketHarness.bucket,
+      PUBLIC_MEDIA_BASE_URL: "https://remote-brain.example",
+    });
+
+    try {
+      const response = await worker.fetch(
+        createAuthorizedRequest("/mobile/diary-image/generate", {
+          ownerUid: "owner-1",
+          targetDate: "2026-04-27",
+        }),
+        env,
+      );
+      const payload = await response.json() as { generated: boolean; mediaUrl?: string };
+
+      expect(response.status).toBe(200);
+      expect(payload.generated).toBe(true);
+      expect(payload.mediaUrl).toMatch(/^https:\/\/remote-brain\.example\/media\//);
+      expect(fetchMock).toHaveBeenCalledWith("https://grsai.dakka.com.cn/v1/draw/completions", expect.objectContaining({
+        method: "POST",
+      }));
+      expect(fetchMock).toHaveBeenCalledWith("https://grsai.dakka.com.cn/v1/draw/result", expect.objectContaining({
+        method: "POST",
+      }));
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("returns provider image generation errors as JSON", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      error: { message: "unsupported size" },
+    }), {
+      status: 400,
+      headers: { "content-type": "application/json" },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const bucketHarness = createBucketHarness();
+    const dbHarness = createDbHarness(async (sql) => {
+      if (sql.includes("FROM mobile_ai_providers")) {
+        return {
+          first: {
+            ownerUid: "owner-1",
+            apiName: "主 API",
+            apiBaseUrl: "https://api.example.com",
+            apiKey: "key-1",
+            model: "gpt-image-1",
+          },
+        };
+      }
+      if (sql.includes("FROM mobile_entries")) {
+        return {
+          results: [{
+            id: "entry-1",
+            text: "今天在校园散步，阳光很好。",
+            mediaFilesJson: "[]",
+            createdAt: "2026-04-27T08:00:00.000Z",
+          }],
+        };
+      }
+      return {};
+    });
+    const env = createEnv({
+      DB: dbHarness.db,
+      MEDIA_BUCKET: bucketHarness.bucket,
+      PUBLIC_MEDIA_BASE_URL: "https://remote-brain.example",
+    });
+
+    try {
+      const response = await worker.fetch(
+        createAuthorizedRequest("/mobile/diary-image/generate", {
+          ownerUid: "owner-1",
+          targetDate: "2026-04-27",
+        }),
+        env,
+      );
+      const payload = await response.json() as { ok: boolean; error: string };
+
+      expect(response.status).toBe(502);
+      expect(payload.ok).toBe(false);
+      expect(payload.error).toContain("unsupported size");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("prefers Grsai task error details over generic failure reasons", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === "https://grsai.dakka.com.cn/v1/draw/completions") {
+        return new Response(JSON.stringify({
+          code: 0,
+          data: { id: "task-1" },
+          msg: "success",
+        }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      if (String(input) === "https://grsai.dakka.com.cn/v1/draw/result") {
+        return new Response(JSON.stringify({
+          code: 0,
+          data: {
+            status: "failed",
+            error: "正在修复，请先切换到gpt-image-2-vip模型",
+            failure_reason: "error",
+          },
+          msg: "success",
+        }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      throw new Error(`unexpected fetch ${String(input)}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const bucketHarness = createBucketHarness();
+    const dbHarness = createDbHarness(async (sql) => {
+      if (sql.includes("FROM mobile_ai_providers")) {
+        return {
+          first: {
+            ownerUid: "owner-1",
+            apiName: "Grsai",
+            apiBaseUrl: "https://grsai.dakka.com.cn",
+            apiKey: "key-1",
+            model: "gpt-image-2",
+          },
+        };
+      }
+      if (sql.includes("FROM mobile_entries")) {
+        return {
+          results: [{
+            id: "entry-1",
+            text: "今天在校园散步，阳光很好。",
+            mediaFilesJson: "[]",
+            createdAt: "2026-04-27T08:00:00.000Z",
+          }],
+        };
+      }
+      return {};
+    });
+    const env = createEnv({
+      DB: dbHarness.db,
+      MEDIA_BUCKET: bucketHarness.bucket,
+      PUBLIC_MEDIA_BASE_URL: "https://remote-brain.example",
+    });
+
+    try {
+      const response = await worker.fetch(
+        createAuthorizedRequest("/mobile/diary-image/generate", {
+          ownerUid: "owner-1",
+          targetDate: "2026-04-27",
+        }),
+        env,
+      );
+      const payload = await response.json() as { ok: boolean; error: string };
+
+      expect(response.status).toBe(502);
+      expect(payload.ok).toBe(false);
+      expect(payload.error).toContain("gpt-image-2-vip");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("returns a clear error when the stored image provider key is not an API key", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const bucketHarness = createBucketHarness();
+    const dbHarness = createDbHarness(async (sql) => {
+      if (sql.includes("FROM mobile_ai_providers")) {
+        return {
+          first: {
+            ownerUid: "owner-1",
+            apiName: "Grsai",
+            apiBaseUrl: "https://grsai.dakka.com.cn",
+            apiKey: "D:\\Desktop\\安卓 llm wiki",
+            model: "gpt-image-2",
+          },
+        };
+      }
+      if (sql.includes("FROM mobile_entries")) {
+        return {
+          results: [{
+            id: "entry-1",
+            text: "今天在校园散步，阳光很好。",
+            mediaFilesJson: "[]",
+            createdAt: "2026-04-27T08:00:00.000Z",
+          }],
+        };
+      }
+      return {};
+    });
+    const env = createEnv({
+      DB: dbHarness.db,
+      MEDIA_BUCKET: bucketHarness.bucket,
+      PUBLIC_MEDIA_BASE_URL: "https://remote-brain.example",
+    });
+
+    try {
+      const response = await worker.fetch(
+        createAuthorizedRequest("/mobile/diary-image/generate", {
+          ownerUid: "owner-1",
+          targetDate: "2026-04-27",
+        }),
+        env,
+      );
+      const payload = await response.json() as { ok: boolean; error: string };
+
+      expect(response.status).toBe(502);
+      expect(payload.ok).toBe(false);
+      expect(payload.error).toContain("API Key 不是有效密钥");
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("syncs Codex tokens and reads quota through the Worker", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === "https://chatgpt.com/backend-api/wham/usage") {
+        return new Response(JSON.stringify({
+          rate_limit: {
+            primary_window: { used_percent: 25, resets_at: "2026-04-28T12:00:00Z" },
+            secondary_window: { used_percent: 40, resets_at: "2026-05-05T12:00:00Z" },
+          },
+        }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      throw new Error(`unexpected ${String(input)}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const dbHarness = createDbHarness(async (sql, params) => {
+      if (sql.includes("FROM mobile_codex_tokens")) {
+        return {
+          results: [{
+            ownerUid: "owner-1",
+            accountName: "codex.json",
+            email: "me@example.com",
+            planType: "pro",
+            accessToken: "access-token",
+            refreshToken: "refresh-token",
+            accountId: "account-id",
+          }],
+        };
+      }
+      if (sql.includes("INSERT INTO mobile_codex_tokens")) {
+        expect(params).toEqual([
+          "owner-1",
+          "codex.json",
+          "me@example.com",
+          "pro",
+          "access-token",
+          "refresh-token",
+          "account-id",
+        ]);
+      }
+      return {};
+    });
+    const env = createEnv({ DB: dbHarness.db });
+
+    try {
+      const syncResponse = await worker.fetch(
+        createAuthorizedRequest("/mobile/codex-quota/sync-token", {
+          ownerUid: "owner-1",
+          account: {
+            name: "codex.json",
+            email: "me@example.com",
+            planType: "pro",
+            accessToken: "access-token",
+            refreshToken: "refresh-token",
+            accountId: "account-id",
+          },
+        }),
+        env,
+      );
+      expect(syncResponse.status).toBe(200);
+
+      const quotaResponse = await worker.fetch(
+        createAuthorizedRequest("/mobile/codex-quota/refresh", { ownerUid: "owner-1" }),
+        env,
+      );
+      const payload = await quotaResponse.json() as {
+        accounts: Array<{
+          name: string;
+          quota: {
+            primaryWindow?: { usedPercent: number | null };
+            secondaryWindow?: { usedPercent: number | null };
+          };
+        }>;
+      };
+
+      expect(quotaResponse.status).toBe(200);
+      expect(payload.accounts[0]?.name).toBe("codex.json");
+      expect(payload.accounts[0]?.quota.primaryWindow?.usedPercent).toBe(25);
+      expect(payload.accounts[0]?.quota.secondaryWindow?.usedPercent).toBe(40);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("starts and completes mobile Codex OAuth through the Worker device flow", async () => {
+    const idToken = createJwt({
+      email: "codex@example.com",
+      "https://api.openai.com/auth": {
+        chatgpt_account_id: "account-id",
+        chatgpt_plan_type: "pro",
+      },
+    });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === "https://auth.openai.com/api/accounts/deviceauth/usercode") {
+        expect(JSON.parse(String(init?.body))).toEqual({ client_id: "app_EMoamEEZ73f0CkXaXp7hrann" });
+        return new Response(JSON.stringify({
+          device_auth_id: "device-auth-1",
+          user_code: "ABCD-EFGH",
+          interval: 2,
+        }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      if (String(input) === "https://auth.openai.com/api/accounts/deviceauth/token") {
+        expect(JSON.parse(String(init?.body))).toEqual({
+          device_auth_id: "device-auth-1",
+          user_code: "ABCD-EFGH",
+        });
+        return new Response(JSON.stringify({
+          authorization_code: "auth-code",
+          code_verifier: "code-verifier",
+          code_challenge: "code-challenge",
+        }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      if (String(input) === "https://auth.openai.com/oauth/token") {
+        expect(String(init?.body)).toContain("redirect_uri=https%3A%2F%2Fauth.openai.com%2Fdeviceauth%2Fcallback");
+        expect(String(init?.body)).toContain("code_verifier=code-verifier");
+        return new Response(JSON.stringify({
+          access_token: "access-token",
+          refresh_token: "refresh-token",
+          id_token: idToken,
+        }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      throw new Error(`unexpected ${String(input)}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const dbHarness = createDbHarness(async (sql, params) => {
+      if (sql.includes("INSERT INTO mobile_codex_tokens")) {
+        expect(params).toEqual([
+          "owner-1",
+          "codex-mobile-codex@example.com.json",
+          "codex@example.com",
+          "pro",
+          "access-token",
+          "refresh-token",
+          "account-id",
+        ]);
+      }
+      return {};
+    });
+    const env = createEnv({ DB: dbHarness.db });
+
+    try {
+      const startResponse = await worker.fetch(
+        createAuthorizedRequest("/mobile/codex-oauth/start", { ownerUid: "owner-1" }),
+        env,
+      );
+      const startPayload = await startResponse.json() as {
+        url: string;
+        userCode: string;
+        state: string;
+        pollIntervalSeconds: number;
+      };
+
+      expect(startResponse.status).toBe(200);
+      expect(startPayload.url).toBe("https://auth.openai.com/codex/device");
+      expect(startPayload.userCode).toBe("ABCD-EFGH");
+      expect(startPayload.pollIntervalSeconds).toBe(2);
+      expect(startPayload.state).toContain(".");
+
+      const pollResponse = await worker.fetch(
+        createAuthorizedRequest("/mobile/codex-oauth/poll", {
+          ownerUid: "owner-1",
+          state: startPayload.state,
+        }),
+        env,
+      );
+      const pollPayload = await pollResponse.json() as { status: string; account?: { email?: string } };
+
+      expect(pollResponse.status).toBe(200);
+      expect(pollPayload.status).toBe("ok");
+      expect(pollPayload.account?.email).toBe("codex@example.com");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("returns the Codex device-code HTTP status when OAuth start is rate limited", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      error: "rate_limited",
+    }), {
+      status: 429,
+      headers: { "content-type": "application/json" },
+    })));
+    const env = createEnv({ DB: createDbHarness(async () => ({})).db });
+
+    try {
+      const response = await worker.fetch(
+        createAuthorizedRequest("/mobile/codex-oauth/start", { ownerUid: "owner-1" }),
+        env,
+      );
+      const payload = await response.json() as { ok: boolean; error?: string };
+
+      expect(response.status).toBe(502);
+      expect(payload.ok).toBe(false);
+      expect(payload.error).toBe("Codex device code HTTP 429: rate_limited");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("uses a configured quota reader service for Codex quota refresh", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toBe("https://quota-reader.example/api/codex-quota-reader/read");
+      expect(init?.headers).toEqual({
+        Authorization: "Bearer reader-secret",
+        "content-type": "application/json",
+      });
+      expect(JSON.parse(String(init?.body))).toMatchObject({
+        accessToken: "access-token",
+        refreshToken: "refresh-token",
+        accountId: "account-id",
+      });
+      return new Response(JSON.stringify({
+        ok: true,
+        accessToken: "new-access-token",
+        refreshToken: "new-refresh-token",
+        accountId: "new-account-id",
+        quota: {
+          primary_window: { used_percent: 12, resets_at: "2026-04-28T12:00:00Z" },
+          secondary_window: { used_percent: 45, resets_at: "2026-05-05T12:00:00Z" },
+        },
+      }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const dbHarness = createDbHarness(async (sql) => {
+      if (sql.includes("FROM mobile_codex_tokens")) {
+        return {
+          results: [{
+            ownerUid: "owner-1",
+            accountName: "codex.json",
+            email: "me@example.com",
+            planType: "pro",
+            accessToken: "access-token",
+            refreshToken: "refresh-token",
+            accountId: "account-id",
+          }],
+        };
+      }
+      return {};
+    });
+    const env = createEnv({
+      DB: dbHarness.db,
+      QUOTA_READER_URL: "https://quota-reader.example",
+      QUOTA_READER_TOKEN: "reader-secret",
+    });
+
+    try {
+      const response = await worker.fetch(
+        createAuthorizedRequest("/mobile/codex-quota/refresh", { ownerUid: "owner-1" }),
+        env,
+      );
+      const payload = await response.json() as {
+        accounts: Array<{
+          quota: {
+            primaryWindow?: { usedPercent: number | null };
+            secondaryWindow?: { usedPercent: number | null };
+          };
+        }>;
+      };
+
+      expect(response.status).toBe(200);
+      expect(payload.accounts[0]?.quota.primaryWindow?.usedPercent).toBe(12);
+      expect(payload.accounts[0]?.quota.secondaryWindow?.usedPercent).toBe(45);
+      const update = dbHarness.calls.find((call) => call.sql.includes("UPDATE mobile_codex_tokens"));
+      expect(update?.params.slice(0, 3)).toEqual(["new-access-token", "new-refresh-token", "new-account-id"]);
     } finally {
       vi.unstubAllGlobals();
     }
@@ -592,3 +1307,17 @@ describe("Cloudflare Remote Brain Worker runtime", () => {
     await expect(missingMessage.json()).resolves.toMatchObject({ error: "missing_message" });
   });
 });
+
+// fallow-ignore-next-line complexity
+function createJwt(payload: Record<string, unknown>): string {
+  return [
+    encodeJwtPart({ alg: "none", typ: "JWT" }),
+    encodeJwtPart(payload),
+    "signature",
+  ].join(".");
+}
+
+// fallow-ignore-next-line complexity
+function encodeJwtPart(payload: Record<string, unknown>): string {
+  return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+}

@@ -48,6 +48,50 @@ describe("web intake scan route", () => {
       }),
     );
   });
+
+  it("uses configured source folders during intake scan", async () => {
+    const projectRoot = makeRoot();
+    const sourceVaultRoot = makeRoot();
+    const runtimeRoot = makeRoot();
+    const sourceRoot = path.join(sourceVaultRoot, "raw", "\u4e2a\u4eba\u4fe1\u606f");
+    fs.mkdirSync(sourceRoot, { recursive: true });
+    fs.writeFileSync(path.join(sourceRoot, "about.md"), "# About Me\n\nprofile", "utf8");
+    fs.writeFileSync(
+      path.join(projectRoot, "sync-compile-config.json"),
+      `${JSON.stringify({
+        source_vault_root: sourceVaultRoot,
+        runtime_output_root: runtimeRoot,
+        source_folders: [sourceRoot],
+      }, null, 2)}\n`,
+      "utf8",
+    );
+    const cfg: ServerConfig = {
+      sourceVaultRoot,
+      runtimeRoot,
+      port: 4175,
+      host: "127.0.0.1",
+      author: "tester",
+      projectRoot,
+    };
+    const handler = handleIntakeScan(cfg, async () => ({ pulledCount: 0, failedCount: 0, skipped: false }));
+    const response = createJsonResponse();
+
+    await handler({} as never, response as never);
+
+    expect(response.body.data.items).toContainEqual(
+      expect.objectContaining({
+        kind: "source",
+        channel: "\u4e2a\u4eba\u4fe1\u606f",
+        title: "About Me",
+      }),
+    );
+    expect(response.body.data.plan).toContainEqual(
+      expect.objectContaining({
+        file: "\u4e2a\u4eba\u4fe1\u606f/about.md",
+      }),
+    );
+  });
+
 });
 
 function makeRoot(): string {

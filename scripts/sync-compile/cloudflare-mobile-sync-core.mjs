@@ -10,6 +10,7 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { listMarkdownFilesRecursive } from "./file-listing.mjs";
 
+// fallow-ignore-next-line complexity
 export async function buildWikiPageRecords(vaultRoot, version = new Date().toISOString()) {
   const wikiRoot = path.join(vaultRoot, "wiki");
   const files = await listMarkdownFilesRecursive(wikiRoot, {
@@ -96,6 +97,7 @@ export function toSlash(value) {
   return value.replace(/\\/g, "/");
 }
 
+// fallow-ignore-next-line complexity
 function extensionFromMedia(url, contentType) {
   const ext = path.extname(new URL(url).pathname).toLowerCase();
   if (ext && ext.length <= 8) return ext;
@@ -143,7 +145,6 @@ function getPageType(relativePath) {
   if (normalized === "index.md") return "index";
   if (normalized === "MOC.md") return "moc";
   if (normalized.startsWith("concepts/")) return "concept";
-  if (normalized.startsWith("episodes/")) return "episode";
   if (normalized.startsWith("procedures/")) return "procedure";
   return "other";
 }

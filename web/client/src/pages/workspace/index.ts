@@ -1,4 +1,10 @@
-﻿import { renderIcon } from "../../components/icon.js";
+import { renderIcon } from "../../components/icon.js";
+import {
+  WORKFLOW_RECORDER_OPEN_EVENT,
+  WORKFLOW_RECORDER_PENDING_KEY,
+  eventMatchesShortcut,
+  getClientKeyboardShortcut,
+} from "../../keyboard-shortcuts.js";
 import {
   applyPanelWidth,
   clampPanelWidth,
@@ -7,8 +13,12 @@ import {
   type PanelWidthBounds,
 } from "../../shell/panel-layout.js";
 import { attachResizeHandle } from "../../shell/resize-handle.js";
-import { createWorkspaceToolboxController } from "./toolbox/controller.js";
-import type { ToolboxEntityType } from "./toolbox/types.js";
+import {
+  bindWorkLogBlockEditor,
+  renderWorkLogBlockToolbar,
+  serializeWorkLogEditorHtml,
+} from "./work-log-block-editor.js";
+import { disposeWorkspacePageGraph, mountWorkspacePageGraph } from "./workspace-graph.js";
 import {
   TASK_POOL_UNGROUPED_DOMAIN,
   TASK_POOL_UNGROUPED_PROJECT,
@@ -29,32 +39,73 @@ import {
   renderTaskPoolTreeLayout,
   type TaskPoolTreeRenderState,
 } from "./task-pool-tree-view.js";
+import {
+  TASK_POOL_SORT_LABELS,
+  readTaskPoolBoardZone,
+  renderTaskPoolBoard,
+  sortTaskPoolBoardItems,
+  type TaskPoolBoardGroupMode,
+  type TaskPoolBoardGroupModes,
+  type TaskPoolBoardSortMode,
+  type TaskPoolBoardSortModes,
+  type TaskPoolBoardZone,
+} from "./task-pool-board.js";
+import {
+  isExecutionWorkbenchDocument,
+  mountExecutionWorkbench,
+  renderExecutionWorkbenchDocument,
+} from "./execution-workbench.js";
+import {
+  isProjectWorkspaceDocument,
+  mountProjectWorkspace,
+  renderProjectWorkspaceDocument,
+} from "./project-workspace.js";
+import type {
+  ProjectWorkspaceCreateRequest,
+  ProjectWorkspaceDragNode,
+  ProjectWorkspaceHierarchyMove,
+} from "./project-workspace-dnd.js";
+import {
+  isWorkspaceLibraryPage,
+  renderWorkspaceLibraryDocument,
+  type WorkspaceGalleryStatus,
+  type WorkspaceDocGalleryMeta,
+} from "./workspace-library-hub.js";
+import { handleKnowledgePreviewClick, withKnowledgePreviewLinks } from "../../shell/knowledge-preview-links.js";
 
-type WorkspaceTab = "project-progress" | "task-plan" | "task-pool" | "work-log" | "toolbox";
+type WorkspaceTab = "task-plan" | "task-pool" | "work-log";
 
 type WorkspaceDocKind = "root" | "domain" | "project" | "work-log";
 
 interface WorkspacePageOptions {
   routeSection?: string;
+  forceTaskPoolBoard?: boolean;
+  onOpenKnowledgePreview?: (path: string) => void;
 }
 
 interface WorkspaceRouteState {
   activeTab: WorkspaceTab;
-  toolboxSection: ToolboxEntityType | null;
   taskPoolDomainSlug: string | null;
 }
 
 interface WorkspaceTabDefinition {
   id: WorkspaceTab;
   label: string;
+  icon: string;
 }
 
 const WORKSPACE_TABS: readonly WorkspaceTabDefinition[] = [
-  { id: "project-progress", label: "\u9879\u76ee\u63a8\u8fdb\u9875" },
-  { id: "task-plan", label: "\u4efb\u52a1\u8ba1\u5212\u9875" },
-  { id: "task-pool", label: "\u4efb\u52a1\u6c60" },
-  { id: "work-log", label: "\u5de5\u4f5c\u65e5\u5fd7" },
-  { id: "toolbox", label: "\u5de5\u5177\u7bb1" },
+  { id: "task-plan", label: "\u4efb\u52a1\u8ba1\u5212\u9875", icon: "clipboard-list" },
+  { id: "task-pool", label: "\u4efb\u52a1\u6c60", icon: "archive" },
+  { id: "work-log", label: "\u5de5\u4f5c\u65e5\u5fd7", icon: "book-open-text" },
+];
+const DEFAULT_WORKSPACE_DOC_ID = "root";
+const DEFAULT_WORKSPACE_DOC_PATH = "wiki/专题/index.md";
+const WORKSPACE_GALLERY_DRAG_TYPE = "application/x-llmwiki-workspace-gallery-path";
+const WORKSPACE_GALLERY_STATUSES: readonly WorkspaceGalleryStatus[] = [
+  "已验证但成功",
+  "待验证",
+  "已验证但失败",
 ];
 
 interface WorkspaceDocument {
@@ -68,6 +119,30 @@ interface WorkspaceDocument {
   modifiedAt: string | null;
   domain: string | null;
   project: string | null;
+  contentLoaded?: boolean;
+  treeHidden?: boolean;
+  gallery?: WorkspaceDocGalleryMeta;
+}
+
+interface WorkspaceDocumentPage {
+  path: string;
+  title: string | null;
+  html: string;
+  raw?: string;
+  modifiedAt?: string | null;
+}
+
+interface WorkspaceDocumentPayload {
+  success: boolean;
+  data?: {
+    document: WorkspaceDocumentPage;
+  };
+  error?: string;
+}
+
+interface WorkspaceDocDeleteDialog {
+  target: WorkspaceDocument;
+  childPaths: readonly string[];
 }
 
 interface WorkspaceDocsPayload {
@@ -78,11 +153,50 @@ interface WorkspaceDocsPayload {
   error?: string;
 }
 
+interface WorkspaceGalleryStatusMoveData {
+  previousPath: string;
+  path: string;
+  status: WorkspaceGalleryStatus;
+}
+
+interface WorkspaceGalleryStatusMovePayload {
+  success?: boolean;
+  data?: WorkspaceGalleryStatusMoveData;
+  error?: string;
+}
+
 interface WorkspaceDocsState {
   status: "idle" | "loading" | "ready" | "error";
   documents: WorkspaceDocument[];
   selectedId: string;
   error: string | null;
+}
+
+function createInitialWorkspaceRootDocument(): WorkspaceDocument {
+  return {
+    id: DEFAULT_WORKSPACE_DOC_ID,
+    kind: "root",
+    label: "工作日志",
+    path: DEFAULT_WORKSPACE_DOC_PATH,
+    title: "工作日志",
+    html: "",
+    raw: "",
+    modifiedAt: null,
+    domain: null,
+    project: null,
+    contentLoaded: false,
+  };
+}
+
+interface SavedWorkspaceDocumentContent {
+  currentHtml: string;
+  nextTitle: string;
+  raw: string;
+}
+
+interface WorkspaceGraphyPosition {
+  x: number;
+  y: number;
 }
 
 type TaskPlanLoadStatus = "idle" | "loading" | "ready" | "error";
@@ -94,6 +208,8 @@ type TaskPlanSplitCollapse = "none" | "top" | "bottom";
 
 type TaskPlanPriority = "high" | "mid" | "low" | "cool" | "neutral";
 type TaskPlanTaskSource = "文字输入" | "近日状态" | "闪念日记" | "工作日志" | "AI 生成" | "手动新增";
+type TaskPoolOwner = "me" | "ai";
+type TaskPoolBoardScrollSnapshot = Partial<Record<TaskPoolBoardZone, number>>;
 
 interface TaskPlanVoiceState {
   transcript: string;
@@ -108,6 +224,64 @@ export interface TaskPlanPoolItem {
   source: TaskPlanTaskSource;
   domain?: string;
   project?: string;
+  stageId?: string;
+  projectOrder?: number;
+  taskOrder?: number;
+  zone?: TaskPoolBoardZone;
+  owner?: TaskPoolOwner;
+  createdAt?: string;
+  completedAt?: string;
+  dueDate?: string;
+  diaryDate?: string;
+  generationBatchId?: string;
+  generatedReason?: string;
+  duplicateOfTitle?: string;
+  currentProgress?: string;
+  lastStop?: string;
+  nextStep?: string;
+  linkedCases?: string[];
+  linkedResources?: string[];
+  linkedMethods?: string[];
+  sourceRefs?: string[];
+  workflowLog?: TaskWorkflowLogEntry[];
+  actions?: TaskPlanActionItem[];
+}
+
+interface TaskPlanStageItem {
+  id: string;
+  title: string;
+  domain: string;
+  project: string;
+  order: number;
+}
+
+interface TaskPlanActionItem {
+  id: string;
+  title: string;
+  order: number;
+  completedAt?: string;
+}
+
+interface TaskWorkflowLogEntry {
+  id: string;
+  recordedAt: string;
+  node: string;
+  tool: string;
+  input: string;
+  output: string;
+  issue: string;
+  nextStep: string;
+  attachments: string[];
+  sourceRecordId: string;
+}
+
+interface TaskPoolGenerationRecord {
+  id: string;
+  generatedAt: string;
+  diaryPaths: string[];
+  diaryDates: string[];
+  createdTaskIds: string[];
+  skippedDuplicateTitles: string[];
 }
 
 interface TaskPlanScheduleItem {
@@ -155,6 +329,8 @@ interface TaskPlanState {
   statusSummary: string;
   pool: {
     items: TaskPlanPoolItem[];
+    stages?: TaskPlanStageItem[];
+    generationRecords: TaskPoolGenerationRecord[];
   };
   schedule: TaskPlanScheduleState;
   roadmap: TaskPlanRoadmapState;
@@ -172,10 +348,11 @@ interface TaskPlanViewState {
   poolEditMode: boolean;
   poolDraftTouched: boolean;
   poolFilter: TaskPlanTaskSource | "全部";
+  poolSortMode: TaskPoolBoardSortMode;
   scheduleDraft: TaskPlanScheduleItem[];
   scheduleEditMode: boolean;
   splitRatio: number;
-  busyAction: "text" | "pool" | "status" | "status-refresh" | "generate" | "save" | "roadmap" | null;
+  busyAction: "text" | "pool" | "pool-generate" | "status" | "status-refresh" | "generate" | "save" | "roadmap" | null;
   feedback: string | null;
   error: string | null;
   pendingScheduleFocusId: string | null;
@@ -199,6 +376,14 @@ interface TaskPoolViewState {
   editValue: string;
   draggingTaskId: string | null;
   dropProjectKey: string | null;
+  selectedCandidateId: string | null;
+  isGenerationRecordOpen: boolean;
+  isWorkflowRecorderOpen: boolean;
+  workflowRecorderDraft: string;
+  workflowRecorderFeedback: string | null;
+  workflowRecorderBusy: boolean;
+  sortModes: TaskPoolBoardSortModes;
+  groupModes: TaskPoolBoardGroupModes;
 }
 
 interface HealthDomainConnectionState {
@@ -292,10 +477,12 @@ interface HealthDomainViewState {
     username: string;
     verificationCode: string;
     captchaCode: string;
+    relativeUid: string;
   };
   apiDraft: {
     tokenJson: string;
     apiBaseUrl: string;
+    relativeUid: string;
   };
   busyAction: "send-code" | "connect" | "sync" | "qr-login" | null;
   feedback: string | null;
@@ -328,6 +515,26 @@ interface TaskPlanSchedulePayload {
   error?: string | { code?: string; message?: string };
 }
 
+interface TaskPoolGeneratePayload {
+  success: boolean;
+  data?: {
+    state: TaskPlanState;
+    generationRecord: TaskPoolGenerationRecord | null;
+  };
+  error?: string | { code?: string; message?: string };
+}
+
+interface WorkflowRecorderPayload {
+  success: boolean;
+  data?: {
+    status: "archived" | "pending";
+    message: string;
+    taskTitle?: string;
+    casePath?: string | null;
+  };
+  error?: string | { code?: string; message?: string };
+}
+
 interface TaskPlanStateMutationPayload {
   success: boolean;
   data?: {
@@ -337,10 +544,11 @@ interface TaskPlanStateMutationPayload {
 }
 
 const WORKSPACE_TREE_BOUNDS: PanelWidthBounds = {
-  defaultWidth: 320,
-  minWidth: 240,
-  maxWidth: 520,
+  defaultWidth: 252,
+  minWidth: 1,
+  maxWidth: 420,
 };
+const WORKSPACE_TREE_COLLAPSE_WIDTH = 24;
 
 const TASK_POOL_TREE_BOUNDS: PanelWidthBounds = {
   defaultWidth: 252,
@@ -349,14 +557,15 @@ const TASK_POOL_TREE_BOUNDS: PanelWidthBounds = {
 };
 
 const WORKSPACE_SIDEBAR_BOUNDS: PanelWidthBounds = {
-  defaultWidth: 172,
-  minWidth: 132,
-  maxWidth: 260,
+  defaultWidth: 64,
+  minWidth: 64,
+  maxWidth: 64,
 };
 
-const WORKSPACE_SIDEBAR_COLLAPSED_WIDTH = 0;
-const WORKSPACE_SIDEBAR_RAIL_EXPANDED_WIDTH = 10;
-const WORKSPACE_SIDEBAR_RAIL_COLLAPSED_WIDTH = 34;
+const WORKSPACE_DOC_AUTOSAVE_DELAY_MS = 700;
+const WORKSPACE_GRAPHY_POSITION_KEY = "workspace.graphyFloatPosition";
+const WORKSPACE_GRAPHY_DEFAULT_POSITION: WorkspaceGraphyPosition = { x: 0, y: 0 };
+const TASK_POOL_BOARD_SCROLL_ZONES: readonly TaskPoolBoardZone[] = ["mine", "ai", "candidate"];
 
 const TASK_PLAN_STEP_LABELS = [
   "文字输入与想法",
@@ -391,28 +600,28 @@ const TASK_POOL_DOMAIN_LABEL_OVERRIDES: Record<string, string> = {
 };
 
 export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLElement {
-  const root = document.createElement("section");
+  const root = document.createElement("section") as HTMLElement & { __dispose?: () => void };
   root.className = "workspace-page";
+  root.addEventListener("click", (event) => {
+    handleKnowledgePreviewClick(event, options.onOpenKnowledgePreview);
+  }, { capture: true });
   const initialRouteState = parseWorkspaceRouteState(options.routeSection);
+  const renderTaskPoolBoard = options.forceTaskPoolBoard ?? initialRouteState.activeTab === "task-pool";
   let activeTab: WorkspaceTab = initialRouteState.activeTab;
   let activeTaskPoolDomainSlug = initialRouteState.taskPoolDomainSlug;
-  const toolboxController = createWorkspaceToolboxController({
-    rerender: () => render(),
-    initialSection: initialRouteState.toolboxSection,
-    navigateTo(section) {
-      const nextHash = buildWorkspaceHash("toolbox", section);
-      if (window.location.hash !== nextHash) {
-        window.location.hash = nextHash;
-      }
-    },
-  });
-  let isWorkspaceSidebarCollapsed = false;
-  let isWorkspaceDocEditing = false;
-  let isWorkspaceOutlineCollapsed = false;
   let workspaceDraftHtml = "";
+  let workspaceDraftDocumentId: string | null = null;
+  let workspaceDraftDirty = false;
+  let workspaceAutoSaveTimer: number | null = null;
+  let workspaceGraphyPosition = readWorkspaceGraphyPosition();
+  let workspaceGraphAbort: AbortController | null = null;
   let workspaceDocSearch = "";
+  let workspaceGallerySelectedPath: string | null = null;
+  let workspaceDocTreeScrollTop = 0;
   let workspaceSidebarWidth = 0;
   let workspaceTreeWidth = 0;
+  let workspaceDocDeleteDialog: WorkspaceDocDeleteDialog | null = null;
+  const workspaceDocContentRequests = new Map<string, Promise<void>>();
   let workspaceDocsState: WorkspaceDocsState = {
     status: "idle",
     documents: [],
@@ -421,12 +630,21 @@ export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLEle
   };
   let taskPlanState: TaskPlanViewState = createDefaultTaskPlanViewState();
   let taskPoolState: TaskPoolViewState = createDefaultTaskPoolViewState();
+  if (activeTab === "task-pool" && consumeWorkflowRecorderOpenRequest()) {
+    taskPoolState = {
+      ...taskPoolState,
+      isWorkflowRecorderOpen: true,
+      workflowRecorderFeedback: null,
+    };
+  }
   let healthDomainState: HealthDomainViewState = createDefaultHealthDomainViewState();
   let taskPoolGestureState: { baselineScale: number; baselineZoomPercent: number } | null = null;
   let suppressNextTaskPoolTreeEditBlur = false;
   let taskPlanDraftScheduleSequence = 0;
   let taskPlanDraftPoolSequence = 0;
+  let ignoreWorkspaceDetailsToggle = false;
   const expandedDomains = new Set<string>();
+  const expandedWorkspaceProjects = new Set<string>();
 
   const ensureWorkspaceDocsLoaded = (): void => {
     if (workspaceDocsState.status === "loading" || workspaceDocsState.status === "ready") {
@@ -436,40 +654,138 @@ export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLEle
     workspaceDocsState = {
       ...workspaceDocsState,
       status: "loading",
+      documents: [createInitialWorkspaceRootDocument()],
+      selectedId: DEFAULT_WORKSPACE_DOC_ID,
       error: null,
     };
+    workspaceDraftDocumentId = DEFAULT_WORKSPACE_DOC_ID;
+    workspaceDraftHtml = "";
+    workspaceDraftDirty = false;
     render();
     void loadWorkspaceDocs();
   };
 
   const loadWorkspaceDocs = async (): Promise<void> => {
-    try {
-      const response = await fetch("/api/workspace/docs");
-      const payload = (await response.json()) as WorkspaceDocsPayload;
-      if (!response.ok || !payload.success || !payload.data) {
-        throw new Error(payload.error ?? "\u5de5\u4f5c\u65e5\u5fd7\u8bfb\u53d6\u5931\u8d25");
-      }
+    const treeRequest = loadWorkspaceDocTree();
+    const pageRequest = loadWorkspaceDocContent(DEFAULT_WORKSPACE_DOC_ID);
+    await Promise.allSettled([pageRequest, treeRequest]);
+  };
 
-      workspaceDocsState = {
-        status: "ready",
-        documents: payload.data.documents,
-        selectedId: payload.data.documents[0]?.id ?? "",
-        error: null,
-      };
-      syncExpandedDomains(payload.data.documents);
-      isWorkspaceDocEditing = false;
-      workspaceDraftHtml = "";
-      workspaceDocSearch = "";
+  const loadWorkspaceDocTree = async (): Promise<void> => {
+    try {
+      applyWorkspaceDocTree(await fetchWorkspaceDocTree());
     } catch (error) {
-      workspaceDocsState = {
-        status: "error",
-        documents: [],
-        selectedId: "",
-        error: error instanceof Error ? error.message : String(error),
-      };
+      handleWorkspaceDocTreeError(error);
     }
+  };
+
+  const fetchWorkspaceDocTree = async (): Promise<WorkspaceDocument[]> => {
+    const response = await fetch("/api/workspace/docs?mode=tree");
+    const payload = (await response.json()) as WorkspaceDocsPayload;
+    if (!response.ok || !payload.success || !payload.data) {
+      throw new Error(payload.error ?? "\u5de5\u4f5c\u65e5\u5fd7\u8bfb\u53d6\u5931\u8d25");
+    }
+    return payload.data.documents;
+  };
+
+  const applyWorkspaceDocTree = (documents: readonly WorkspaceDocument[]): void => {
+    const selectedId = selectWorkspaceDocumentId(documents, workspaceDocsState.selectedId);
+    workspaceDocsState = {
+      status: "ready",
+      documents: mergeWorkspaceDocumentSummaries(documents, workspaceDocsState.documents),
+      selectedId,
+      error: null,
+    };
+    syncExpandedDomains(documents);
+    workspaceDraftDocumentId = selectedId || null;
+    workspaceDraftHtml = readWorkspaceDraftHtml(workspaceDocsState.documents, selectedId);
+    workspaceDraftDirty = false;
+    workspaceDocSearch = "";
+    render();
+    if (selectedId && !workspaceDocsState.documents.find((item) => item.id === selectedId)?.contentLoaded) {
+      void loadWorkspaceDocContent(selectedId);
+    }
+  };
+
+  const handleWorkspaceDocTreeError = (error: unknown): void => {
+    if (workspaceDocsState.documents.some((item) => item.contentLoaded)) {
+      workspaceDocsState = { ...workspaceDocsState, status: "ready", error: null };
+      render();
+      return;
+    }
+    workspaceDocsState = {
+      status: "error",
+      documents: [],
+      selectedId: "",
+      error: error instanceof Error ? error.message : String(error),
+    };
     render();
   };
+
+  const loadWorkspaceDocContent = async (documentId: string): Promise<void> => {
+    const existingRequest = workspaceDocContentRequests.get(documentId);
+    if (existingRequest) {
+      await existingRequest;
+      return;
+    }
+    const request = loadWorkspaceDocContentRequest(documentId).finally(() => {
+      workspaceDocContentRequests.delete(documentId);
+    });
+    workspaceDocContentRequests.set(documentId, request);
+    await request;
+  };
+
+  const loadWorkspaceDocContentRequest = async (documentId: string): Promise<void> => {
+    const document = workspaceDocsState.documents.find((item) => item.id === documentId);
+    if (!document || document.contentLoaded) {
+      return;
+    }
+    applyWorkspaceDocContent(documentId, document.path, await fetchWorkspaceDocPage(document.path));
+  };
+
+  const fetchWorkspaceDocPage = async (path: string): Promise<WorkspaceDocumentPage> => {
+    const response = await fetch(`/api/workspace/docs?path=${encodeURIComponent(path)}`);
+    const payload = (await response.json()) as WorkspaceDocumentPayload;
+    if (!response.ok || !payload.success || !payload.data) {
+      throw new Error(payload.error ?? "\u5de5\u4f5c\u65e5\u5fd7\u8bfb\u53d6\u5931\u8d25");
+    }
+    return payload.data.document;
+  };
+
+  const applyWorkspaceDocContent = (
+    documentId: string,
+    documentPath: string,
+    page: WorkspaceDocumentPage,
+  ): void => {
+    workspaceDocsState = {
+      ...workspaceDocsState,
+      documents: workspaceDocsState.documents.map((item) =>
+        item.id === documentId
+          ? applyLoadedWorkspaceDocContent(item, page)
+          : item,
+      ),
+    };
+    const galleryDocLoaded = workspaceGallerySelectedPath === documentPath;
+    if (workspaceDocsState.selectedId === documentId && !workspaceDraftDirty) {
+      workspaceDraftDocumentId = documentId;
+      workspaceDraftHtml = page.html;
+      render();
+    } else if (galleryDocLoaded) {
+      render();
+    }
+  };
+
+  const applyLoadedWorkspaceDocContent = (
+    item: WorkspaceDocument,
+    page: WorkspaceDocumentPage,
+  ): WorkspaceDocument => ({
+    ...item,
+    title: page.title,
+    html: page.html,
+    raw: page.raw ?? item.raw,
+    modifiedAt: page.modifiedAt ?? item.modifiedAt,
+    contentLoaded: true,
+  });
 
   const ensureTaskPlanLoaded = (): void => {
     if (taskPlanState.status === "loading" || taskPlanState.status === "ready") {
@@ -715,7 +1031,7 @@ export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLEle
     if (nextSlug === previousSlug) {
       return;
     }
-    const nextHash = buildWorkspaceHash("task-pool", null, nextSlug);
+    const nextHash = buildWorkspaceHash("task-pool", nextSlug);
     if (window.location.hash !== nextHash) {
       window.location.hash = nextHash;
     }
@@ -1058,7 +1374,10 @@ export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLEle
       return;
     }
     try {
-      const result = await getHealthQrLoginStatus(sessionId);
+      const result = await getHealthQrLoginStatus(
+        sessionId,
+        healthDomainState.apiDraft.relativeUid,
+      );
       if (result.status === "pending") {
         window.setTimeout(() => {
           void pollHealthQrLogin(sessionId);
@@ -1119,47 +1438,168 @@ export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLEle
       if (document.domain) {
         expandedDomains.add(document.domain);
       }
+      if (document.domain && document.project) {
+        expandedWorkspaceProjects.add(workspaceProjectKey(document.domain, document.project));
+      }
     }
   };
 
-  const saveWorkspaceDoc = async (): Promise<void> => {
-    const selected = workspaceDocsState.documents.find((item) => item.id === workspaceDocsState.selectedId);
+  const renderAfterExplicitTreeToggle = (): void => {
+    ignoreWorkspaceDetailsToggle = true;
+    render();
+    window.setTimeout(() => {
+      ignoreWorkspaceDetailsToggle = false;
+    }, 0);
+  };
+
+  const clearWorkspaceAutoSave = (): void => {
+    if (workspaceAutoSaveTimer === null) {
+      return;
+    }
+    window.clearTimeout(workspaceAutoSaveTimer);
+    workspaceAutoSaveTimer = null;
+  };
+
+  const saveWorkspaceDoc = async (options: { renderAfterSave?: boolean } = {}): Promise<void> => {
+    const selected = selectedWorkspaceDocument();
     if (!selected) {
       return;
     }
-
-    const editor = root.querySelector<HTMLElement>("[data-workspace-doc-editor]");
-    const currentHtml = editor?.innerHTML ?? workspaceDraftHtml;
-    const raw = htmlToMarkdown(currentHtml);
-    const response = await fetch("/api/workspace/docs", {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        path: selected.path,
-        raw,
-      }),
-    });
-    const payload = (await response.json()) as { success?: boolean; error?: string };
-    if (!response.ok || !payload.success) {
-      throw new Error(payload.error ?? "工作日志保存失败");
+    if (selected.contentLoaded !== true) {
+      throw new Error("当前文档还在读取中");
     }
 
+    const saved = await saveSelectedWorkspaceDocument(selected);
+    applySavedWorkspaceDocument(selected, saved);
+    if (options.renderAfterSave !== false) {
+      render();
+    }
+  };
+
+  const selectedWorkspaceDocument = (): WorkspaceDocument | undefined =>
+    workspaceDocsState.documents.find((item) => item.id === workspaceDocsState.selectedId);
+
+  const saveSelectedWorkspaceDocument = async (
+    selected: WorkspaceDocument,
+  ): Promise<SavedWorkspaceDocumentContent> => {
+    const editor = root.querySelector<HTMLElement>("[data-workspace-doc-editor]");
+    const fallbackTitle = selected.title ?? selected.label;
+    const currentHtml = ensureWorkspaceDocumentTitle(editor?.innerHTML ?? workspaceDraftHtml, fallbackTitle);
+    const nextTitle = readWorkspaceDocumentTitle(currentHtml) ?? fallbackTitle;
+    const raw = serializeWorkLogEditorHtml(currentHtml);
+    await putWorkspaceDoc(selected.path, raw);
+    return { currentHtml, nextTitle, raw };
+  };
+
+  const applySavedWorkspaceDocument = (
+    selected: WorkspaceDocument,
+    saved: SavedWorkspaceDocumentContent,
+  ): void => {
     workspaceDocsState = {
       ...workspaceDocsState,
       documents: workspaceDocsState.documents.map((item) =>
-        item.id === selected.id
-          ? {
-              ...item,
-              raw,
-              html: currentHtml,
-              modifiedAt: new Date().toISOString(),
-            }
-          : item,
+        item.id === selected.id ? savedWorkspaceDocument(item, saved) : item,
       ),
     };
-    isWorkspaceDocEditing = false;
-    workspaceDraftHtml = "";
+    if (workspaceDraftDocumentId === selected.id) {
+      workspaceDraftHtml = saved.currentHtml;
+      workspaceDraftDirty = false;
+    }
+    if (saved.nextTitle !== selected.title) {
+      updateWorkspaceDocTreeLabel(selected.id, saved.nextTitle);
+    }
+  };
+
+  const saveWorkspaceGalleryDetail = async (documentPath: string, editor: HTMLElement): Promise<void> => {
+    const selected = workspaceDocsState.documents.find((item) => item.path === documentPath);
+    if (!selected || selected.contentLoaded !== true) {
+      return;
+    }
+    const fallbackTitle = selected.title ?? selected.label;
+    const currentHtml = ensureWorkspaceDocumentTitle(editor.innerHTML, fallbackTitle);
+    const nextTitle = readWorkspaceDocumentTitle(currentHtml) ?? fallbackTitle;
+    const raw = serializeWorkLogEditorHtml(currentHtml);
+    await putWorkspaceDoc(selected.path, raw);
+    workspaceDocsState = {
+      ...workspaceDocsState,
+      documents: workspaceDocsState.documents.map((item) =>
+        item.path === documentPath ? savedWorkspaceDocument(item, { currentHtml, nextTitle, raw }) : item,
+      ),
+    };
+  };
+
+  const moveWorkspaceGalleryCard = async (documentPath: string, status: WorkspaceGalleryStatus): Promise<void> => {
+    const selected = workspaceDocsState.documents.find((item) => item.path === documentPath);
+    if (!selected || selected.gallery?.status === status) {
+      return;
+    }
+    const moved = await postWorkspaceGalleryStatusMove(documentPath, status);
+    workspaceDocsState = moveWorkspaceGalleryDocument(workspaceDocsState, moved);
+    if (workspaceGallerySelectedPath === moved.previousPath) {
+      workspaceGallerySelectedPath = moved.path;
+    }
     render();
+    const nextDocument = workspaceDocsState.documents.find((item) => item.path === moved.path);
+    if (nextDocument && workspaceGallerySelectedPath === moved.path) {
+      void loadWorkspaceDocContent(nextDocument.id);
+    }
+  };
+
+  const updateWorkspaceDocTreeLabel = (documentId: string, nextTitle: string): void => {
+    root.querySelectorAll<HTMLButtonElement>("[data-workspace-doc-id]").forEach((button) => {
+      if (button.dataset.workspaceDocId !== documentId) {
+        return;
+      }
+      const label = button.querySelector<HTMLElement>("[data-workspace-doc-label]");
+      if (label) {
+        label.textContent = nextTitle;
+      }
+    });
+  };
+
+  const deleteWorkspaceDoc = async (documentId: string): Promise<void> => {
+    const target = workspaceDocsState.documents.find((item) => item.id === documentId);
+    if (!target) {
+      return;
+    }
+    const childPaths = collectWorkspaceDocChildPaths(workspaceDocsState.documents, target);
+    workspaceDocDeleteDialog = { target, childPaths };
+    render();
+  };
+
+  const confirmWorkspaceDocDelete = async (includeChildren: boolean): Promise<void> => {
+    const dialog = workspaceDocDeleteDialog;
+    if (!dialog) {
+      return;
+    }
+    const paths = includeChildren ? [dialog.target.path, ...dialog.childPaths] : [dialog.target.path];
+    workspaceDocDeleteDialog = null;
+    await deleteWorkspaceDocPaths(paths);
+    workspaceDocsState = removeWorkspaceDocsByPath(workspaceDocsState, paths);
+    workspaceDraftDocumentId = workspaceDocsState.selectedId || null;
+    workspaceDraftHtml = workspaceDocsState.documents.find((item) => item.id === workspaceDocsState.selectedId)?.html ?? "";
+    workspaceDraftDirty = false;
+    render();
+  };
+
+  const cancelWorkspaceDocDelete = (): void => {
+    workspaceDocDeleteDialog = null;
+    render();
+  };
+
+  const scheduleWorkspaceAutoSave = (): void => {
+    clearWorkspaceAutoSave();
+    workspaceAutoSaveTimer = window.setTimeout(() => {
+      workspaceAutoSaveTimer = null;
+      void saveWorkspaceDoc({ renderAfterSave: false });
+    }, WORKSPACE_DOC_AUTOSAVE_DELAY_MS);
+  };
+
+  const syncWorkspaceDraftFromEditor = (editor: HTMLElement): void => {
+    workspaceDraftDocumentId = workspaceDocsState.selectedId;
+    workspaceDraftHtml = editor.innerHTML;
+    workspaceDraftDirty = true;
+    scheduleWorkspaceAutoSave();
   };
 
   const saveTaskPlanText = async (): Promise<void> => {
@@ -1308,6 +1748,7 @@ export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLEle
           priority: "neutral",
           source: "手动新增",
           domain,
+          createdAt: new Date().toISOString(),
         },
       ],
       poolDraftTouched: true,
@@ -1387,6 +1828,284 @@ export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLEle
     render();
   };
 
+  const generateTaskPoolCandidates = async (): Promise<void> => {
+    taskPlanState = {
+      ...taskPlanState,
+      busyAction: "pool-generate",
+      feedback: "正在根据上次生成后的新日记生成候选任务…",
+      error: null,
+    };
+    render();
+    try {
+      const result = await postTaskPoolGenerate();
+      taskPlanState = applyTaskPoolGeneratedState(taskPlanState, result);
+    } catch (error) {
+      taskPlanState = {
+        ...taskPlanState,
+        busyAction: null,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+    render();
+  };
+
+  const moveTaskPoolBoardItem = async (itemId: string, zone: TaskPoolBoardZone): Promise<void> => {
+    if (!taskPlanState.state || isTaskPlanPoolBusy(taskPlanState)) {
+      return;
+    }
+    const items = taskPlanState.state.pool.items.map((item) =>
+      item.id === itemId ? moveTaskPlanPoolItemToZone(item, zone) : item
+    );
+    await saveTaskPoolBoardItems(items, "任务池已同步。");
+  };
+
+  const completeTaskPoolBoardItem = async (itemId: string): Promise<void> => {
+    if (!taskPlanState.state || isTaskPlanPoolBusy(taskPlanState)) {
+      return;
+    }
+    const now = new Date().toISOString();
+    const items = taskPlanState.state.pool.items.map((item) =>
+      item.id === itemId ? { ...item, completedAt: now } : item
+    );
+    taskPoolState = closeTaskPoolDrawerForItem(taskPoolState, itemId);
+    await saveTaskPoolBoardItems(items, "任务已完成。");
+  };
+
+  const deleteTaskPoolBoardItem = async (itemId: string): Promise<void> => {
+    if (!taskPlanState.state || isTaskPlanPoolBusy(taskPlanState)) {
+      return;
+    }
+    const items = taskPlanState.state.pool.items.filter((item) => item.id !== itemId);
+    taskPoolState = closeTaskPoolDrawerForItem(taskPoolState, itemId);
+    await saveTaskPoolBoardItems(items, "任务已删除。");
+  };
+
+  const syncTaskPoolBoard = async (): Promise<void> => {
+    taskPlanState = {
+      ...taskPlanState,
+      busyAction: "pool",
+      feedback: "正在同步任务计划页展示…",
+      error: null,
+    };
+    render();
+    try {
+      const state = await fetchTaskPlanState();
+      taskPlanState = {
+        ...taskPlanState,
+        status: "ready",
+        state,
+        poolDraft: cloneTaskPlanPoolItems(state.pool.items),
+        poolDraftTouched: false,
+        busyAction: null,
+        feedback: "任务计划页已同步到任务池主事实源。",
+        error: null,
+      };
+    } catch (error) {
+      taskPlanState = {
+        ...taskPlanState,
+        busyAction: null,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+    render();
+  };
+
+  const openWorkflowRecorder = (): void => {
+    taskPoolState = {
+      ...taskPoolState,
+      isWorkflowRecorderOpen: true,
+      workflowRecorderFeedback: null,
+    };
+    render();
+    focusWorkflowRecorderInput();
+  };
+
+  const focusWorkflowRecorderInput = (): void => {
+    window.requestAnimationFrame(() => {
+      root.querySelector<HTMLTextAreaElement>("[data-workflow-recorder-input]")?.focus();
+    });
+  };
+
+  const handleWorkflowRecorderOpenEvent = (): void => {
+    if (activeTab !== "task-pool") {
+      return;
+    }
+    openWorkflowRecorder();
+  };
+
+  window.addEventListener(WORKFLOW_RECORDER_OPEN_EVENT, handleWorkflowRecorderOpenEvent);
+  root.__dispose = () => {
+    clearWorkspaceAutoSave();
+    workspaceGraphAbort?.abort();
+    disposeWorkspacePageGraph(root);
+    window.removeEventListener(WORKFLOW_RECORDER_OPEN_EVENT, handleWorkflowRecorderOpenEvent);
+  };
+
+  const submitWorkflowRecorder = async (marker: "normal" | "issue" | "end-node"): Promise<void> => {
+    const text = taskPoolState.workflowRecorderDraft.trim();
+    if (!text) {
+      taskPoolState = { ...taskPoolState, workflowRecorderFeedback: "先写一条过程记录。" };
+      render();
+      return;
+    }
+    taskPoolState = { ...taskPoolState, workflowRecorderBusy: true, workflowRecorderFeedback: "正在识别任务并归档…" };
+    render();
+    try {
+      const result = await postWorkflowRecorderRecord({ text, marker, attachments: [] });
+      taskPoolState = {
+        ...taskPoolState,
+        workflowRecorderBusy: false,
+        workflowRecorderDraft: result.status === "archived" ? "" : text,
+        workflowRecorderFeedback: result.message,
+      };
+      const state = await fetchTaskPlanState();
+      taskPlanState = {
+        ...taskPlanState,
+        status: "ready",
+        state,
+        poolDraft: cloneTaskPlanPoolItems(state.pool.items),
+        poolDraftTouched: false,
+        feedback: result.message,
+        error: null,
+      };
+    } catch (error) {
+      taskPoolState = {
+        ...taskPoolState,
+        workflowRecorderBusy: false,
+        workflowRecorderFeedback: error instanceof Error ? error.message : String(error),
+      };
+    }
+    render();
+  };
+
+  const saveTaskPoolBoardItems = async (
+    items: TaskPlanPoolItem[],
+    feedback: string,
+    stages?: TaskPlanStageItem[],
+  ): Promise<void> => {
+    const scrollSnapshot = captureTaskPoolBoardScroll();
+    taskPlanState = applyOptimisticTaskPoolItems(taskPlanState, items, stages);
+    render();
+    restoreTaskPoolBoardScroll(scrollSnapshot);
+    try {
+      const state = await putTaskPlanPool(items, stages);
+      taskPlanState = {
+        ...taskPlanState,
+        state,
+        poolDraft: cloneTaskPlanPoolItems(state.pool.items),
+        poolDraftTouched: false,
+        busyAction: null,
+        feedback,
+        error: null,
+      };
+    } catch (error) {
+      taskPlanState = {
+        ...taskPlanState,
+        busyAction: null,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+    render();
+    restoreTaskPoolBoardScroll(scrollSnapshot);
+  };
+
+  const reorderProjectWorkspaceTasks = (orderedTaskIds: readonly string[]): void => {
+    if (!taskPlanState.state || orderedTaskIds.length === 0) {
+      return;
+    }
+    const orderMap = new Map(orderedTaskIds.map((id, index) => [id, index]));
+    const items = taskPlanState.state.pool.items.map((item) =>
+      orderMap.has(item.id) ? { ...item, projectOrder: orderMap.get(item.id) } : item
+    );
+    void saveTaskPoolBoardItems(items, "执行层级图顺序已同步。", taskPlanState.state.pool.stages ?? []);
+  };
+
+  const moveProjectWorkspaceHierarchy = (move: ProjectWorkspaceHierarchyMove): void => {
+    const currentState = taskPlanState.state;
+    if (!currentState) {
+      return;
+    }
+    if (move.source.kind === "action") {
+      const items = moveProjectWorkspaceAction(currentState.pool.items, move);
+      if (items !== currentState.pool.items) {
+        void saveTaskPoolBoardItems(items, "行动归属已同步。", currentState.pool.stages ?? []);
+      }
+      return;
+    }
+    if (move.source.taskIds.length === 0) return;
+    const sourceIds = new Set(move.source.taskIds);
+    const orderMap = new Map(move.orderedTaskIds.map((id, index) => [id, index]));
+    const items = currentState.pool.items.map((item) =>
+      applyProjectWorkspaceMove(item, move, sourceIds, orderMap)
+    );
+    void saveTaskPoolBoardItems(items, "执行层级图归属已同步。", currentState.pool.stages ?? []);
+  };
+
+  const createProjectWorkspaceNode = (request: ProjectWorkspaceCreateRequest): void => {
+    const currentState = taskPlanState.state;
+    if (!currentState) return;
+    const result = applyProjectWorkspaceCreate(currentState.pool.items, currentState.pool.stages ?? [], request);
+    if (!result) return;
+    void saveTaskPoolBoardItems(result.items, result.feedback, result.stages);
+  };
+
+  const deleteProjectWorkspaceNode = (node: ProjectWorkspaceDragNode): void => {
+    const currentState = taskPlanState.state;
+    if (!currentState || isTaskPlanPoolBusy(taskPlanState)) return;
+    const items = applyProjectWorkspaceDelete(currentState.pool.items, node);
+    if (!items) return;
+    if (node.kind === "task") taskPoolState = closeTaskPoolDrawerForItem(taskPoolState, node.taskId);
+    const feedback = node.kind === "action" ? "行动已删除。" : "任务已删除。";
+    void saveTaskPoolBoardItems(items, feedback, currentState.pool.stages ?? []);
+  };
+
+  const scheduleProjectWorkspaceTask = async (taskId: string): Promise<void> => {
+    const currentState = taskPlanState.state;
+    const task = currentState?.pool.items.find((item) => item.id === taskId);
+    if (!currentState || !task || task.completedAt) {
+      return;
+    }
+    if (currentState.schedule.items.some((item) => item.id === task.id || item.title === task.title)) {
+      taskPlanState = { ...taskPlanState, feedback: "这个任务已经在今日推进窗口里。", error: null };
+      render();
+      return;
+    }
+    const items = [...currentState.schedule.items, createProjectWorkspaceScheduleItem(task, currentState.schedule.items)];
+    taskPlanState = applyOptimisticProjectSchedule(taskPlanState, items, "正在同步今日推进窗口…");
+    render();
+    try {
+      const schedule = await putTaskPlanSchedule(items, currentState.schedule.confirmed);
+      taskPlanState = applySavedProjectSchedule(taskPlanState, schedule, "今日推进窗口已同步到任务计划页。");
+    } catch (error) {
+      taskPlanState = { ...taskPlanState, busyAction: null, error: error instanceof Error ? error.message : String(error) };
+    }
+    render();
+  };
+
+  const readTaskPoolBoardScroller = (zone: TaskPoolBoardZone): HTMLElement | null =>
+    root.querySelector<HTMLElement>(`[data-task-pool-drop-zone='${zone}'] .workspace-task-pool-board__cards`);
+
+  const captureTaskPoolBoardScroll = (): TaskPoolBoardScrollSnapshot => {
+    const snapshot: TaskPoolBoardScrollSnapshot = {};
+    for (const zone of TASK_POOL_BOARD_SCROLL_ZONES) {
+      const scroller = readTaskPoolBoardScroller(zone);
+      if (scroller && scroller.scrollTop > 0) {
+        snapshot[zone] = scroller.scrollTop;
+      }
+    }
+    return snapshot;
+  };
+
+  const restoreTaskPoolBoardScroll = (snapshot: TaskPoolBoardScrollSnapshot): void => {
+    for (const zone of TASK_POOL_BOARD_SCROLL_ZONES) {
+      const scrollTop = snapshot[zone];
+      const scroller = readTaskPoolBoardScroller(zone);
+      if (scrollTop !== undefined && scroller) {
+        scroller.scrollTop = scrollTop;
+      }
+    }
+  };
+
   const refreshTaskPlanStatus = async (): Promise<void> => {
     taskPlanState = {
       ...taskPlanState,
@@ -1417,7 +2136,8 @@ export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLEle
   };
 
   const generateTaskPlanSchedule = async (): Promise<void> => {
-    if (!taskPlanState.state) {
+    const currentState = taskPlanState.state;
+    if (!currentState) {
       return;
     }
     taskPlanState = {
@@ -1432,10 +2152,10 @@ export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLEle
       taskPlanState = {
         ...taskPlanState,
         state: {
-          ...taskPlanState.state,
+          ...currentState,
           schedule,
           morningFlow: {
-            ...taskPlanState.state.morningFlow,
+            ...currentState.morningFlow,
             diaryDone: true,
             planningDone: true,
             fineTuneDone: false,
@@ -1560,7 +2280,8 @@ export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLEle
   };
 
   const confirmTaskPlanSchedule = async (): Promise<void> => {
-    if (!taskPlanState.state) {
+    const currentState = taskPlanState.state;
+    if (!currentState) {
       return;
     }
     taskPlanState = {
@@ -1571,14 +2292,14 @@ export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLEle
     };
     render();
     try {
-      const schedule = await putTaskPlanSchedule(taskPlanState.state.schedule.items, true);
+      const schedule = await putTaskPlanSchedule(currentState.schedule.items, true);
       taskPlanState = {
         ...taskPlanState,
         state: {
-          ...taskPlanState.state,
+          ...currentState,
           schedule,
           morningFlow: {
-            ...taskPlanState.state.morningFlow,
+            ...currentState.morningFlow,
             fineTuneDone: true,
           },
         },
@@ -1599,7 +2320,8 @@ export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLEle
   };
 
   const loadTaskPlanRoadmap = async (windowName: TaskPlanRoadmapWindow): Promise<void> => {
-    if (!taskPlanState.state) {
+    const currentState = taskPlanState.state;
+    if (!currentState) {
       return;
     }
     taskPlanState = {
@@ -1615,7 +2337,7 @@ export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLEle
       taskPlanState = {
         ...taskPlanState,
         state: {
-          ...taskPlanState.state,
+          ...currentState,
           roadmap,
         },
         busyAction: null,
@@ -1632,280 +2354,115 @@ export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLEle
     render();
   };
 
+  const readWorkspaceDocTreeScroller = (): HTMLElement | null =>
+    root.querySelector<HTMLElement>("[data-workspace-tree]");
+
+  const captureWorkspaceDocTreeScroll = (): void => {
+    const scroller = readWorkspaceDocTreeScroller();
+    if (scroller) {
+      workspaceDocTreeScrollTop = scroller.scrollTop;
+    }
+  };
+
+  const restoreWorkspaceDocTreeScroll = (): void => {
+    if (activeTab !== "work-log" || workspaceDocTreeScrollTop <= 0) {
+      return;
+    }
+    const scroller = readWorkspaceDocTreeScroller();
+    if (scroller) {
+      scroller.scrollTop = workspaceDocTreeScrollTop;
+    }
+  };
+
   const render = (): void => {
+    captureWorkspaceDocTreeScroll();
     repairTaskPlanPoolDraftIfNeeded();
-    root.innerHTML = `
-      <div class="workspace-page__shell">
-        <aside class="workspace-page__sidebar${isWorkspaceSidebarCollapsed ? " is-collapsed" : ""}" data-workspace-sidebar>
-          <div class="workspace-page__sidebar-top">
-            <div class="workspace-page__sidebar-label">\u5de5\u4f5c\u53f0</div>
-          </div>
-          <nav class="workspace-page__sidebar-nav" aria-label="\u5de5\u4f5c\u53f0\u5206\u9875">
-            ${WORKSPACE_TABS.map((tab) => `
-              <button
-                type="button"
-                class="workspace-page__sidebar-item${tab.id === activeTab ? " is-active" : ""}"
-                data-workspace-tab="${tab.id}"
-                data-active="${tab.id === activeTab ? "true" : "false"}"
-              >${tab.label}</button>
-            `).join("")}
-          </nav>
-        </aside>
-        <div class="workspace-page__sidebar-rail${isWorkspaceSidebarCollapsed ? " is-collapsed" : ""}" data-workspace-sidebar-rail>
-          <button
-            type="button"
-            class="workspace-page__sidebar-toggle"
-            data-workspace-sidebar-toggle
-            aria-label="${isWorkspaceSidebarCollapsed ? "\u5c55\u5f00\u5de5\u4f5c\u53f0\u5bfc\u822a" : "\u6298\u53e0\u5de5\u4f5c\u53f0\u5bfc\u822a"}"
-          >${isWorkspaceSidebarCollapsed ? "\u203a" : "\u2039"}</button>
-          <div class="workspace-page__sidebar-resize panel-resize-handle" data-workspace-sidebar-resize ${isWorkspaceSidebarCollapsed ? "hidden" : ""}></div>
-        </div>
-        <div class="workspace-page__content">
-          <div class="workspace-page__body">
-            ${renderWorkspaceView(activeTab, workspaceDocsState, {
-              isEditing: isWorkspaceDocEditing,
-              isOutlineCollapsed: isWorkspaceOutlineCollapsed,
+    root.innerHTML = renderWorkspaceShellHtml();
+    applyWorkspaceShellState();
+    bindRenderEvents();
+    runWorkspaceRenderEffects();
+    restoreWorkspaceDocTreeScroll();
+  };
+
+  const renderWorkspaceShellHtml = (): string => `
+    <div class="workspace-page__shell">
+      <aside class="workspace-page__sidebar" data-workspace-sidebar>
+        <nav class="workspace-page__sidebar-nav" aria-label="\u5de5\u4f5c\u53f0\u5206\u9875">
+          ${WORKSPACE_TABS.map((tab) => renderWorkspaceTabButton(tab, activeTab)).join("")}
+        </nav>
+      </aside>
+      <div class="workspace-page__content">
+        <div class="workspace-page__body">
+          ${renderWorkspaceView(activeTab, workspaceDocsState, {
             expandedDomains,
+            draftDocumentId: workspaceDraftDocumentId,
             draftHtml: workspaceDraftHtml,
+            graphyPosition: workspaceGraphyPosition,
             searchQuery: workspaceDocSearch,
+            gallerySelectedPath: workspaceGallerySelectedPath,
+            deleteDialog: workspaceDocDeleteDialog,
+            expandedWorkspaceProjects,
             taskPlanState,
             taskPoolState,
             healthDomainState,
             activeTaskPoolDomainSlug,
-            toolboxHtml: toolboxController.render(),
+            forceTaskPoolBoard: activeTab === "task-pool" || renderTaskPoolBoard,
           })}
-          </div>
         </div>
       </div>
-    `;
+    </div>
+  `;
 
+  const applyWorkspaceShellState = (): void => {
     root.dataset.workspaceMode = activeTab;
-
+    root.toggleAttribute("data-task-pool-direct", options.forceTaskPoolBoard === true);
     workspaceSidebarWidth = workspaceSidebarWidth || readPanelWidth("workspace.sidebarWidth", WORKSPACE_SIDEBAR_BOUNDS);
-    applyPanelWidth(
-      root,
-      "--workspace-sidebar-width",
-      isWorkspaceSidebarCollapsed ? WORKSPACE_SIDEBAR_COLLAPSED_WIDTH : workspaceSidebarWidth,
-    );
-    applyPanelWidth(
-      root,
-      "--workspace-sidebar-rail-width",
-      isWorkspaceSidebarCollapsed ? WORKSPACE_SIDEBAR_RAIL_COLLAPSED_WIDTH : WORKSPACE_SIDEBAR_RAIL_EXPANDED_WIDTH,
-    );
+    applyPanelWidth(root, "--workspace-sidebar-width", workspaceSidebarWidth);
+  };
 
-    root.querySelectorAll<HTMLButtonElement>("[data-workspace-tab]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const nextTab = normalizeWorkspaceTab(button.dataset.workspaceTab);
-        if (nextTab === activeTab) {
-          return;
-        }
-        activeTab = nextTab;
-        if (nextTab === "task-pool") {
-          activeTaskPoolDomainSlug = null;
-        }
-        const nextHash = buildWorkspaceHash(nextTab, null, activeTaskPoolDomainSlug);
-        if (window.location.hash !== nextHash) {
-          window.location.hash = nextHash;
-        }
-        render();
-        if (nextTab === "work-log") {
-          ensureWorkspaceDocsLoaded();
-        }
-        if (tabNeedsTaskPlanState(nextTab)) {
-          ensureTaskPlanLoaded();
-        }
-        if (nextTab === "toolbox") {
-          toolboxController.ensureLoaded();
-        }
+  const runWorkspaceRenderEffects = (): void => {
+    syncWorkspaceGraphyMount(shouldMountWorkspaceGraphy(activeTab, workspaceDocsState));
+    if (activeTab === "work-log") {
+      mountExecutionWorkbench(root);
+      mountProjectWorkspace(root, {
+        onHierarchyMove: moveProjectWorkspaceHierarchy,
+        onTaskOrderChange: reorderProjectWorkspaceTasks,
+        onScheduleTask: (taskId) => void scheduleProjectWorkspaceTask(taskId),
+        onCreateNode: createProjectWorkspaceNode,
+        onDeleteNode: deleteProjectWorkspaceNode,
       });
-    });
+    }
+    if (activeTab === "work-log" && workspaceDocsState.status === "idle") {
+      ensureWorkspaceDocsLoaded();
+    }
+    if (tabNeedsTaskPlanState(activeTab, workspaceDocsState) && taskPlanState.status === "idle") {
+      ensureTaskPlanLoaded();
+    }
+  };
 
-    root.querySelector<HTMLButtonElement>("[data-workspace-sidebar-toggle]")?.addEventListener("click", () => {
-      isWorkspaceSidebarCollapsed = !isWorkspaceSidebarCollapsed;
-      render();
-    });
+  const syncWorkspaceGraphyMount = (shouldMount: boolean): void => {
+    if (shouldMount) {
+      mountWorkspaceGraphy();
+      return;
+    }
+    workspaceGraphAbort?.abort();
+    workspaceGraphAbort = null;
+    disposeWorkspacePageGraph(root);
+  };
 
-    root.querySelectorAll<HTMLButtonElement>("[data-workspace-doc-id]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const nextId = button.dataset.workspaceDocId ?? "";
-        if (!nextId || nextId === workspaceDocsState.selectedId) {
-          return;
-        }
-        workspaceDocsState = {
-          ...workspaceDocsState,
-          selectedId: nextId,
-        };
-        isWorkspaceDocEditing = false;
-        workspaceDraftHtml = "";
-        render();
-      });
-    });
+  const mountWorkspaceGraphy = (): void => {
+    const selected = workspaceDocsState.documents.find((item) => item.id === workspaceDocsState.selectedId);
+    const graph = root.querySelector<HTMLElement>("[data-workspace-page-graph]");
+    if (!selected || !graph) {
+      return;
+    }
+    workspaceGraphAbort?.abort();
+    disposeWorkspacePageGraph(root);
+    workspaceGraphAbort = new AbortController();
+    mountWorkspacePageGraph(root, graph, selected.id, workspaceGraphAbort.signal);
+  };
 
-    root.querySelectorAll<HTMLButtonElement>("[data-workspace-domain-toggle]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const domain = button.dataset.workspaceDomainToggle ?? "";
-        if (!domain) {
-          return;
-        }
-        if (expandedDomains.has(domain)) {
-          expandedDomains.delete(domain);
-        } else {
-          expandedDomains.add(domain);
-        }
-        render();
-      });
-    });
-
-    root.querySelectorAll<HTMLButtonElement>("[data-workspace-outline-toggle]").forEach((button) => {
-      button.addEventListener("click", () => {
-        isWorkspaceOutlineCollapsed = !isWorkspaceOutlineCollapsed;
-        render();
-      });
-    });
-
-    root.querySelector<HTMLInputElement>("[data-workspace-tree-search]")?.addEventListener("input", (event) => {
-      workspaceDocSearch = (event.currentTarget as HTMLInputElement).value;
-      render();
-    });
-
-    root.querySelector<HTMLButtonElement>("[data-workspace-edit-toggle]")?.addEventListener("click", () => {
-      const selected = workspaceDocsState.documents.find((item) => item.id === workspaceDocsState.selectedId);
-      if (!selected) {
-        return;
-      }
-      isWorkspaceDocEditing = !isWorkspaceDocEditing;
-      workspaceDraftHtml = selected.html;
-      render();
-    });
-
-    root.querySelector<HTMLButtonElement>("[data-workspace-save]")?.addEventListener("click", () => {
-      void saveWorkspaceDoc();
-    });
-
-    root.querySelectorAll<HTMLButtonElement>("[data-workspace-format]").forEach((button) => {
-      button.addEventListener("click", () => {
-        applyWorkspaceFormat(button.dataset.workspaceFormat ?? "");
-      });
-    });
-
-    root.querySelectorAll<HTMLButtonElement>("[data-workspace-heading-target]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const targetId = button.dataset.workspaceHeadingTarget ?? "";
-        const target = root.querySelector<HTMLElement>(`#${cssEscape(targetId)}`);
-        target?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    });
-
-    toolboxController.bind(root);
-
-    root.querySelector<HTMLTextAreaElement>("[data-task-plan-text-input]")?.addEventListener("input", (event) => {
-      taskPlanState = {
-        ...taskPlanState,
-        textDraft: (event.currentTarget as HTMLTextAreaElement).value,
-      };
-    });
-
-    root.querySelector<HTMLButtonElement>("[data-task-plan-text-save]")?.addEventListener("click", () => {
-      void saveTaskPlanText();
-    });
-
-    root.querySelectorAll<HTMLButtonElement>("[data-task-plan-pool-filter]").forEach((button) => {
-      button.addEventListener("click", () => {
-        if (isTaskPlanPoolBusy(taskPlanState)) {
-          return;
-        }
-        const nextFilter = (button.dataset.taskPlanPoolFilter ?? "全部") as TaskPlanTaskSource | "全部";
-        taskPlanState = {
-          ...taskPlanState,
-          poolFilter: nextFilter,
-        };
-        render();
-      });
-    });
-
-    root.querySelector<HTMLButtonElement>("[data-task-plan-pool-edit-toggle]")?.addEventListener("click", () => {
-      if (isTaskPlanPoolBusy(taskPlanState)) {
-        return;
-      }
-      toggleTaskPlanPoolEditMode();
-    });
-
-    root.querySelector<HTMLButtonElement>("[data-task-plan-pool-add]")?.addEventListener("click", () => {
-      if (isTaskPlanPoolBusy(taskPlanState)) {
-        return;
-      }
-      addTaskPlanPoolDraftItem();
-    });
-
-    root.querySelector<HTMLButtonElement>("[data-task-plan-pool-save]")?.addEventListener("click", () => {
-      if (isTaskPlanPoolBusy(taskPlanState)) {
-        return;
-      }
-      void saveTaskPlanPoolDraft();
-    });
-
-    root.querySelectorAll<HTMLInputElement>("[data-task-plan-pool-title-input]").forEach((input) => {
-      input.addEventListener("input", () => {
-        if (isTaskPlanPoolBusy(taskPlanState)) {
-          return;
-        }
-        const itemId = input.dataset.taskPlanPoolTitleInput;
-        if (!itemId) {
-          return;
-        }
-        updateTaskPlanPoolDraft(itemId, { title: input.value });
-      });
-    });
-
-    root.querySelectorAll<HTMLSelectElement>("[data-task-plan-pool-source-input]").forEach((input) => {
-      input.addEventListener("change", () => {
-        if (isTaskPlanPoolBusy(taskPlanState)) {
-          return;
-        }
-        const itemId = input.dataset.taskPlanPoolSourceInput;
-        if (!itemId) {
-          return;
-        }
-        updateTaskPlanPoolDraft(itemId, { source: input.value as TaskPlanTaskSource });
-      });
-    });
-
-    root.querySelectorAll<HTMLSelectElement>("[data-task-plan-pool-priority-input]").forEach((input) => {
-      input.addEventListener("change", () => {
-        if (isTaskPlanPoolBusy(taskPlanState)) {
-          return;
-        }
-        const itemId = input.dataset.taskPlanPoolPriorityInput;
-        if (!itemId) {
-          return;
-        }
-        updateTaskPlanPoolDraft(itemId, { priority: normalizeTaskPlanPriority(input.value) });
-      });
-    });
-
-    root.querySelectorAll<HTMLButtonElement>("[data-task-plan-pool-remove]").forEach((button) => {
-      button.addEventListener("click", () => {
-        if (isTaskPlanPoolBusy(taskPlanState)) {
-          return;
-        }
-        const itemId = button.dataset.taskPlanPoolRemove;
-        if (!itemId) {
-          return;
-        }
-        removeTaskPlanPoolDraftItem(itemId);
-      });
-    });
-
-    root.querySelectorAll<HTMLButtonElement>("[data-task-pool-view-mode]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const nextMode = button.dataset.taskPoolViewMode;
-        if (nextMode !== "list" && nextMode !== "tree") {
-          return;
-        }
-        setTaskPoolViewMode(nextMode);
-      });
-    });
-
+  const bindTaskPoolTreeEvents = (): void => {
     root.querySelectorAll<HTMLButtonElement>("[data-task-pool-tree-level]").forEach((button) => {
       button.addEventListener("click", () => {
         const nextLevel = button.dataset.taskPoolTreeLevel;
@@ -2000,6 +2557,7 @@ export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLEle
     });
 
     root.querySelectorAll<HTMLElement>("[data-task-pool-tree-node-type='project']").forEach((node) => {
+      // fallow-ignore-next-line complexity
       node.addEventListener("dragover", (event) => {
         const activeTaskId = readActiveTaskPoolDragTaskId(
           taskPoolState.draggingTaskId,
@@ -2100,7 +2658,7 @@ export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLEle
         const domainSlug = button.dataset.taskPoolDomainChip ?? "";
         const nextDomainSlug = domainSlug || null;
         setTaskPoolDomainSlug(nextDomainSlug);
-        const nextHash = buildWorkspaceHash("task-pool", null, nextDomainSlug);
+      const nextHash = buildWorkspaceHash("task-pool", nextDomainSlug);
         if (window.location.hash !== nextHash) {
           window.location.hash = nextHash;
         }
@@ -2164,7 +2722,9 @@ export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLEle
     root.querySelector<HTMLElement>("[data-task-pool-tree-canvas-wrap]")?.addEventListener("gesturecancel", () => {
       taskPoolGestureState = null;
     });
+  };
 
+  const bindHealthDomainEvents = (): void => {
     root.querySelector<HTMLButtonElement>("[data-health-import-open]")?.addEventListener("click", () => {
       openHealthImportModal();
     });
@@ -2231,7 +2791,9 @@ export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLEle
     root.querySelector<HTMLButtonElement>("[data-health-sync]")?.addEventListener("click", () => {
       void syncHealthDomain();
     });
+  };
 
+  const bindTaskPlanScheduleEvents = (): void => {
     root.querySelector<HTMLTextAreaElement>("[data-task-plan-status-input]")?.addEventListener("input", (event) => {
       taskPlanState = {
         ...taskPlanState,
@@ -2408,6 +2970,479 @@ export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLEle
       });
       applyTaskPlanSplitLayout(taskPlanLayout, taskPlanState.splitRatio);
     }
+  };
+
+  // fallow-ignore-next-line complexity
+  const bindRenderEvents = (): void => {
+    const openWorkspaceTab = (nextTab: WorkspaceTab): void => {
+      if (nextTab === activeTab) {
+        return;
+      }
+      activeTab = nextTab;
+      if (nextTab === "task-pool") {
+        activeTaskPoolDomainSlug = null;
+      }
+      const nextHash = buildWorkspaceHash(nextTab, activeTaskPoolDomainSlug);
+      if (window.location.hash !== nextHash) {
+        window.location.hash = nextHash;
+      }
+      render();
+      if (nextTab === "work-log") {
+        ensureWorkspaceDocsLoaded();
+      }
+      if (tabNeedsTaskPlanState(nextTab, workspaceDocsState)) {
+        ensureTaskPlanLoaded();
+      }
+    };
+
+    root.querySelectorAll<HTMLButtonElement>("[data-workspace-tab]").forEach((button) => {
+      button.addEventListener("click", () => {
+        openWorkspaceTab(normalizeWorkspaceTab(button.dataset.workspaceTab));
+      });
+    });
+
+    root.querySelectorAll<HTMLButtonElement>("[data-workspace-doc-id]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const nextId = button.dataset.workspaceDocId ?? "";
+        if (!nextId) {
+          return;
+        }
+        clearWorkspaceAutoSave();
+        const nextDocument = workspaceDocsState.documents.find((item) => item.id === nextId);
+        if (!nextDocument) {
+          return;
+        }
+        workspaceDocsState = {
+          ...workspaceDocsState,
+          selectedId: nextId,
+        };
+        workspaceGallerySelectedPath = null;
+        workspaceDraftDocumentId = nextDocument?.id ?? null;
+        workspaceDraftHtml = nextDocument?.html ?? "";
+        workspaceDraftDirty = false;
+        render();
+        void loadWorkspaceDocContent(nextId);
+      });
+    });
+
+    root.querySelectorAll<HTMLButtonElement>("[data-workspace-gallery-card]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const documentPath = button.dataset.workspaceGalleryCard ?? "";
+        const documentId = workspaceDocsState.documents.find((item) => item.path === documentPath)?.id;
+        if (!documentPath || !documentId) {
+          return;
+        }
+        workspaceGallerySelectedPath = documentPath;
+        render();
+        void loadWorkspaceDocContent(documentId);
+      });
+      button.addEventListener("dragstart", (event) => {
+        const documentPath = button.dataset.workspaceGalleryCard ?? "";
+        if (!documentPath || !button.dataset.workspaceGalleryCardStatus) {
+          return;
+        }
+        event.dataTransfer?.setData(WORKSPACE_GALLERY_DRAG_TYPE, documentPath);
+        event.dataTransfer?.setData("text/plain", documentPath);
+        if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+        button.classList.add("is-dragging");
+      });
+      button.addEventListener("dragend", () => clearWorkspaceGalleryDragState(root));
+    });
+
+    root.querySelectorAll<HTMLElement>("[data-workspace-gallery-drop-status]").forEach((column) => {
+      column.addEventListener("dragover", (event) => {
+        const documentPath = readWorkspaceGalleryDraggedPath(event);
+        if (!documentPath) return;
+        event.preventDefault();
+        if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+        column.classList.add("is-drop-preview");
+      });
+      column.addEventListener("dragleave", () => column.classList.remove("is-drop-preview"));
+      column.addEventListener("drop", (event) => {
+        const documentPath = readWorkspaceGalleryDraggedPath(event);
+        const status = normalizeWorkspaceGalleryStatus(column.dataset.workspaceGalleryDropStatus ?? "");
+        clearWorkspaceGalleryDragState(root);
+        if (!documentPath || !status) return;
+        event.preventDefault();
+        void moveWorkspaceGalleryCard(documentPath, status);
+      });
+    });
+
+    root.querySelector<HTMLButtonElement>("[data-workspace-gallery-save]")?.addEventListener("click", () => {
+      const editor = root.querySelector<HTMLElement>("[data-workspace-gallery-editor]");
+      const documentPath = editor?.dataset.workspaceGalleryEditor ?? "";
+      if (editor && documentPath) {
+        void saveWorkspaceGalleryDetail(documentPath, editor).then(() => render());
+      }
+    });
+
+    root.querySelector<HTMLElement>("[data-workspace-gallery-editor]")?.addEventListener("blur", (event) => {
+      const editor = event.currentTarget as HTMLElement;
+      const documentPath = editor.dataset.workspaceGalleryEditor ?? "";
+      if (documentPath) {
+        void saveWorkspaceGalleryDetail(documentPath, editor);
+      }
+    });
+
+    root.querySelectorAll<HTMLButtonElement>("[data-workspace-doc-delete]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const documentId = button.dataset.workspaceDocDelete ?? "";
+        if (!documentId) {
+          return;
+        }
+        void deleteWorkspaceDoc(documentId);
+      });
+    });
+
+    root.querySelectorAll<HTMLButtonElement>("[data-workspace-doc-delete-cancel]").forEach((button) => {
+      button.addEventListener("click", () => {
+        cancelWorkspaceDocDelete();
+      });
+    });
+
+    root.querySelectorAll<HTMLButtonElement>("[data-workspace-doc-delete-confirm]").forEach((button) => {
+      button.addEventListener("click", () => {
+        void confirmWorkspaceDocDelete(button.dataset.workspaceDocDeleteConfirm === "children");
+      });
+    });
+
+    root.querySelectorAll<HTMLButtonElement>("[data-workspace-domain-toggle]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const domain = button.dataset.workspaceDomainToggle ?? "";
+        if (!domain) {
+          return;
+        }
+        if (expandedDomains.has(domain)) {
+          expandedDomains.delete(domain);
+        } else {
+          expandedDomains.add(domain);
+        }
+        renderAfterExplicitTreeToggle();
+      });
+    });
+
+    root.querySelectorAll<HTMLButtonElement>("[data-workspace-project-toggle]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const projectKey = button.dataset.workspaceProjectToggle ?? "";
+        if (!projectKey) {
+          return;
+        }
+        if (expandedWorkspaceProjects.has(projectKey)) {
+          expandedWorkspaceProjects.delete(projectKey);
+        } else {
+          expandedWorkspaceProjects.add(projectKey);
+        }
+        renderAfterExplicitTreeToggle();
+      });
+    });
+
+    root.querySelectorAll<HTMLDetailsElement>("[data-workspace-domain-details]").forEach((details) => {
+      details.addEventListener("toggle", () => {
+        if (ignoreWorkspaceDetailsToggle) {
+          return;
+        }
+        const domain = details.dataset.workspaceDomainDetails ?? "";
+        if (!domain) {
+          return;
+        }
+        if (details.open) {
+          expandedDomains.add(domain);
+        } else {
+          expandedDomains.delete(domain);
+        }
+      });
+    });
+
+    root.querySelectorAll<HTMLDetailsElement>("[data-workspace-project-details]").forEach((details) => {
+      details.addEventListener("toggle", () => {
+        if (ignoreWorkspaceDetailsToggle) {
+          return;
+        }
+        const projectKey = details.dataset.workspaceProjectDetails ?? "";
+        if (!projectKey) {
+          return;
+        }
+        if (details.open) {
+          expandedWorkspaceProjects.add(projectKey);
+        } else {
+          expandedWorkspaceProjects.delete(projectKey);
+        }
+      });
+    });
+
+    root.querySelector<HTMLInputElement>("[data-workspace-tree-search]")?.addEventListener("input", (event) => {
+      workspaceDocSearch = (event.currentTarget as HTMLInputElement).value;
+      render();
+    });
+
+    root.querySelectorAll<HTMLButtonElement>("[data-workspace-heading-target]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const targetId = button.dataset.workspaceHeadingTarget ?? "";
+        const target = root.querySelector<HTMLElement>(`#${cssEscape(targetId)}`);
+        target?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+
+    root.querySelector<HTMLTextAreaElement>("[data-task-plan-text-input]")?.addEventListener("input", (event) => {
+      taskPlanState = {
+        ...taskPlanState,
+        textDraft: (event.currentTarget as HTMLTextAreaElement).value,
+      };
+    });
+
+    root.querySelector<HTMLButtonElement>("[data-task-plan-text-save]")?.addEventListener("click", () => {
+      void saveTaskPlanText();
+    });
+
+    root.querySelector<HTMLButtonElement>("[data-task-plan-open-task-pool]")?.addEventListener("click", () => {
+      openWorkspaceTab("task-pool");
+    });
+
+    root.querySelectorAll<HTMLButtonElement>("[data-task-plan-pool-filter]").forEach((button) => {
+      button.addEventListener("click", () => {
+        if (isTaskPlanPoolBusy(taskPlanState)) {
+          return;
+        }
+        const nextFilter = (button.dataset.taskPlanPoolFilter ?? "全部") as TaskPlanTaskSource | "全部";
+        taskPlanState = {
+          ...taskPlanState,
+          poolFilter: nextFilter,
+        };
+        render();
+      });
+    });
+
+    root.querySelector<HTMLSelectElement>("[data-task-plan-pool-sort]")?.addEventListener("change", (event) => {
+      const nextSortMode = (event.currentTarget as HTMLSelectElement).value;
+      if (!isTaskPoolBoardSortMode(nextSortMode)) {
+        return;
+      }
+      taskPlanState = {
+        ...taskPlanState,
+        poolSortMode: nextSortMode,
+      };
+      render();
+    });
+
+    root.querySelector<HTMLButtonElement>("[data-task-plan-pool-edit-toggle]")?.addEventListener("click", () => {
+      if (isTaskPlanPoolBusy(taskPlanState)) {
+        return;
+      }
+      toggleTaskPlanPoolEditMode();
+    });
+
+    root.querySelector<HTMLButtonElement>("[data-task-plan-pool-add]")?.addEventListener("click", () => {
+      if (isTaskPlanPoolBusy(taskPlanState)) {
+        return;
+      }
+      addTaskPlanPoolDraftItem();
+    });
+
+    root.querySelector<HTMLButtonElement>("[data-task-plan-pool-save]")?.addEventListener("click", () => {
+      if (isTaskPlanPoolBusy(taskPlanState)) {
+        return;
+      }
+      void saveTaskPlanPoolDraft();
+    });
+
+    root.querySelectorAll<HTMLInputElement>("[data-task-plan-pool-title-input]").forEach((input) => {
+      input.addEventListener("input", () => {
+        if (isTaskPlanPoolBusy(taskPlanState)) {
+          return;
+        }
+        const itemId = input.dataset.taskPlanPoolTitleInput;
+        if (!itemId) {
+          return;
+        }
+        updateTaskPlanPoolDraft(itemId, { title: input.value });
+      });
+    });
+
+    root.querySelectorAll<HTMLSelectElement>("[data-task-plan-pool-source-input]").forEach((input) => {
+      input.addEventListener("change", () => {
+        if (isTaskPlanPoolBusy(taskPlanState)) {
+          return;
+        }
+        const itemId = input.dataset.taskPlanPoolSourceInput;
+        if (!itemId) {
+          return;
+        }
+        updateTaskPlanPoolDraft(itemId, { source: input.value as TaskPlanTaskSource });
+      });
+    });
+
+    root.querySelectorAll<HTMLSelectElement>("[data-task-plan-pool-priority-input]").forEach((input) => {
+      input.addEventListener("change", () => {
+        if (isTaskPlanPoolBusy(taskPlanState)) {
+          return;
+        }
+        const itemId = input.dataset.taskPlanPoolPriorityInput;
+        if (!itemId) {
+          return;
+        }
+        updateTaskPlanPoolDraft(itemId, { priority: normalizeTaskPlanPriority(input.value) });
+      });
+    });
+
+    root.querySelectorAll<HTMLButtonElement>("[data-task-plan-pool-remove]").forEach((button) => {
+      button.addEventListener("click", () => {
+        if (isTaskPlanPoolBusy(taskPlanState)) {
+          return;
+        }
+        const itemId = button.dataset.taskPlanPoolRemove;
+        if (!itemId) {
+          return;
+        }
+        removeTaskPlanPoolDraftItem(itemId);
+      });
+    });
+
+    root.querySelector<HTMLButtonElement>("[data-task-pool-generate]")?.addEventListener("click", () => {
+      void generateTaskPoolCandidates();
+    });
+
+    root.querySelector<HTMLButtonElement>("[data-task-pool-sync]")?.addEventListener("click", () => {
+      void syncTaskPoolBoard();
+    });
+
+    root.querySelector<HTMLButtonElement>("[data-task-pool-records]")?.addEventListener("click", () => {
+      taskPoolState = { ...taskPoolState, isGenerationRecordOpen: true };
+      render();
+    });
+
+    root.querySelector<HTMLButtonElement>("[data-workflow-artifacts-open]")?.addEventListener("click", () => {
+      window.location.hash = "#/workflow-artifacts";
+    });
+
+    root.querySelector<HTMLButtonElement>("[data-task-pool-records-close]")?.addEventListener("click", () => {
+      taskPoolState = { ...taskPoolState, isGenerationRecordOpen: false };
+      render();
+    });
+
+    root.querySelector<HTMLButtonElement>("[data-workflow-recorder-close]")?.addEventListener("click", () => {
+      taskPoolState = { ...taskPoolState, isWorkflowRecorderOpen: false };
+      render();
+    });
+
+    root.querySelector<HTMLTextAreaElement>("[data-workflow-recorder-input]")?.addEventListener("input", (event) => {
+      taskPoolState = {
+        ...taskPoolState,
+        workflowRecorderDraft: (event.currentTarget as HTMLTextAreaElement).value,
+      };
+    });
+
+    root.querySelectorAll<HTMLButtonElement>("[data-workflow-recorder-submit]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const marker = button.dataset.workflowRecorderSubmit;
+        void submitWorkflowRecorder(marker === "issue" || marker === "end-node" ? marker : "normal");
+      });
+    });
+
+    root.querySelector<HTMLButtonElement>("[data-task-pool-drawer-close]")?.addEventListener("click", () => {
+      taskPoolState = { ...taskPoolState, selectedCandidateId: null };
+      render();
+    });
+
+    root.querySelectorAll<HTMLButtonElement>("[data-task-pool-complete]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const itemId = button.dataset.taskPoolComplete;
+        if (!itemId) {
+          return;
+        }
+        void completeTaskPoolBoardItem(itemId);
+      });
+    });
+
+    root.querySelectorAll<HTMLButtonElement>("[data-task-pool-delete]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const itemId = button.dataset.taskPoolDelete;
+        if (!itemId) {
+          return;
+        }
+        void deleteTaskPoolBoardItem(itemId);
+      });
+    });
+
+    root.querySelectorAll<HTMLElement>("[data-task-pool-card]").forEach((card) => {
+      card.addEventListener("click", () => {
+        taskPoolState = { ...taskPoolState, selectedCandidateId: card.dataset.taskPoolCard ?? null };
+        render();
+      });
+      card.addEventListener("dragstart", (event) => {
+        event.dataTransfer?.setData("text/plain", card.dataset.taskPoolCard ?? "");
+      });
+    });
+
+    root.querySelectorAll<HTMLElement>("[data-task-pool-drop-zone]").forEach((zone) => {
+      zone.addEventListener("dragover", (event) => event.preventDefault());
+      zone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        const taskId = event.dataTransfer?.getData("text/plain") ?? "";
+        const nextZone = zone.dataset.taskPoolDropZone;
+        if (!taskId || !isTaskPoolBoardZone(nextZone)) {
+          return;
+        }
+        void moveTaskPoolBoardItem(taskId, nextZone);
+      });
+    });
+
+    root.querySelectorAll<HTMLSelectElement>("[data-task-pool-sort-zone]").forEach((input) => {
+      input.addEventListener("change", () => {
+        const zone = input.dataset.taskPoolSortZone;
+        if (!isTaskPoolBoardZone(zone) || !isTaskPoolBoardSortMode(input.value)) {
+          return;
+        }
+        taskPoolState = {
+          ...taskPoolState,
+          sortModes: {
+            ...taskPoolState.sortModes,
+            [zone]: input.value,
+          },
+        };
+        render();
+      });
+    });
+
+    root.querySelectorAll<HTMLSelectElement>("[data-task-pool-group-zone]").forEach((input) => {
+      input.addEventListener("change", () => {
+        const zone = input.dataset.taskPoolGroupZone;
+        if (!isTaskPoolBoardZone(zone) || !isTaskPoolBoardGroupMode(input.value)) {
+          return;
+        }
+        taskPoolState = {
+          ...taskPoolState,
+          groupModes: {
+            ...taskPoolState.groupModes,
+            [zone]: input.value,
+          },
+        };
+        render();
+      });
+    });
+
+    root.querySelectorAll<HTMLButtonElement>("[data-task-pool-view-mode]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const nextMode = button.dataset.taskPoolViewMode;
+        if (nextMode !== "list" && nextMode !== "tree") {
+          return;
+        }
+        setTaskPoolViewMode(nextMode);
+      });
+    });
+
+    bindTaskPoolTreeEvents();
+    bindHealthDomainEvents();
+    bindTaskPlanScheduleEvents();
 
     if (taskPlanState.pendingScheduleFocusId) {
       const focusTarget = root.querySelector<HTMLInputElement>(
@@ -2449,29 +3484,11 @@ export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLEle
         handle: treeResize,
         onMove(event) {
           workspaceTreeWidth = clampPanelWidth(event.clientX - root.getBoundingClientRect().left - 24, WORKSPACE_TREE_BOUNDS);
-          applyPanelWidth(root, "--workspace-tree-width", workspaceTreeWidth);
+          applyWorkspaceTreeWidth(root, workspaceTreeWidth);
         },
         onEnd() {
           workspaceTreeWidth = writePanelWidth("workspace.treeWidth", workspaceTreeWidth, WORKSPACE_TREE_BOUNDS);
-          applyPanelWidth(root, "--workspace-tree-width", workspaceTreeWidth);
-        },
-      });
-    }
-
-    const sidebarResize = root.querySelector<HTMLElement>("[data-workspace-sidebar-resize]");
-    if (sidebarResize) {
-      attachResizeHandle({
-        handle: sidebarResize,
-        onMove(event) {
-          workspaceSidebarWidth = clampPanelWidth(
-            event.clientX - root.getBoundingClientRect().left - 24,
-            WORKSPACE_SIDEBAR_BOUNDS,
-          );
-          applyPanelWidth(root, "--workspace-sidebar-width", workspaceSidebarWidth);
-        },
-        onEnd() {
-          workspaceSidebarWidth = writePanelWidth("workspace.sidebarWidth", workspaceSidebarWidth, WORKSPACE_SIDEBAR_BOUNDS);
-          applyPanelWidth(root, "--workspace-sidebar-width", workspaceSidebarWidth);
+          applyWorkspaceTreeWidth(root, workspaceTreeWidth);
         },
       });
     }
@@ -2514,9 +3531,28 @@ export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLEle
 
     if (activeTab === "work-log") {
       workspaceTreeWidth = workspaceTreeWidth || readPanelWidth("workspace.treeWidth", WORKSPACE_TREE_BOUNDS);
-      applyPanelWidth(root, "--workspace-tree-width", workspaceTreeWidth);
-      root.querySelector<HTMLElement>("[data-workspace-doc-editor]")?.addEventListener("input", (event) => {
+      applyWorkspaceTreeWidth(root, workspaceTreeWidth);
+      bindWorkLogBlockEditor(root, { onChanged: syncWorkspaceDraftFromEditor });
+      bindWorkspaceGraphyDrag();
+      const editor = root.querySelector<HTMLElement>("[data-workspace-doc-editor]");
+      editor?.addEventListener("input", (event) => {
+        workspaceDraftDocumentId = workspaceDocsState.selectedId;
         workspaceDraftHtml = (event.currentTarget as HTMLElement).innerHTML;
+        workspaceDraftDirty = true;
+        scheduleWorkspaceAutoSave();
+      });
+      editor?.addEventListener("blur", () => {
+        clearWorkspaceAutoSave();
+        if (workspaceDraftDirty) {
+          void saveWorkspaceDoc({ renderAfterSave: false });
+        }
+      });
+      editor?.addEventListener("keydown", (event) => {
+        if (eventMatchesShortcut(event, getClientKeyboardShortcut("workspaceSave"))) {
+          event.preventDefault();
+          clearWorkspaceAutoSave();
+          void saveWorkspaceDoc({ renderAfterSave: false });
+        }
       });
     }
 
@@ -2538,17 +3574,44 @@ export function renderWorkspacePage(options: WorkspacePageOptions = {}): HTMLEle
       ) {
         ensureHealthDomainLoaded();
       }
+      if (taskPoolState.isWorkflowRecorderOpen) {
+        focusWorkflowRecorderInput();
+      }
     }
+  };
 
-    if (activeTab === "work-log" && workspaceDocsState.status === "idle") {
-      ensureWorkspaceDocsLoaded();
+  const bindWorkspaceGraphyDrag = (): void => {
+    const panel = root.querySelector<HTMLElement>("[data-workspace-graphy]");
+    const handle = root.querySelector<HTMLElement>("[data-workspace-graphy-handle]");
+    if (!panel || !handle) {
+      return;
     }
-    if (activeTab === "toolbox" && toolboxController.status() === "idle") {
-      toolboxController.ensureLoaded();
-    }
-    if (tabNeedsTaskPlanState(activeTab) && taskPlanState.status === "idle") {
-      ensureTaskPlanLoaded();
-    }
+    handle.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      const startX = event.clientX;
+      const startY = event.clientY;
+      const startPosition = workspaceGraphyPosition;
+      handle.setPointerCapture?.(event.pointerId);
+      const move = (moveEvent: PointerEvent): void => {
+        moveEvent.preventDefault();
+        workspaceGraphyPosition = {
+          x: startPosition.x - (moveEvent.clientX - startX),
+          y: startPosition.y + moveEvent.clientY - startY,
+        };
+        workspaceGraphyPosition = normalizeWorkspaceGraphyPosition(workspaceGraphyPosition);
+        applyWorkspaceGraphyPosition(panel, workspaceGraphyPosition);
+      };
+      const end = (): void => {
+        writeWorkspaceGraphyPosition(workspaceGraphyPosition);
+        handle.releasePointerCapture?.(event.pointerId);
+        handle.removeEventListener("pointermove", move);
+        handle.removeEventListener("pointerup", end);
+        handle.removeEventListener("pointercancel", end);
+      };
+      handle.addEventListener("pointermove", move);
+      handle.addEventListener("pointerup", end);
+      handle.addEventListener("pointercancel", end);
+    });
   };
 
   render();
@@ -2559,23 +3622,25 @@ function renderWorkspaceView(
   tab: WorkspaceTab,
   workspaceDocsState: WorkspaceDocsState,
   options: {
-    isEditing: boolean;
-    isOutlineCollapsed: boolean;
     expandedDomains: ReadonlySet<string>;
+    expandedWorkspaceProjects: ReadonlySet<string>;
+    draftDocumentId: string | null;
     draftHtml: string;
+    graphyPosition: WorkspaceGraphyPosition;
     searchQuery: string;
+    gallerySelectedPath: string | null;
+    deleteDialog?: WorkspaceDocDeleteDialog | null;
     taskPlanState?: TaskPlanViewState;
     taskPoolState?: TaskPoolViewState;
     healthDomainState?: HealthDomainViewState;
     activeTaskPoolDomainSlug?: string | null;
-    toolboxHtml?: string;
+    forceTaskPoolBoard?: boolean;
   },
 ): string {
   const taskPlanViewState = options.taskPlanState ?? createDefaultTaskPlanViewState();
   const taskPoolViewState = options.taskPoolState ?? createDefaultTaskPoolViewState();
   const healthViewState = options.healthDomainState ?? createDefaultHealthDomainViewState();
   const renderers: Record<WorkspaceTab, () => string> = {
-    "project-progress": () => renderProjectProgressView(taskPlanViewState),
     "task-plan": () => renderTaskPlanView(taskPlanViewState),
     "task-pool": () =>
       renderTaskPoolView(
@@ -2583,161 +3648,15 @@ function renderWorkspaceView(
         taskPoolViewState,
         healthViewState,
         options.activeTaskPoolDomainSlug ?? null,
+        options.forceTaskPoolBoard ?? false,
       ),
     "work-log": () => renderWorkLogView(workspaceDocsState, options),
-    toolbox: () => options.toolboxHtml ?? "",
   };
   return renderers[tab]();
 }
 
-function renderProjectProgressView(viewState: TaskPlanViewState): string {
-  return `
-    <section class="workspace-view workspace-view--project-progress" data-workspace-view="project-progress">
-      <div class="workspace-grid workspace-grid--project-progress">
-        <section class="workspace-panel workspace-panel--todo">
-          <header class="workspace-panel__header">
-            <div><div class="eyebrow">TODAY</div><h2>\u4eca\u65e5\u65f6\u95f4\u8868</h2></div>
-            <button type="button" class="icon-btn" aria-label="\u66f4\u591a">${renderIcon("search", { size: 16 })}</button>
-          </header>
-          <button type="button" class="workspace-page__action workspace-page__action--ghost">${renderIcon("plus", { size: 16 })}<span>\u6dfb\u52a0\u4efb\u52a1</span></button>
-          ${renderProjectProgressSchedule(viewState)}
-          <footer class="workspace-panel__footer"><span>\u6700\u8fd1\u540c\u6b65\uff1a5 \u5206\u949f\u524d</span><button type="button" class="icon-btn" aria-label="\u5237\u65b0">${renderIcon("refresh-cw", { size: 16 })}</button></footer>
-        </section>
-
-        <section class="workspace-panel workspace-panel--focus">
-          <header class="workspace-panel__header">
-            <div><div class="eyebrow">FOCUS BOARD</div><h2>\u5de5\u4f5c\u53f0</h2></div>
-            <button type="button" class="icon-btn" aria-label="\u5207\u6362">${renderIcon("copy", { size: 16 })}</button>
-          </header>
-          <section class="workspace-focus-card">
-            <div class="workspace-focus-card__header">
-              <div class="workspace-focus-card__title">${renderIcon("hammer", { size: 20 })}<strong>\u5f53\u524d\u4efb\u52a1</strong></div>
-              <div class="workspace-chip-row">
-                <span class="workspace-chip">5\u670818\u65e5 \u5468\u65e5</span>
-                <span class="workspace-chip workspace-chip--danger">\u9700\u8981\u4e13\u6ce8</span>
-                <span class="workspace-chip workspace-chip--success">\u8fdb\u884c\u4e2d</span>
-              </div>
-            </div>
-            <h3>\u5b8c\u6210\u5927\u521b\u9879\u76ee\u4e2d\u671f\u7ed3\u9879\u6750\u6599</h3>
-            <p class="workspace-focus-card__copy">\u672c\u5468\u76ee\u6807\u662f\u8f93\u51fa\u4e00\u5957\u53ef\u6c47\u62a5\u7684\u4e2d\u671f\u7ed3\u9879\u5b8c\u6574\u8109\u7edc\u548c\u6750\u6599\u3002</p>
-            <div class="workspace-check-columns">
-              ${renderChecklistColumn("\u5b8c\u6210\u6807\u51c6", ["\u6587\u5b57\u7a3f\u5b8c\u6210", "PPT \u6846\u67b6\u5b8c\u6210", "\u6570\u636e\u56fe\u8868\u5b8c\u6210", "\u6700\u7ec8\u62a5\u544a\u751f\u6210"], false)}
-              ${renderChecklistColumn("\u4eca\u65e5\u884c\u52a8", ["\u65e9\u4e2d\u665a\u7ed3\u9879\u6587\u5b57\u7a3f\u68b3\u7406", "\u6574\u7406 PPT \u7ed3\u6784", "\u7528 AI \u751f\u6210 PPT \u521d\u7a3f"], true)}
-              ${renderChecklistColumn("\u540e\u7eed\u884c\u52a8", ["\u5b8c\u5584\u5185\u5bb9\u4e0e\u903b\u8f91", "\u4fee\u6539\u5bf9\u9f50\u5b9e\u9a8c", "\u51c6\u5907\u6c47\u62a5\u6f14\u7ec3"], false)}
-            </div>
-            <div class="workspace-action-row">
-              <button type="button" class="btn btn-primary workspace-page__primary-cta">\u5f00\u59cb\u4e13\u6ce8\uff08\u5168\u5c4f\uff09</button>
-              <button type="button" class="btn btn-secondary workspace-page__secondary-cta">\u6807\u8bb0\u5b8c\u6210</button>
-            </div>
-          </section>
-          <div class="workspace-focus-grid">
-            <section class="workspace-subpanel">
-              <div class="workspace-subpanel__title">\u5f85\u786e\u8ba4 / \u98ce\u9669\u63d0\u9192</div>
-              <ul class="workspace-alert-list">
-                <li><span class="workspace-alert workspace-alert--warning">\u5f85\u786e\u8ba4</span><span>\u4e2d\u671f\u7ed3\u9879\u683c\u5f0f\u8981\u6c42</span></li>
-                <li><span class="workspace-alert workspace-alert--warning">\u98ce\u9669</span><span>\u8bc4\u5ba1\u65f6\u95f4\u5c1a\u672a\u786e\u5b9a</span></li>
-                <li><span class="workspace-alert workspace-alert--link">\u4f9d\u8d56</span><span>\u6307\u5bfc\u8001\u5e08\u53cd\u9988\u5f85\u8f93\u5165</span></li>
-              </ul>
-            </section>
-            <section class="workspace-subpanel">
-              <div class="workspace-subpanel__title">\u4efb\u52a1\u6d41\u7a0b\u94fe</div>
-              <div class="workspace-flow">
-                <span class="workspace-flow__node is-done">\u786e\u5b9a\u9700\u6c42</span>
-                <span class="workspace-flow__node is-active">\u6587\u5b57\u68b3\u7406</span>
-                <span class="workspace-flow__node">\u5236\u4f5c PPT</span>
-                <span class="workspace-flow__node">\u4eba\u5de5\u5ba1\u6821</span>
-                <span class="workspace-flow__node">\u4fee\u6539\u5b8c\u5584</span>
-                <span class="workspace-flow__node">\u8f93\u51fa\u7ed3\u9879\u6750\u6599</span>
-              </div>
-            </section>
-            <section class="workspace-subpanel workspace-subpanel--milestone">
-              <div class="workspace-subpanel__title">\u4eca\u65e5\u91cc\u7a0b\u7891</div>
-              <strong>17:30 \u524d\u5b8c\u6210\u53ef\u4fee\u6539\u7684\u4e00\u7248 PPT \u521d\u7a3f</strong>
-              <p>\u5269\u4f59 5 \u5c0f\u65f6</p>
-              <div class="workspace-progress"><span style="width: 42%"></span></div>
-            </section>
-          </div>
-          <section class="workspace-toolbox">
-            <div class="workspace-toolbox__header">
-              <h3>\u5de5\u5177\u62bd\u5c49</h3>
-              <div class="workspace-toolbox__search">${renderIcon("search", { size: 16 })}<span>\u641c\u7d22\u5de5\u5177\uff08\u4f8b\u5982\uff1a\u601d\u7ef4\u5bfc\u56fe\u3001PPT\u3001\u8868\u683c...\uff09</span></div>
-            </div>
-            <div class="workspace-tool-grid">
-              ${renderToolTile("\u601d\u7ef4\u5bfc\u56fe")}
-              ${renderToolTile("\u6587\u6863\u6a21\u677f")}
-              ${renderToolTile("PPT \u52a9\u624b")}
-              ${renderToolTile("\u8868\u683c\u5904\u7406")}
-              ${renderToolTile("AI \u5199\u4f5c")}
-              ${renderToolTile("\u6570\u636e\u53ef\u89c6\u5316")}
-              ${renderToolTile("\u8ba1\u65f6\u5668")}
-              ${renderToolTile("\u66f4\u591a\u5de5\u5177")}
-            </div>
-          </section>
-        </section>
-
-        <section class="workspace-panel workspace-panel--done">
-          <header class="workspace-panel__header">
-            <div><div class="eyebrow">DONE</div><h2>\u4eca\u65e5\u5b8c\u6210\u8868</h2></div>
-            <button type="button" class="icon-btn" aria-label="\u66f4\u591a">${renderIcon("search", { size: 16 })}</button>
-          </header>
-          <div class="workspace-celebration"><div class="workspace-celebration__icon">\u2728</div><strong>\u592a\u68d2\u4e86\uff01\u7ee7\u7eed\u4fdd\u6301</strong><span>\u5df2\u5b8c\u6210 6 \u9879\u4efb\u52a1</span></div>
-          <div class="workspace-completed-list">
-            ${renderCompletedItem("\u6668\u95f4\u62c9\u4f38 15 \u5206\u949f", "07:30")}
-            ${renderCompletedItem("\u68c0\u67e5\u90ae\u4ef6\u548c\u6d88\u606f", "08:00")}
-            ${renderCompletedItem("\u9605\u8bfb\u884c\u4e1a\u8d44\u8baf", "08:30")}
-            ${renderCompletedItem("\u9879\u76ee\u65e9\u4f1a", "09:30")}
-            ${renderCompletedItem("\u6574\u7406\u7b14\u8bb0", "11:00")}
-            ${renderCompletedItem("\u5348\u9910 & \u4f11\u606f", "12:30")}
-          </div>
-          <button type="button" class="btn btn-secondary workspace-page__secondary-cta workspace-page__secondary-cta--full">\u67e5\u770b\u5b8c\u6210\u5206\u6790</button>
-        </section>
-      </div>
-    </section>
-  `;
-}
-
-function renderProjectProgressSchedule(viewState: TaskPlanViewState): string {
-  if (viewState.status === "loading") {
-    return `
-      <div class="workspace-empty-card">
-        <strong>正在同步任务计划页的正式日程</strong>
-        <p>确认完成后，这里的今日时间表会自动刷新为共享正式版。</p>
-      </div>
-    `;
-  }
-
-  if (viewState.status === "error") {
-    return `
-      <div class="workspace-empty-card">
-        <strong>${escapeHtml(viewState.error ?? "共享日程加载失败")}</strong>
-        <p>请稍后重试，或先到任务计划页检查共享日程状态。</p>
-      </div>
-    `;
-  }
-
-  const schedule = viewState.state?.schedule;
-  if (!schedule?.confirmed || schedule.items.length === 0) {
-    return `
-      <div class="workspace-empty-card">
-        <strong>\u4eca\u65e5\u6b63\u5f0f\u65e5\u7a0b\u5c1a\u672a\u786e\u8ba4\uff0c\u8bf7\u5148\u5230\u4efb\u52a1\u8ba1\u5212\u9875\u786e\u8ba4\u65e5\u7a0b\u3002</strong>
-        <p>\u4efb\u52a1\u8ba1\u5212\u9875\u786e\u8ba4\u540e\u7684\u6b63\u5f0f\u7248\u65f6\u95f4\u8868\u4f1a\u81ea\u52a8\u540c\u6b65\u5230\u8fd9\u91cc\u3002</p>
-      </div>
-    `;
-  }
-
-  return `
-    <div class="workspace-list">
-      ${schedule.items
-        .map((item) => renderScheduleItem(item.title, TASK_PLAN_PRIORITY_LABELS[item.priority] ?? "", item.startTime))
-        .join("")}
-    </div>
-  `;
-}
-
 function renderTaskPlanView(viewState: TaskPlanViewState): string {
   const taskPlanState = viewState.state ?? createDefaultTaskPlanState();
-  const roadmap = taskPlanState.roadmap;
-  const roadmapGroups = roadmap.groups.slice(0, 3);
   const scheduleItems = viewState.scheduleEditMode ? viewState.scheduleDraft : taskPlanState.schedule.items;
   const poolItems = getTaskPlanPoolVisibleItems(viewState);
   const poolBusy = isTaskPlanPoolBusy(viewState);
@@ -2747,10 +3666,23 @@ function renderTaskPlanView(viewState: TaskPlanViewState): string {
     taskPlanState.morningFlow.planningDone,
     taskPlanState.morningFlow.fineTuneDone,
   ];
-  const roadmapHeaders = buildTaskPlanRoadmapHeaders(roadmap.windowStart);
   const feedback = viewState.error
     ? viewState.error
     : viewState.feedback ?? (viewState.status === "loading" && !viewState.state ? "正在同步任务计划..." : "系统已与后端任务计划状态同步。");
+
+  return renderTaskPlanLayout(viewState, taskPlanState, scheduleItems, poolItems, poolBusy, morningSteps, feedback);
+}
+
+// fallow-ignore-next-line complexity
+function renderTaskPlanLayout(
+  viewState: TaskPlanViewState,
+  taskPlanState: TaskPlanState,
+  scheduleItems: TaskPlanScheduleItem[],
+  poolItems: TaskPlanPoolItem[],
+  poolBusy: boolean,
+  morningSteps: boolean[],
+  feedback: string,
+): string {
 
   return `
     <section class="workspace-view workspace-view--task-plan" data-workspace-view="task-plan">
@@ -2832,9 +3764,17 @@ function renderTaskPlanView(viewState: TaskPlanViewState): string {
                 <div class="workspace-task-plan-poster__card-head">
                   <div class="workspace-task-plan-poster__card-title">
                     <span class="workspace-task-plan-poster__card-index">3</span>
-                    <span>已有任务池</span>
+                    <button type="button" class="workspace-task-plan-poster__card-title-link" data-task-plan-open-task-pool>已有任务池</button>
                   </div>
                   <div class="workspace-task-plan-poster__card-actions">
+                    <button
+                      type="button"
+                      class="workspace-task-plan-poster__control-arrow"
+                      data-task-pool-generate
+                      aria-label="根据近日日记生成任务"
+                      title="根据近日日记生成任务"
+                      ${poolBusy ? "disabled" : ""}
+                    >${renderIcon("plus", { size: 15 })}</button>
                     ${viewState.poolEditMode ? `<button type="button" class="workspace-task-plan-poster__control-chip" data-task-plan-pool-add ${poolBusy ? "disabled" : ""}>新增</button>` : ""}
                     ${viewState.poolEditMode ? `<button type="button" class="workspace-task-plan-poster__control-chip" data-task-plan-pool-save ${poolBusy ? "disabled" : ""}>保存</button>` : ""}
                     <button type="button" class="workspace-task-plan-poster__control-chip" data-task-plan-pool-edit-toggle ${poolBusy ? "disabled" : ""}>${viewState.poolEditMode ? "取消" : "编辑"}</button>
@@ -2842,6 +3782,7 @@ function renderTaskPlanView(viewState: TaskPlanViewState): string {
                 </div>
                 <div class="workspace-task-plan-poster__pool-filters">
                   ${renderTaskPlanPoolFilters(viewState.poolFilter, poolBusy)}
+                  ${renderTaskPlanPoolSort(viewState.poolSortMode, poolBusy)}
                 </div>
                 <div class="workspace-task-plan-poster__pool-list" data-task-plan-pool-list data-task-plan-scroll-mode="flex">
                   ${renderTaskPlanPoolRows(poolItems, viewState.poolEditMode, poolBusy)}
@@ -2904,75 +3845,6 @@ function renderTaskPlanView(viewState: TaskPlanViewState): string {
             </div>
           </section>
         </div>
-
-        <div
-          class="workspace-task-plan-split-handle panel-resize-handle"
-          data-task-plan-split-handle
-          role="separator"
-          aria-label="调整任务计划上下区域高度"
-          aria-orientation="horizontal"
-          tabindex="0"
-        ></div>
-
-        <section class="workspace-task-plan-poster__roadmap" data-task-plan-bottom>
-          <header class="workspace-task-plan-poster__roadmap-header">
-            <div>
-              <h3>领域与项目推进</h3>
-              <p>选择领域查看详情，并通过甘特视图跟踪进度与里程碑</p>
-            </div>
-            <div class="workspace-task-plan-poster__roadmap-controls">
-              <button type="button" class="workspace-task-plan-poster__control-chip workspace-task-plan-poster__control-chip--active" data-task-plan-roadmap-window="current">本周</button>
-              <button type="button" class="workspace-task-plan-poster__control-arrow" data-task-plan-roadmap-nav="prev">‹</button>
-              <button type="button" class="workspace-task-plan-poster__control-arrow" data-task-plan-roadmap-nav="next">›</button>
-              <button type="button" class="workspace-task-plan-poster__control-chip" data-task-plan-roadmap-view="week">周视图 ⌄</button>
-            </div>
-          </header>
-
-          <div class="workspace-task-plan-poster__roadmap-board">
-            <aside class="workspace-task-plan-poster__roadmap-tree">
-              <div class="workspace-task-plan-poster__tree-top">
-                <span>${escapeHtml(roadmap.topLabel)}</span>
-                <span>▢</span>
-              </div>
-              ${roadmapGroups.map((group, index) => `
-                <div class="workspace-task-plan-poster__tree-group">
-                  <div class="workspace-task-plan-poster__tree-title">
-                    <span class="workspace-task-plan-poster__tree-badge workspace-task-plan-poster__tree-badge--${index === 0 ? "blue" : index === 1 ? "green" : "orange"}">${index === 0 ? "P" : index === 1 ? "T" : "R"}</span>
-                    <span>${escapeHtml(group.title)}</span>
-                  </div>
-                  <ul>
-                    ${group.items.map((item) => `<li>${escapeHtml(item.title)}</li>`).join("")}
-                  </ul>
-                </div>
-              `).join("")}
-            </aside>
-
-            <div class="workspace-task-plan-poster__roadmap-grid">
-              <div class="workspace-task-plan-poster__month">${escapeHtml(roadmap.windowLabel)}</div>
-              <div class="workspace-task-plan-poster__header-row">
-                ${roadmapHeaders.map((label) => `<span class="workspace-task-plan-poster__header-cell">${escapeHtml(label)}</span>`).join("")}
-              </div>
-              <div class="workspace-task-plan-poster__lane">
-                <div class="workspace-task-plan-poster__bar workspace-task-plan-poster__bar--blue" style="--start:2; --span:5;">进行中 60%</div>
-                <div class="workspace-task-plan-poster__bar workspace-task-plan-poster__bar--blue-light" style="--start:4; --span:6;">需求评审</div>
-                <span class="workspace-task-plan-poster__marker workspace-task-plan-poster__marker--diamond workspace-task-plan-poster__marker--blue" style="--column:6;"></span>
-              </div>
-              <div class="workspace-task-plan-poster__lane">
-                <div class="workspace-task-plan-poster__bar workspace-task-plan-poster__bar--green" style="--start:2; --span:6;">进行中 45%</div>
-                <div class="workspace-task-plan-poster__bar workspace-task-plan-poster__bar--green-light" style="--start:9; --span:4;">待开始</div>
-                <span class="workspace-task-plan-poster__marker workspace-task-plan-poster__marker--diamond workspace-task-plan-poster__marker--green" style="--column:8;"></span>
-              </div>
-              <div class="workspace-task-plan-poster__lane">
-                <div class="workspace-task-plan-poster__bar workspace-task-plan-poster__bar--orange-light" style="--start:3; --span:4;">已排期</div>
-                <span class="workspace-task-plan-poster__marker workspace-task-plan-poster__marker--diamond workspace-task-plan-poster__marker--orange" style="--column:7;"></span>
-              </div>
-              <div class="workspace-task-plan-poster__lane">
-                <div class="workspace-task-plan-poster__bar workspace-task-plan-poster__bar--orange" style="--start:2; --span:8;">已完成 80%</div>
-                <span class="workspace-task-plan-poster__marker workspace-task-plan-poster__marker--ring" style="--column:10;"></span>
-              </div>
-            </div>
-          </div>
-        </section>
       </div>
     </section>
   `;
@@ -2983,6 +3855,7 @@ function renderTaskPoolView(
   taskPoolState: TaskPoolViewState,
   healthViewState: HealthDomainViewState,
   activeDomainSlug: string | null,
+  forceBoard: boolean,
 ): string {
   if (viewState.status === "loading") {
     return renderTaskPoolStatusView("\u6b63\u5728\u540c\u6b65\u4efb\u52a1\u8ba1\u5212\u9875\u7684\u5171\u4eab\u4efb\u52a1\u6c60...");
@@ -2995,6 +3868,7 @@ function renderTaskPoolView(
     taskPoolState,
     healthViewState,
     activeDomainSlug,
+    forceBoard,
   );
 }
 
@@ -3010,11 +3884,13 @@ function renderTaskPoolStatusView(subtitle: string): string {
   `;
 }
 
+// fallow-ignore-next-line complexity
 function renderTaskPoolReadyView(
   viewState: TaskPlanViewState,
   taskPoolState: TaskPoolViewState,
   healthViewState: HealthDomainViewState,
   activeDomainSlug: string | null,
+  forceBoard: boolean,
 ): string {
   const allPoolItems = getTaskPlanPoolSharedItems(viewState);
   const poolBusy = isTaskPlanPoolBusy(viewState);
@@ -3025,6 +3901,21 @@ function renderTaskPoolReadyView(
       healthViewState,
       activeDomainSlug,
     );
+  }
+  if (forceBoard) {
+    return renderTaskPoolBoard({
+    pool: viewState.state?.pool ?? { items: allPoolItems, stages: [], generationRecords: [] },
+      selectedCandidateId: taskPoolState.selectedCandidateId,
+      recordsOpen: taskPoolState.isGenerationRecordOpen,
+      recorderOpen: taskPoolState.isWorkflowRecorderOpen,
+      recorderDraft: taskPoolState.workflowRecorderDraft,
+      recorderFeedback: taskPoolState.workflowRecorderFeedback,
+      busy: poolBusy || viewState.busyAction === "pool-generate" || taskPoolState.workflowRecorderBusy,
+      feedback: viewState.feedback,
+      error: viewState.error,
+      sortModes: taskPoolState.sortModes,
+      groupModes: taskPoolState.groupModes,
+    });
   }
   const pageTitle = resolveTaskPoolPageTitle(activeDomainSlug);
   const subtitle = activeDomainSlug
@@ -3165,6 +4056,7 @@ function renderTaskPoolListLayout(
   `;
 }
 
+// fallow-ignore-next-line complexity
 function renderHealthDomainView(
   taskPlanViewState: TaskPlanViewState,
   taskPoolState: TaskPoolViewState,
@@ -3299,6 +4191,7 @@ function renderHealthAccountImportBody(
         <input class="workspace-task-plan-poster__editor workspace-health-domain__input" data-health-account-input="verificationCode" value="${escapeHtml(healthViewState.accountDraft.verificationCode)}" placeholder="短信验证码" />
         <button type="button" class="workspace-task-plan-poster__control-chip" data-health-send-code ${healthViewState.busyAction === "send-code" ? "disabled" : ""}>${healthViewState.captchaChallenge ? "提交图形验证码" : "获取验证码"}</button>
       </div>
+      <input class="workspace-task-plan-poster__editor workspace-health-domain__input" data-health-account-input="relativeUid" value="${escapeHtml(healthViewState.accountDraft.relativeUid)}" placeholder="亲友共享 UID" />
       <button type="button" class="workspace-task-plan-poster__control-chip workspace-health-domain__primary" data-health-connect-account ${healthViewState.busyAction === "connect" ? "disabled" : ""}>验证码登录并连接</button>
     </div>
   `;
@@ -3327,6 +4220,7 @@ function renderHealthApiImportBody(healthViewState: HealthDomainViewState): stri
       ${renderHealthQrLoginPanel(healthViewState)}
       <textarea class="workspace-task-plan-poster__editor workspace-health-domain__textarea" data-health-api-token-input placeholder="粘贴 token.json 内容">${escapeHtml(healthViewState.apiDraft.tokenJson)}</textarea>
       <input class="workspace-task-plan-poster__editor workspace-health-domain__input" data-health-api-input="apiBaseUrl" value="${escapeHtml(healthViewState.apiDraft.apiBaseUrl)}" placeholder="API 地址（可选）" />
+      <input class="workspace-task-plan-poster__editor workspace-health-domain__input" data-health-api-input="relativeUid" value="${escapeHtml(healthViewState.apiDraft.relativeUid)}" placeholder="亲友共享 UID" />
       <button type="button" class="workspace-task-plan-poster__control-chip workspace-health-domain__primary" data-health-connect-api ${healthViewState.busyAction === "connect" ? "disabled" : ""}>保存并导入</button>
     </div>
   `;
@@ -3337,7 +4231,7 @@ function renderHealthQrLoginPanel(healthViewState: HealthDomainViewState): strin
     <div class="workspace-health-domain__qr">
       <div>
         <strong>二维码登录生成 token</strong>
-        <span>用小米账号 App 扫码，成功后会自动保存并导入。</span>
+        <span>先填写亲友共享 UID，再用小米账号 App 扫码；成功后会自动保存并导入。</span>
       </div>
       ${renderHealthQrLoginImage(healthViewState.qrLogin)}
       <button type="button" class="workspace-task-plan-poster__control-chip" data-health-qr-login ${healthViewState.busyAction === "qr-login" ? "disabled" : ""}>${healthViewState.qrLogin ? "重新生成二维码" : "生成二维码登录"}</button>
@@ -3376,6 +4270,7 @@ function renderTaskPoolActions(
 ): string {
   return `
     <div class="workspace-task-plan-poster__card-actions">
+      <button type="button" class="workspace-task-plan-poster__control-chip" data-workflow-artifacts-open>执行沉淀</button>
       ${viewState.poolEditMode && showAddButton ? `<button type="button" class="workspace-task-plan-poster__control-chip" data-task-plan-pool-add ${poolBusy ? "disabled" : ""}>新增</button>` : ""}
       ${viewState.poolEditMode ? `<button type="button" class="workspace-task-plan-poster__control-chip" data-task-plan-pool-save ${poolBusy ? "disabled" : ""}>保存</button>` : ""}
       <button type="button" class="workspace-task-plan-poster__control-chip" data-task-plan-pool-edit-toggle ${poolBusy ? "disabled" : ""}>${viewState.poolEditMode ? "取消" : "编辑"}</button>
@@ -3423,10 +4318,12 @@ function getTaskPlanPoolSharedItems(
 
 function getTaskPlanPoolVisibleItems(viewState: TaskPlanViewState): TaskPlanPoolItem[] {
   const state = viewState.state ?? createDefaultTaskPlanState();
-  if (viewState.poolEditMode) {
-    return repairUntouchedTaskPlanPoolDraft(viewState);
-  }
-  return state.pool.items.filter((item) => viewState.poolFilter === "全部" || item.source === viewState.poolFilter);
+  const items = viewState.poolEditMode ? repairUntouchedTaskPlanPoolDraft(viewState) : state.pool.items;
+  const visibleItems = items
+    .filter((item) => !item.completedAt)
+    .filter((item) => readTaskPoolBoardZone(item) !== "candidate")
+    .filter((item) => viewState.poolFilter === "全部" || item.source === viewState.poolFilter);
+  return sortTaskPoolBoardItems(visibleItems, viewState.poolSortMode);
 }
 
 function isTaskPoolDraftDirty(viewState: TaskPlanViewState): boolean {
@@ -3436,7 +4333,293 @@ function isTaskPoolDraftDirty(viewState: TaskPlanViewState): boolean {
 }
 
 function isTaskPlanPoolBusy(viewState: Pick<TaskPlanViewState, "busyAction">): boolean {
-  return viewState.busyAction === "pool";
+  return viewState.busyAction === "pool" || viewState.busyAction === "pool-generate";
+}
+
+function isTaskPoolBoardZone(value: string | undefined): value is TaskPoolBoardZone {
+  return value === "mine" || value === "ai" || value === "candidate";
+}
+
+function moveTaskPlanPoolItemToZone(
+  item: TaskPlanPoolItem,
+  zone: TaskPoolBoardZone,
+): TaskPlanPoolItem {
+  return {
+    ...item,
+    zone,
+    owner: zone === "ai" ? "ai" : item.owner === "ai" && zone === "candidate" ? "ai" : "me",
+  };
+}
+
+function closeTaskPoolDrawerForItem(
+  viewState: TaskPoolViewState,
+  itemId: string,
+): TaskPoolViewState {
+  if (viewState.selectedCandidateId !== itemId) {
+    return viewState;
+  }
+  return { ...viewState, selectedCandidateId: null };
+}
+
+function applyOptimisticTaskPoolItems(
+  viewState: TaskPlanViewState,
+  items: TaskPlanPoolItem[],
+  stages?: TaskPlanStageItem[],
+): TaskPlanViewState {
+  if (!viewState.state) {
+    return viewState;
+  }
+  return {
+    ...viewState,
+    busyAction: "pool",
+    state: {
+      ...viewState.state,
+      pool: {
+        ...viewState.state.pool,
+        items,
+        stages: stages ?? viewState.state.pool.stages ?? [],
+      },
+    },
+    poolDraft: cloneTaskPlanPoolItems(items),
+    error: null,
+  };
+}
+
+function applyProjectWorkspaceMove(
+  item: TaskPlanPoolItem,
+  move: ProjectWorkspaceHierarchyMove,
+  sourceIds: ReadonlySet<string>,
+  orderMap: ReadonlyMap<string, number>,
+): TaskPlanPoolItem {
+  const movedItem = sourceIds.has(item.id) ? moveProjectWorkspaceItem(item, move) : item;
+  const projectOrder = orderMap.get(item.id);
+  return projectOrder === undefined ? movedItem : { ...movedItem, projectOrder };
+}
+
+function moveProjectWorkspaceItem(
+  item: TaskPlanPoolItem,
+  move: ProjectWorkspaceHierarchyMove,
+): TaskPlanPoolItem {
+  if (move.source.kind === "domain" || !move.source.taskIds.includes(item.id)) {
+    return item;
+  }
+  if (move.source.kind === "project") {
+    return { ...item, domain: normalizeProjectWorkspaceDomain(move.target.domain) };
+  }
+  if (move.target.kind === "stage") {
+    return {
+      ...item,
+      domain: normalizeProjectWorkspaceDomain(move.target.domain),
+      project: normalizeProjectWorkspaceProject(move.target.project),
+      stageId: move.target.stageId,
+    };
+  }
+  return {
+    ...item,
+    domain: normalizeProjectWorkspaceDomain(move.target.domain),
+    project: normalizeProjectWorkspaceProject(move.target.kind === "domain" ? "" : move.target.project),
+    stageId: move.target.stageId || item.stageId,
+  };
+}
+
+function moveProjectWorkspaceAction(
+  items: readonly TaskPlanPoolItem[],
+  move: ProjectWorkspaceHierarchyMove,
+): TaskPlanPoolItem[] {
+  const action = findProjectWorkspaceAction(items, move.source.taskId, move.source.actionId);
+  if (!action || !move.target.taskId || move.source.taskId === move.target.taskId) return items as TaskPlanPoolItem[];
+  const withoutAction = items.map((item) => item.id === move.source.taskId
+    ? { ...item, actions: (item.actions ?? []).filter((candidate) => candidate.id !== action.id) }
+    : item);
+  return withoutAction.map((item) => item.id === move.target.taskId
+    ? { ...item, actions: orderProjectWorkspaceActions([...(item.actions ?? []), action]) }
+    : item);
+}
+
+function findProjectWorkspaceAction(
+  items: readonly TaskPlanPoolItem[],
+  taskId: string,
+  actionId: string,
+): TaskPlanActionItem | null {
+  return items.find((item) => item.id === taskId)?.actions?.find((action) => action.id === actionId) ?? null;
+}
+
+function orderProjectWorkspaceActions(actions: readonly TaskPlanActionItem[]): TaskPlanActionItem[] {
+  return actions.map((action, order) => ({ ...action, order }));
+}
+
+function applyProjectWorkspaceCreate(
+  items: readonly TaskPlanPoolItem[],
+  stages: readonly TaskPlanStageItem[],
+  request: ProjectWorkspaceCreateRequest,
+): { items: TaskPlanPoolItem[]; stages: TaskPlanStageItem[]; feedback: string } | null {
+  if (request.node.kind === "project") return createFromProject(items, stages, request);
+  if (request.node.kind === "stage") return createFromStage(items, stages, request);
+  if (request.node.kind === "task") return createFromTask(items, stages, request);
+  if (request.node.kind === "action" && request.mode === "sibling") return createSiblingAction(items, stages, request);
+  return null;
+}
+
+function applyProjectWorkspaceDelete(
+  items: readonly TaskPlanPoolItem[],
+  node: ProjectWorkspaceDragNode,
+): TaskPlanPoolItem[] | null {
+  if (node.kind === "task" && node.taskId) {
+    const nextItems = items.filter((item) => item.id !== node.taskId);
+    return nextItems.length === items.length ? null : nextItems;
+  }
+  if (node.kind !== "action" || !node.taskId || !node.actionId) return null;
+  let changed = false;
+  const nextItems = items.map((item) => {
+    if (item.id !== node.taskId) return item;
+    const actions = (item.actions ?? []).filter((action) => action.id !== node.actionId);
+    changed = actions.length !== (item.actions ?? []).length;
+    return changed ? { ...item, actions: orderProjectWorkspaceActions(actions) } : item;
+  });
+  return changed ? nextItems : null;
+}
+
+function createFromProject(
+  items: readonly TaskPlanPoolItem[],
+  stages: readonly TaskPlanStageItem[],
+  request: ProjectWorkspaceCreateRequest,
+) {
+  const domain = normalizeProjectWorkspaceDomain(request.node.domain) ?? TASK_POOL_UNGROUPED_DOMAIN;
+  const project = request.mode === "sibling" ? nextProjectTitle(items, domain) : request.node.project;
+  const stage = createStage(domain, project, nextStageOrder(stages, domain, project));
+  return { items: [...items], stages: [...stages, stage], feedback: "已创建阶段。" };
+}
+
+function createFromStage(
+  items: readonly TaskPlanPoolItem[],
+  stages: readonly TaskPlanStageItem[],
+  request: ProjectWorkspaceCreateRequest,
+) {
+  if (request.mode === "sibling") {
+    const stage = createStage(request.node.domain, request.node.project, nextStageOrder(stages, request.node.domain, request.node.project));
+    return { items: [...items], stages: [...stages, stage], feedback: "已创建同级阶段。" };
+  }
+  const task = createTask(request.node.domain, request.node.project, request.node.stageId, nextTaskOrder(items, request.node.stageId));
+  return { items: [...items, task], stages: [...stages], feedback: "已创建阶段任务。" };
+}
+
+function createFromTask(
+  items: readonly TaskPlanPoolItem[],
+  stages: readonly TaskPlanStageItem[],
+  request: ProjectWorkspaceCreateRequest,
+) {
+  if (request.mode === "child") {
+    return { items: addActionToTask(items, request.node.taskId), stages: [...stages], feedback: "已创建行动。" };
+  }
+  const task = createTask(request.node.domain, request.node.project, request.node.stageId, nextTaskOrder(items, request.node.stageId));
+  return { items: [...items, task], stages: [...stages], feedback: "已创建同阶段任务。" };
+}
+
+function createSiblingAction(
+  items: readonly TaskPlanPoolItem[],
+  stages: readonly TaskPlanStageItem[],
+  request: ProjectWorkspaceCreateRequest,
+) {
+  return { items: addActionToTask(items, request.node.taskId), stages: [...stages], feedback: "已创建同级行动。" };
+}
+
+function createStage(domain: string, project: string, order: number): TaskPlanStageItem {
+  return { id: `stage-${Date.now()}-${order}`, title: "新阶段", domain, project, order };
+}
+
+function createTask(domain: string, project: string, stageId: string, taskOrder: number): TaskPlanPoolItem {
+  return { id: `task-${Date.now()}-${taskOrder}`, title: "新任务", priority: "mid", source: "手动新增", domain, project, stageId, taskOrder };
+}
+
+function addActionToTask(items: readonly TaskPlanPoolItem[], taskId: string): TaskPlanPoolItem[] {
+  return items.map((item) => item.id === taskId
+    ? { ...item, actions: [...(item.actions ?? []), { id: `action-${Date.now()}`, title: "新行动", order: item.actions?.length ?? 0 }] }
+    : item);
+}
+
+function nextStageOrder(stages: readonly TaskPlanStageItem[], domain: string, project: string): number {
+  return stages.filter((stage) => stage.domain === domain && stage.project === project).length;
+}
+
+function nextTaskOrder(items: readonly TaskPlanPoolItem[], stageId: string): number {
+  return items.filter((item) => item.stageId === stageId).length;
+}
+
+function nextProjectTitle(items: readonly TaskPlanPoolItem[], domain: string): string {
+  const count = new Set(items.filter((item) => item.domain === domain).map((item) => item.project)).size;
+  return `新项目 ${count + 1}`;
+}
+
+function normalizeProjectWorkspaceDomain(value: string): string | undefined {
+  return value && value !== TASK_POOL_UNGROUPED_DOMAIN ? value : undefined;
+}
+
+function normalizeProjectWorkspaceProject(value: string): string | undefined {
+  return value && value !== TASK_POOL_UNGROUPED_PROJECT ? value : undefined;
+}
+
+function createProjectWorkspaceScheduleItem(
+  task: TaskPlanPoolItem,
+  currentItems: readonly TaskPlanScheduleItem[],
+): TaskPlanScheduleItem {
+  return {
+    id: task.id,
+    title: task.title,
+    startTime: readNextProjectScheduleStartTime(currentItems.length),
+    priority: normalizeTaskPlanPriority(task.priority),
+  };
+}
+
+function applyOptimisticProjectSchedule(
+  viewState: TaskPlanViewState,
+  items: readonly TaskPlanScheduleItem[],
+  feedback: string,
+): TaskPlanViewState {
+  if (!viewState.state) return viewState;
+  return {
+    ...viewState,
+    busyAction: "save",
+    state: { ...viewState.state, schedule: { ...viewState.state.schedule, items: [...items] } },
+    scheduleDraft: items.map((item) => ({ ...item })),
+    feedback,
+    error: null,
+  };
+}
+
+function applySavedProjectSchedule(
+  viewState: TaskPlanViewState,
+  schedule: TaskPlanScheduleState,
+  feedback: string,
+): TaskPlanViewState {
+  if (!viewState.state) return viewState;
+  return {
+    ...viewState,
+    state: { ...viewState.state, schedule },
+    scheduleDraft: schedule.items.map((item) => ({ ...item })),
+    busyAction: null,
+    feedback,
+    error: null,
+  };
+}
+
+function readNextProjectScheduleStartTime(index: number): string {
+  return ["09:00", "10:30", "14:00", "16:00", "19:30"][index] ?? "待排期";
+}
+
+function applyTaskPoolGeneratedState(
+  viewState: TaskPlanViewState,
+  result: { state: TaskPlanState; generationRecord: TaskPoolGenerationRecord | null },
+): TaskPlanViewState {
+  return {
+    ...viewState,
+    status: "ready",
+    state: result.state,
+    poolDraft: cloneTaskPlanPoolItems(result.state.pool.items),
+    poolDraftTouched: false,
+    busyAction: null,
+    feedback: result.generationRecord ? "已根据新日记生成候选任务。" : "没有上次生成之后的新日记。",
+    error: null,
+  };
 }
 
 function renderTaskPlanPoolFilters(activeFilter: TaskPlanViewState["poolFilter"], disabled: boolean): string {
@@ -3448,6 +4631,19 @@ function renderTaskPlanPoolFilters(activeFilter: TaskPlanViewState["poolFilter"]
       ${disabled ? "disabled" : ""}
     >${source}</button>
   `).join("");
+}
+
+function renderTaskPlanPoolSort(activeSortMode: TaskPoolBoardSortMode, disabled: boolean): string {
+  return `
+    <label class="workspace-task-plan-poster__pool-sort">
+      <span>排序</span>
+      <select data-task-plan-pool-sort ${disabled ? "disabled" : ""}>
+        ${(Object.keys(TASK_POOL_SORT_LABELS) as TaskPoolBoardSortMode[]).map((mode) => `
+          <option value="${mode}" ${mode === activeSortMode ? "selected" : ""}>${TASK_POOL_SORT_LABELS[mode]}</option>
+        `).join("")}
+      </select>
+    </label>
+  `;
 }
 
 function renderTaskPlanPoolRows(items: readonly TaskPlanPoolItem[], editMode: boolean, disabled: boolean): string {
@@ -3582,56 +4778,46 @@ function readHealthConnectionSummary(
 function renderWorkLogView(
   state: WorkspaceDocsState,
   options: {
-    isEditing: boolean;
-    isOutlineCollapsed: boolean;
     expandedDomains: ReadonlySet<string>;
+    expandedWorkspaceProjects: ReadonlySet<string>;
+    draftDocumentId: string | null;
     draftHtml: string;
+    graphyPosition: WorkspaceGraphyPosition;
     searchQuery: string;
+    gallerySelectedPath: string | null;
+    taskPlanState?: TaskPlanViewState;
+    deleteDialog?: WorkspaceDocDeleteDialog | null;
   },
 ): string {
-  if (state.status === "loading") {
-    return `
-      <section class="workspace-view workspace-view--work-log" data-workspace-view="work-log">
-        <section class="workspace-panel workspace-panel--pool-placeholder">
-          <div class="eyebrow">DOCUMENTS</div>
-          <h2>\u5de5\u4f5c\u65e5\u5fd7</h2>
-          <p class="workspace-page__subtitle">\u6b63\u5728\u8bfb\u53d6\u9886\u57df / \u9879\u76ee / \u5de5\u4f5c\u65e5\u5fd7\u6587\u6863...</p>
-        </section>
-      </section>
-    `;
-  }
-
-  if (state.status === "error") {
-    return `
-      <section class="workspace-view workspace-view--work-log" data-workspace-view="work-log">
-        <section class="workspace-panel workspace-panel--pool-placeholder">
-          <div class="eyebrow">DOCUMENTS</div>
-          <h2>\u5de5\u4f5c\u65e5\u5fd7</h2>
-          <p class="workspace-page__subtitle">${escapeHtml(state.error ?? "\u672a\u77e5\u9519\u8bef")}</p>
-        </section>
-      </section>
-    `;
-  }
-
+  const statusView = renderWorkLogStatusView(state);
+  if (statusView) return statusView;
   const selected = state.documents.find((item) => item.id === state.selectedId) ?? state.documents[0];
   if (!selected) {
-    return `
-      <section class="workspace-view workspace-view--work-log" data-workspace-view="work-log">
-        <section class="workspace-panel workspace-panel--pool-placeholder">
-          <div class="eyebrow">DOCUMENTS</div>
-          <h2>\u5de5\u4f5c\u65e5\u5fd7</h2>
-          <p class="workspace-page__subtitle">\u8fd8\u6ca1\u6709\u53ef\u8bfb\u53d6\u7684\u6587\u6863\u3002</p>
-        </section>
-      </section>
-    `;
+    return renderWorkLogPlaceholder("\u8fd8\u6ca1\u6709\u53ef\u8bfb\u53d6\u7684\u6587\u6863\u3002");
   }
+  return renderWorkLogReadyView(state, options, selected);
+}
 
-  const contentHtml = options.isEditing && options.draftHtml ? options.draftHtml : selected.html;
-  const toc = extractWorkspaceHeadings(contentHtml);
+function renderWorkLogReadyView(
+  state: WorkspaceDocsState,
+  options: {
+    expandedDomains: ReadonlySet<string>;
+    expandedWorkspaceProjects: ReadonlySet<string>;
+    draftDocumentId: string | null;
+    draftHtml: string;
+    graphyPosition: WorkspaceGraphyPosition;
+    searchQuery: string;
+    gallerySelectedPath: string | null;
+    taskPlanState?: TaskPlanViewState;
+    deleteDialog?: WorkspaceDocDeleteDialog | null;
+  },
+  selected: WorkspaceDocument,
+): string {
   const visibleDocuments = filterWorkspaceDocuments(state.documents, options.searchQuery);
+  const currentHtml = options.draftDocumentId === selected.id ? options.draftHtml : selected.html;
   return `
     <section class="workspace-view workspace-view--work-log" data-workspace-view="work-log">
-      <div class="workspace-log-shell" data-outline-collapsed="${options.isOutlineCollapsed ? "true" : "false"}">
+      <div class="workspace-log-shell">
         <aside class="workspace-log-tree" data-workspace-tree-panel>
           <div class="workspace-log-tree__search">
             ${renderIcon("search", { size: 16 })}
@@ -3652,108 +4838,175 @@ function renderWorkLogView(
               <button type="button" class="workspace-log-tree__icon-button" aria-label="\u7b5b\u9009">${renderIcon("settings", { size: 15 })}</button>
             </div>
           </header>
-          <div class="workspace-doc-tree" data-workspace-tree>
-            ${renderWorkspaceDocTree(visibleDocuments, selected.id, options.expandedDomains)}
-          </div>
+          <nav class="wiki-page__sidebar-links workspace-doc-tree" data-workspace-tree>
+            ${renderWorkspaceDocTree(visibleDocuments, selected.id, options.expandedDomains, options.expandedWorkspaceProjects)}
+          </nav>
+          ${options.deleteDialog ? renderWorkspaceDocDeleteDialog(options.deleteDialog) : ""}
         </aside>
         <div class="workspace-doc-sidebar-resize panel-resize-handle" data-workspace-tree-resize></div>
-        <aside class="workspace-log-outline" data-workspace-outline-lane ${options.isOutlineCollapsed ? "hidden" : ""}>
-          <header class="workspace-log-outline__header">
-            <div class="workspace-log-outline__eyebrow">\u76ee\u5f55\u680f</div>
-            <button type="button" class="workspace-log-outline__toggle" data-workspace-outline-toggle>
-              &laquo;
-            </button>
-          </header>
-          <nav class="workspace-log-outline__list" data-workspace-outline-list>
-            ${renderWorkspaceOutlineList(selected, toc)}
-          </nav>
-        </aside>
-        <section class="workspace-log-stage" data-workspace-stage>
-          <header class="workspace-log-stage__header">
-            <div class="workspace-log-stage__title-group">
-              <button type="button" class="workspace-log-stage__collapse" data-workspace-outline-toggle aria-label="\u5207\u6362\u76ee\u5f55\u680f">
-                ${options.isOutlineCollapsed ? "&raquo;" : "&laquo;"}
-              </button>
-              <div>
-                <div class="workspace-log-stage__kicker">\u8bb0\u5f55\u7cfb\u7edf</div>
-                <h2 data-workspace-stage-title>${escapeHtml(selected.title ?? selected.label)}</h2>
-                <p>${selected.modifiedAt ? formatWorkspaceTime(selected.modifiedAt) : "\u6682\u65e0\u66f4\u65b0\u65f6\u95f4"}</p>
-              </div>
-            </div>
-            <div class="workspace-log-stage__actions">
-              <button type="button" class="workspace-log-stage__action" data-workspace-edit-toggle>\u7f16\u8f91</button>
-              <button type="button" class="workspace-log-stage__action workspace-log-stage__action--primary" data-workspace-save>\u4fdd\u5b58</button>
-            </div>
-          </header>
-          ${options.isEditing ? `
-            <div class="workspace-doc-toolbar" data-workspace-toolbar>
-              ${renderWorkspaceToolbarButton("h1", "\u6807\u9898 1")}
-              ${renderWorkspaceToolbarButton("h2", "\u6807\u9898 2")}
-              ${renderWorkspaceToolbarButton("bold", "\u52a0\u7c97")}
-              ${renderWorkspaceToolbarButton("italic", "\u659c\u4f53")}
-              ${renderWorkspaceToolbarButton("ul", "\u65e0\u5e8f\u5217\u8868")}
-              ${renderWorkspaceToolbarButton("ol", "\u6709\u5e8f\u5217\u8868")}
-              ${renderWorkspaceToolbarButton("quote", "\u5f15\u7528")}
-              ${renderWorkspaceToolbarButton("code", "\u4ee3\u7801\u5757")}
-              ${renderWorkspaceToolbarButton("hr", "\u5206\u5272\u7ebf")}
-            </div>
-          ` : ""}
-          <div class="workspace-log-stage__canvas">
-            <div class="workspace-log-stage__summary">
-              <strong>${escapeHtml(selected.label)}</strong>
-              <div class="workspace-log-stage__summary-lines">
-                ${renderWorkspaceSummaryLines(toc)}
-              </div>
-            </div>
-            <article
-              class="workspace-doc-viewer__content markdown-body workspace-doc-editor workspace-log-stage__document${selected.id ? " is-editable" : ""}"
-              data-workspace-doc-editor
-              data-workspace-doc-content
-              contenteditable="${options.isEditing ? "true" : "false"}"
-            >${contentHtml}</article>
-          </div>
-        </section>
+        ${renderWorkspaceWikiDocument(
+          selected,
+          currentHtml,
+          options.graphyPosition,
+          visibleDocuments,
+          options.gallerySelectedPath,
+          options.taskPlanState?.state?.pool.items ?? [],
+          options.taskPlanState?.state?.pool.stages ?? [],
+          options.taskPlanState?.state?.schedule.items ?? [],
+        )}
       </div>
     </section>
   `;
 }
 
-function renderWorkspaceOutlineList(
-  selected: WorkspaceDocument,
-  toc: readonly { id: string; level: number; text: string }[],
-): string {
-  const items = [
-    selected.kind === "root" ? "领域" : selected.domain,
-    selected.kind === "project" || selected.kind === "work-log" ? selected.project : null,
-    selected.kind === "work-log" ? "工作日志" : null,
-  ].filter((value): value is string => Boolean(value));
-
-  const outlineItems = toc.length > 0 ? toc : items.map((text, index) => ({ id: `workspace-outline-${index}`, level: 1, text }));
-  return outlineItems
-    .map(
-      (item) => `
-        <button
-          type="button"
-          class="workspace-log-outline__item workspace-log-outline__item--level-${item.level}"
-          ${toc.length > 0 ? `data-workspace-heading-target="${escapeHtml(item.id)}"` : ""}
-        >${escapeHtml(item.text)}</button>
-      `,
-    )
-    .join("");
+function renderWorkLogStatusView(state: WorkspaceDocsState): string | null {
+  if (state.status === "loading" && state.documents.length === 0) {
+    return renderWorkLogPlaceholder("\u6b63\u5728\u8bfb\u53d6\u9886\u57df / \u9879\u76ee / \u5de5\u4f5c\u65e5\u5fd7\u6587\u6863...");
+  }
+  if (state.status === "error") {
+    return renderWorkLogPlaceholder(state.error ?? "\u672a\u77e5\u9519\u8bef");
+  }
+  return null;
 }
 
-function renderWorkspaceSummaryLines(toc: readonly { id: string; level: number; text: string }[]): string {
-  const entries = toc.slice(0, 6).map((item) => item.text).filter((text) => text.trim().length > 0);
-  if (entries.length === 0) {
-    return [
-      '<span class="workspace-log-stage__summary-line"></span>',
-      '<span class="workspace-log-stage__summary-line workspace-log-stage__summary-line--short"></span>',
-      '<span class="workspace-log-stage__summary-line"></span>',
-    ].join("");
+function renderWorkLogPlaceholder(subtitle: string): string {
+  return `
+    <section class="workspace-view workspace-view--work-log" data-workspace-view="work-log">
+      <section class="workspace-panel workspace-panel--pool-placeholder">
+        <div class="eyebrow">DOCUMENTS</div>
+        <h2>\u5de5\u4f5c\u65e5\u5fd7</h2>
+        <p class="workspace-page__subtitle">${escapeHtml(subtitle)}</p>
+      </section>
+    </section>
+  `;
+}
+
+function selectWorkspaceDocumentId(documents: readonly WorkspaceDocument[], currentId: string): string {
+  if (documents.some((item) => item.id === currentId)) {
+    return currentId;
   }
-  return entries
-    .map((entry, index) => `<span class="workspace-log-stage__summary-tag workspace-log-stage__summary-tag--${(index % 3) + 1}">${escapeHtml(entry)}</span>`)
-    .join("");
+  return documents.find((item) => item.id === DEFAULT_WORKSPACE_DOC_ID)?.id ?? documents[0]?.id ?? "";
+}
+
+function mergeWorkspaceDocumentSummaries(
+  summaries: readonly WorkspaceDocument[],
+  previousDocuments: readonly WorkspaceDocument[],
+): WorkspaceDocument[] {
+  const previousById = new Map(previousDocuments.map((item) => [item.id, item]));
+  return summaries.map((summary) => {
+    const previous = previousById.get(summary.id);
+    if (!previous?.contentLoaded) {
+      return summary;
+    }
+    return {
+      ...summary,
+      title: previous.title ?? summary.title,
+      html: previous.html,
+      raw: previous.raw,
+      modifiedAt: previous.modifiedAt ?? summary.modifiedAt,
+      contentLoaded: true,
+    };
+  });
+}
+
+function readWorkspaceDraftHtml(documents: readonly WorkspaceDocument[], selectedId: string): string {
+  return documents.find((item) => item.id === selectedId)?.html ?? "";
+}
+
+function renderWorkspaceWikiDocument(
+  document: WorkspaceDocument,
+  html: string,
+  graphyPosition: WorkspaceGraphyPosition,
+  documents: readonly WorkspaceDocument[],
+  gallerySelectedPath: string | null,
+  taskPoolItems: readonly TaskPlanPoolItem[],
+  taskPoolStages: readonly TaskPlanStageItem[],
+  scheduleItems: readonly TaskPlanScheduleItem[],
+): string {
+  if (isExecutionWorkbenchDocument(document)) {
+    return renderExecutionWorkbenchDocument(document);
+  }
+  if (isProjectWorkspaceDocument(document)) {
+    return renderProjectWorkspaceDocument(document, taskPoolItems, taskPoolStages, scheduleItems);
+  }
+  if (isWorkspaceLibraryPage(document)) {
+    return renderWorkspaceLibraryDocument(document, documents, gallerySelectedPath);
+  }
+  const title = document.title ?? document.label;
+  const isLoading = document.contentLoaded !== true;
+  const articleHtml = isLoading
+    ? renderWorkspaceWikiLoadingState(title)
+    : withKnowledgePreviewLinks(ensureWorkspaceDocumentTitle(html, title) || renderWorkspaceWikiEmptyState(title));
+  const editable = isLoading ? "false" : "true";
+  return `
+    <section class="workspace-log-wiki-entry wiki-page" data-workspace-wiki-open data-wiki-current-path="${escapeHtml(document.path)}">
+      <main class="wiki-page__main">
+        <div class="wiki-page__body" data-wiki-body>
+          <div class="wiki-page__article-layout" data-workspace-article-layout>
+            ${renderWorkspaceGraphyPanel(graphyPosition)}
+            ${renderWorkLogBlockToolbar()}
+            <article class="wiki-page__article markdown-rendered workspace-doc-editor" data-wiki-article data-workspace-doc-editor data-workspace-doc-content contenteditable="${editable}" spellcheck="false" aria-label="${escapeHtml(title)}">${articleHtml}</article>
+          </div>
+        </div>
+      </main>
+    </section>
+  `;
+}
+
+function ensureWorkspaceDocumentTitle(html: string, title: string): string {
+  const trimmed = html.trim();
+  if (!trimmed) {
+    return "";
+  }
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = trimmed;
+  if (wrapper.querySelector("h1, h2, h3")) {
+    return wrapper.innerHTML;
+  }
+  const titleNode = document.createElement("h1");
+  titleNode.textContent = title;
+  wrapper.prepend(titleNode);
+  return wrapper.innerHTML;
+}
+
+function readWorkspaceDocumentTitle(html: string): string | null {
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = html;
+  const title = wrapper.querySelector("h1, h2, h3")?.textContent?.trim() ?? "";
+  return title || null;
+}
+
+function renderWorkspaceGraphyPanel(position: WorkspaceGraphyPosition): string {
+  return `
+    <aside
+      class="workspace-work-log-graphy"
+      data-workspace-graphy
+      style="--workspace-graphy-right: ${position.x}px; --workspace-graphy-top: ${position.y}px;"
+    >
+      <div class="workspace-work-log-graphy__handle" data-workspace-graphy-handle>
+        <span>Graphy</span>
+      </div>
+      <section data-workspace-page-graph></section>
+    </aside>
+  `;
+}
+
+function renderWorkspaceWikiEmptyState(title: string): string {
+  return `
+    <div class="wiki-page__empty-state">
+      <h2>${escapeHtml(title)}</h2>
+      <p>This page exists, but it does not contain rendered article content yet.</p>
+    </div>
+  `;
+}
+
+function renderWorkspaceWikiLoadingState(title: string): string {
+  return `
+    <div class="wiki-page__empty-state">
+      <h2>${escapeHtml(title)}</h2>
+      <p>正在读取当前文档...</p>
+    </div>
+  `;
 }
 
 function filterWorkspaceDocuments(documents: readonly WorkspaceDocument[], query: string): WorkspaceDocument[] {
@@ -3773,22 +5026,6 @@ function filterWorkspaceDocuments(documents: readonly WorkspaceDocument[], query
   return documents.filter((item) => includedIds.has(item.id));
 }
 
-function renderScheduleItem(title: string, tag: string, time: string): string {
-  return `<article class="workspace-task-row"><div class="workspace-task-row__main"><span class="workspace-task-row__checkbox"></span><div><strong>${escapeHtml(title)}</strong><div class="workspace-task-row__meta"><span class="workspace-tag">${escapeHtml(tag)}</span></div></div></div><span class="workspace-task-row__time">${escapeHtml(time)}</span></article>`;
-}
-
-function renderChecklistColumn(title: string, items: readonly string[], markFirst: boolean): string {
-  return `<section class="workspace-check-column"><h4>${title}</h4><ul>${items.map((item, index) => `<li><span class="workspace-check ${markFirst && index === 0 ? "is-done" : ""}"></span><span>${item}</span></li>`).join("")}</ul></section>`;
-}
-
-function renderToolTile(title: string): string {
-  return `<article class="workspace-tool-tile"><div class="workspace-tool-tile__icon">${renderIcon("list-checks", { size: 18 })}</div><span>${title}</span></article>`;
-}
-
-function renderCompletedItem(title: string, time: string): string {
-  return `<article class="workspace-completed-item"><div class="workspace-completed-item__main">${renderIcon("check-circle-2", { size: 16 })}<span>${title}</span></div><time>${time}</time></article>`;
-}
-
 function renderLifeStat(title: string, detail: string, value: string): string {
   const meter = value.endsWith("%") ? `<div class="workspace-progress workspace-progress--compact"><span style="width:${value}"></span></div>` : "";
   return `<article class="workspace-life-stat"><div><strong>${title}</strong><p>${detail}</p></div><div class="workspace-life-stat__value">${meter}<span>${value}</span></div></article>`;
@@ -3806,63 +5043,53 @@ function renderTimelineItem(time: string, title: string): string {
   return `<article class="workspace-timeline-item"><time>${time}</time><span>${title}</span><span class="workspace-link-pill">\u5efa\u8bae</span></article>`;
 }
 
-function tabNeedsTaskPlanState(tab: WorkspaceTab): boolean {
-  return tab === "project-progress" || tab === "task-plan" || tab === "task-pool";
+function tabNeedsTaskPlanState(tab: WorkspaceTab, docsState?: WorkspaceDocsState): boolean {
+  if (tab === "task-plan" || tab === "task-pool") {
+    return true;
+  }
+  if (tab !== "work-log" || !docsState) {
+    return false;
+  }
+  const selected = docsState.documents.find((item) => item.id === docsState.selectedId);
+  return selected ? isProjectWorkspaceDocument(selected) : false;
+}
+
+function shouldMountWorkspaceGraphy(tab: WorkspaceTab, docsState: WorkspaceDocsState): boolean {
+  if (tab !== "work-log") {
+    return false;
+  }
+  const selected = docsState.documents.find((item) => item.id === docsState.selectedId);
+  return selected?.contentLoaded === true;
 }
 
 function normalizeWorkspaceTab(value: string | undefined): WorkspaceTab {
-  return value === "task-plan" || value === "task-pool" || value === "work-log" || value === "toolbox"
-    ? value
-    : "project-progress";
+  return value === "task-plan" || value === "task-pool" || value === "work-log" ? value : "task-plan";
 }
 
 function parseWorkspaceRouteState(routeSection: string | undefined): WorkspaceRouteState {
   const normalizedSection = (routeSection ?? "").trim().replace(/^\/+|\/+$/g, "");
   if (!normalizedSection || normalizedSection === "project-progress") {
-    return createWorkspaceRouteState("project-progress");
+    return createWorkspaceRouteState("task-plan");
   }
   if (normalizedSection.startsWith("task-pool/domain/")) {
     const domainSlug = normalizedSection.slice("task-pool/domain/".length).trim();
-    return createWorkspaceRouteState("task-pool", null, domainSlug || null);
+    return createWorkspaceRouteState("task-pool", domainSlug || null);
   }
-  const toolboxSection = WORKSPACE_TOOLBOX_ROUTE_SECTIONS[normalizedSection];
-  if (toolboxSection !== undefined) {
-    return createWorkspaceRouteState("toolbox", toolboxSection);
+  if (normalizedSection === "toolbox" || normalizedSection.startsWith("toolbox/")) {
+    return createWorkspaceRouteState("work-log");
   }
   if (isWorkspaceRouteTab(normalizedSection)) {
     return createWorkspaceRouteState(normalizedSection);
   }
-  return createWorkspaceRouteState("project-progress");
+  return createWorkspaceRouteState("task-plan");
 }
 
-function buildWorkspaceHash(
-  tab: WorkspaceTab,
-  toolboxSection: ToolboxEntityType | null = null,
-  taskPoolDomainSlug: string | null = null,
-): string {
-  if (tab === "project-progress") {
-    return "#/workspace";
-  }
-  if (tab === "toolbox") {
-    if (toolboxSection === "workflow") {
-      return "#/workspace/toolbox/workflows";
-    }
-    if (toolboxSection === "asset") {
-      return "#/workspace/toolbox/assets";
-    }
-    return "#/workspace/toolbox";
-  }
+function buildWorkspaceHash(tab: WorkspaceTab, taskPoolDomainSlug: string | null = null): string {
   if (tab === "task-pool" && taskPoolDomainSlug) {
     return `#/workspace/task-pool/domain/${taskPoolDomainSlug}`;
   }
   return `#/workspace/${tab}`;
 }
-
-const WORKSPACE_TOOLBOX_ROUTE_SECTIONS: Partial<Record<string, ToolboxEntityType | null>> = {
-  toolbox: null,
-  "toolbox/workflows": "workflow",
-  "toolbox/assets": "asset",
-};
 
 function buildWorkspaceDocumentLookup(documents: readonly WorkspaceDocument[]): {
   root: WorkspaceDocument | undefined;
@@ -3916,13 +5143,12 @@ function includeWorkspaceDocumentHierarchy(
 
 function createWorkspaceRouteState(
   activeTab: WorkspaceTab,
-  toolboxSection: ToolboxEntityType | null = null,
   taskPoolDomainSlug: string | null = null,
 ): WorkspaceRouteState {
-  return { activeTab, toolboxSection, taskPoolDomainSlug };
+  return { activeTab, taskPoolDomainSlug };
 }
 
-function isWorkspaceRouteTab(value: string): value is Exclude<WorkspaceTab, "project-progress" | "toolbox"> {
+function isWorkspaceRouteTab(value: string): value is WorkspaceTab {
   return value === "task-plan" || value === "task-pool" || value === "work-log";
 }
 
@@ -3938,6 +5164,7 @@ function createDefaultTaskPlanViewState(): TaskPlanViewState {
     poolEditMode: false,
     poolDraftTouched: false,
     poolFilter: "全部",
+    poolSortMode: "created-desc",
     scheduleDraft: [],
     scheduleEditMode: false,
     splitRatio: readTaskPlanSplitRatio(),
@@ -3963,7 +5190,36 @@ function createDefaultTaskPoolViewState(): TaskPoolViewState {
     editValue: "",
     draggingTaskId: null,
     dropProjectKey: null,
+    selectedCandidateId: null,
+    isGenerationRecordOpen: false,
+    isWorkflowRecorderOpen: false,
+    workflowRecorderDraft: "",
+    workflowRecorderFeedback: null,
+    workflowRecorderBusy: false,
+    sortModes: {
+      mine: "created-desc",
+      ai: "created-desc",
+      candidate: "created-desc",
+    },
+    groupModes: {
+      mine: "none",
+      ai: "none",
+      candidate: "none",
+    },
   };
+}
+
+function isTaskPoolBoardSortMode(value: string | undefined): value is TaskPoolBoardSortMode {
+  return value === "created-desc"
+    || value === "created-asc"
+    || value === "due-asc"
+    || value === "due-desc"
+    || value === "priority-desc"
+    || value === "priority-asc";
+}
+
+function isTaskPoolBoardGroupMode(value: string | undefined): value is TaskPoolBoardGroupMode {
+  return value === "none" || value === "project" || value === "priority";
 }
 
 function createDefaultHealthDomainViewState(): HealthDomainViewState {
@@ -3976,10 +5232,12 @@ function createDefaultHealthDomainViewState(): HealthDomainViewState {
       username: "",
       verificationCode: "",
       captchaCode: "",
+      relativeUid: "",
     },
     apiDraft: {
       tokenJson: "",
       apiBaseUrl: "",
+      relativeUid: "",
     },
     busyAction: null,
     feedback: null,
@@ -4004,6 +5262,7 @@ function createDefaultTaskPlanState(): TaskPlanState {
         { id: "pool-3", title: "整理用户反馈并归类", priority: "mid", source: "近日状态", domain: "用户研究", project: "反馈归类" },
         { id: "pool-4", title: "复盘今日完成情况", priority: "low", source: "AI 生成", domain: "个人成长", project: "日常复盘" },
       ],
+      generationRecords: [],
     },
     schedule: {
       generationId: null,
@@ -4169,12 +5428,19 @@ async function postHealthQrLoginStart(): Promise<HealthDomainQrLoginState> {
 
 async function getHealthQrLoginStatus(
   sessionId: string,
+  relativeUid: string,
 ): Promise<
   | { status: "pending" }
   | { status: "connected"; state: HealthDomainState }
 > {
+  const params = new URLSearchParams();
+  const normalizedRelativeUid = relativeUid.trim();
+  if (normalizedRelativeUid) {
+    params.set("relativeUid", normalizedRelativeUid);
+  }
+  const query = params.toString();
   const response = await fetch(
-    `/api/workspace/health/connection/qr/${encodeURIComponent(sessionId)}`,
+    `/api/workspace/health/connection/qr/${encodeURIComponent(sessionId)}${query ? `?${query}` : ""}`,
   );
   const payload = (await response.json()) as WorkspaceHealthActionPayload;
   if (!response.ok || !payload.success || !payload.data?.status) {
@@ -4264,11 +5530,15 @@ async function putTaskPlanStatus(statusSummary: string): Promise<TaskPlanState> 
   return payload.data.state;
 }
 
-async function putTaskPlanPool(items: readonly TaskPlanPoolItem[]): Promise<TaskPlanState> {
+async function putTaskPlanPool(
+  items: readonly TaskPlanPoolItem[],
+  stages?: readonly TaskPlanStageItem[],
+): Promise<TaskPlanState> {
+  const body = stages ? { items, stages } : { items };
   const response = await fetch("/api/task-plan/pool", {
     method: "PUT",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ items }),
+    body: JSON.stringify(body),
   });
   const payload = (await response.json()) as TaskPlanStateMutationPayload;
   if (!response.ok || !payload.success || !payload.data) {
@@ -4297,6 +5567,37 @@ async function postTaskPlanGenerate(): Promise<TaskPlanScheduleState> {
     throw new Error(readTaskPlanError(payload.error, "任务计划生成失败"));
   }
   return payload.data.schedule;
+}
+
+async function postTaskPoolGenerate(): Promise<{
+  state: TaskPlanState;
+  generationRecord: TaskPoolGenerationRecord | null;
+}> {
+  const response = await fetch("/api/task-plan/pool/generate", {
+    method: "POST",
+  });
+  const payload = (await response.json()) as TaskPoolGeneratePayload;
+  if (!response.ok || !payload.success || !payload.data) {
+    throw new Error(readTaskPlanError(payload.error, "任务池候选生成失败"));
+  }
+  return payload.data;
+}
+
+async function postWorkflowRecorderRecord(input: {
+  text: string;
+  marker: "normal" | "issue" | "end-node";
+  attachments: string[];
+}): Promise<NonNullable<WorkflowRecorderPayload["data"]>> {
+  const response = await fetch("/api/workflow-recorder/record", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const payload = (await response.json()) as WorkflowRecorderPayload;
+  if (!response.ok || !payload.success || !payload.data) {
+    throw new Error(readTaskPlanError(payload.error, "当前执行记录归档失败"));
+  }
+  return payload.data;
 }
 
 async function putTaskPlanSchedule(
@@ -4467,6 +5768,12 @@ function clampTaskPlanSplitRatio(value: number): number {
   );
 }
 
+function applyWorkspaceTreeWidth(root: HTMLElement, width: number): void {
+  const isCollapsed = width <= WORKSPACE_TREE_COLLAPSE_WIDTH;
+  root.toggleAttribute("data-workspace-tree-collapsed", isCollapsed);
+  applyPanelWidth(root, "--workspace-tree-width", isCollapsed ? 1 : width);
+}
+
 function resolveTaskPlanSplitCollapse(ratio: number): TaskPlanSplitCollapse {
   if (ratio <= TASK_PLAN_SPLIT_COLLAPSE_THRESHOLD) {
     return "top";
@@ -4513,77 +5820,313 @@ function renderWorkspaceDocTree(
   documents: readonly WorkspaceDocument[],
   selectedId: string,
   expandedDomains: ReadonlySet<string>,
+  expandedWorkspaceProjects: ReadonlySet<string>,
 ): string {
-  const root = documents.find((item) => item.kind === "root");
-  const domainDocs = documents.filter((item) => item.kind === "domain");
-  const projectDocs = documents.filter((item) => item.kind === "project");
-  const workLogs = documents.filter((item) => item.kind === "work-log");
+  const treeDocuments = documents.filter((item) => item.treeHidden !== true);
+  const root = treeDocuments.find((item) => item.kind === "root");
+  const domainDocs = treeDocuments.filter((item) => item.kind === "domain");
+  const projectDocs = treeDocuments.filter((item) => item.kind === "project");
+  const workLogs = treeDocuments.filter((item) => item.kind === "work-log");
 
   return `
-    ${root ? `<div class="workspace-doc-tree__group">${renderWorkspaceDocTreeItem(root, selectedId, 0)}</div>` : ""}
+    <ul class="wiki-page__path-tree workspace-doc-tree__path-tree">
+    ${root ? `<li class="workspace-doc-tree__node workspace-doc-tree__node--root">${renderWorkspaceDocTreeItem(root, selectedId, documents)}</li>` : ""}
     ${domainDocs.map((domain) => {
       const projects = projectDocs.filter((project) => project.domain === domain.label);
-      const logs = workLogs.filter((log) => log.domain === domain.label);
+      const domainLogs = workLogs.filter((log) => log.domain === domain.label);
       const expanded = expandedDomains.has(domain.label);
+      const domainChildCount = projects.length + domainLogs.length;
       return `
-        <div class="workspace-doc-tree__group">
-          <div class="workspace-doc-tree__row">
-            <button type="button" class="workspace-doc-tree__toggle" data-workspace-domain-toggle="${escapeHtml(domain.label)}" aria-label="toggle">${expanded ? "▾" : "▸"}</button>
-            ${renderWorkspaceDocTreeItem(domain, selectedId, 0)}
-          </div>
-          <div class="workspace-doc-tree__children" ${expanded ? "" : "hidden"}>
+        <li class="workspace-doc-tree__node workspace-doc-tree__node--domain" data-wiki-path-item="${escapeHtml(domain.path)}">
+          <details ${expanded ? "open" : ""} data-workspace-domain-details="${escapeHtml(domain.label)}">
+            <summary>${renderWorkspaceDocTreeItem(domain, selectedId, documents, {
+              scope: "domain",
+              key: domain.label,
+              expanded,
+              childCount: domainChildCount,
+            })}</summary>
+            <ul class="workspace-doc-tree__children workspace-doc-tree__children--project">
+            ${domainLogs.map((log) => `
+              <li class="wiki-page__path-page workspace-doc-tree__node workspace-doc-tree__node--work-log" data-wiki-path-item="${escapeHtml(log.path)}">
+                ${renderWorkspaceDocTreeItem(log, selectedId, documents)}
+              </li>
+            `).join("")}
             ${projects.map((project) => {
-              const projectLog = logs.find((log) => log.project === project.label);
+              const projectLogs = domainLogs.filter((log) => log.project === project.label);
+              const projectKey = workspaceProjectKey(project.domain ?? "", project.label);
+              const projectExpanded = expandedWorkspaceProjects.has(projectKey);
               return `
-                ${renderWorkspaceDocTreeItem(project, selectedId, 1)}
-                ${projectLog ? renderWorkspaceDocTreeItem(projectLog, selectedId, 2) : ""}
+                <li class="wiki-page__path-page workspace-doc-tree__node workspace-doc-tree__node--project" data-wiki-path-item="${escapeHtml(project.path)}">
+                  <details ${projectExpanded ? "open" : ""} data-workspace-project-details="${escapeHtml(projectKey)}">
+                    <summary>${renderWorkspaceDocTreeItem(project, selectedId, documents, {
+                      scope: "project",
+                      key: projectKey,
+                      expanded: projectExpanded,
+                      childCount: projectLogs.length,
+                    })}</summary>
+                  ${projectLogs.length > 0 ? `
+                    <ul class="workspace-doc-tree__children workspace-doc-tree__children--log">
+                      ${projectLogs.map((log) => `
+                        <li class="wiki-page__path-page workspace-doc-tree__node workspace-doc-tree__node--work-log" data-wiki-path-item="${escapeHtml(log.path)}">
+                          ${renderWorkspaceDocTreeItem(log, selectedId, documents)}
+                        </li>
+                      `).join("")}
+                    </ul>
+                ` : ""}
+                  </details>
+                </li>
               `;
             }).join("")}
-          </div>
-        </div>
+            </ul>
+          </details>
+        </li>
       `;
     }).join("")}
+    </ul>
   `;
 }
 
-function renderWorkspaceDocTreeItem(item: WorkspaceDocument, selectedId: string, depth: number): string {
+function renderWorkspaceDocTreeItem(
+  item: WorkspaceDocument,
+  selectedId: string,
+  documents: readonly WorkspaceDocument[],
+  toggle?: {
+    scope: "domain" | "project";
+    key: string;
+    expanded: boolean;
+    childCount: number;
+  },
+): string {
+  const childCount = collectWorkspaceDocChildPaths(documents, item).length;
+  const label = item.title ?? item.label;
+  return `
+    <div class="workspace-doc-tree__row">
+      ${renderWorkspaceDocTreeToggle(toggle, label)}
+      <button
+        type="button"
+        class="workspace-doc-tree__wiki-link workspace-doc-tree__wiki-link--${item.kind}${item.id === selectedId ? " is-active" : ""}"
+        data-workspace-doc-id="${escapeHtml(item.id)}"
+        data-workspace-doc-kind="${item.kind}"
+        title="${escapeHtml(item.path)}"
+      >
+        <span class="workspace-doc-tree__glyph">${renderWorkspaceDocIcon(item.kind)}</span>
+        <span data-workspace-doc-label>${escapeHtml(label)}</span>
+      </button>
+      <button
+        type="button"
+        class="workspace-doc-tree__delete"
+        data-workspace-doc-delete="${escapeHtml(item.id)}"
+        title="${childCount > 0 ? `删除，可选择是否包含 ${childCount} 个子页面` : "删除页面"}"
+        aria-label="${childCount > 0 ? `删除 ${escapeHtml(label)}，可选择是否包含子页面` : `删除 ${escapeHtml(label)}`}"
+      >${renderIcon("trash-2", { size: 13 })}</button>
+    </div>
+  `;
+}
+
+function renderWorkspaceDocTreeToggle(
+  toggle: {
+    scope: "domain" | "project";
+    key: string;
+    expanded: boolean;
+    childCount: number;
+  } | undefined,
+  label: string,
+): string {
+  if (!toggle || toggle.childCount <= 0) {
+    return "";
+  }
+  const action = toggle.expanded ? "收起" : "展开";
   return `
     <button
       type="button"
-      class="workspace-doc-tree__item${item.id === selectedId ? " is-active" : ""}"
-      data-workspace-doc-id="${escapeHtml(item.id)}"
-      style="--workspace-doc-depth:${depth}"
-    >
-      <span class="workspace-doc-tree__icon">${renderIcon(item.kind === "work-log" ? "archive" : "book-open-text", { size: 15 })}</span>
-      <span>${escapeHtml(item.label)}</span>
-    </button>
+      class="workspace-doc-tree__toggle"
+      data-workspace-${toggle.scope}-toggle="${escapeHtml(toggle.key)}"
+      aria-expanded="${toggle.expanded ? "true" : "false"}"
+      aria-label="${action}${escapeHtml(label)}"
+      title="${action}"
+    >${renderIcon("chevron-right", { size: 14 })}</button>
   `;
 }
 
-function renderWorkspaceToolbarButton(format: string, label: string): string {
-  return `<button type="button" class="btn btn-secondary btn-inline workspace-doc-toolbar__button" data-workspace-format="${format}">${label}</button>`;
+function renderWorkspaceDocDeleteDialog(dialog: WorkspaceDocDeleteDialog): string {
+  const childCount = dialog.childPaths.length;
+  const label = dialog.target.title ?? dialog.target.label;
+  const includeChildrenButton = childCount > 0
+    ? `
+      <button
+        type="button"
+        class="btn btn-danger workspace-doc-delete-dialog__danger"
+        data-workspace-doc-delete-confirm="children"
+      >包括 ${childCount} 个子页面</button>
+    `
+    : "";
+  return `
+    <section class="workspace-doc-delete-dialog" role="dialog" aria-modal="true" aria-label="删除页面">
+      <div class="workspace-doc-delete-dialog__title">删除「${escapeHtml(label)}」？</div>
+      <p>${childCount > 0 ? "这个页面下面还有子页面，请选择删除范围。" : "这个页面删除后将从目录中移除。"}</p>
+      <div class="workspace-doc-delete-dialog__actions">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          data-workspace-doc-delete-confirm="current"
+        >只删除这个页面</button>
+        ${includeChildrenButton}
+        <button
+          type="button"
+          class="btn btn-ghost"
+          data-workspace-doc-delete-cancel
+        >取消</button>
+      </div>
+    </section>
+  `;
 }
 
-function formatWorkspaceTime(value: string): string {
-  return new Date(value).toLocaleString();
+function renderWorkspaceDocIcon(kind: WorkspaceDocKind): string {
+  if (kind === "root") return renderIcon("folder-open", { size: 14 });
+  if (kind === "domain") return renderIcon("folder-open", { size: 14 });
+  if (kind === "project") return renderIcon("book-open-text", { size: 14 });
+  return renderIcon("clipboard-list", { size: 14 });
 }
 
-function applyWorkspaceFormat(format: string): void {
-  const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0) {
-    return;
+function renderWorkspaceTabButton(tab: WorkspaceTabDefinition, activeTab: WorkspaceTab): string {
+  const isActive = tab.id === activeTab;
+  return `
+    <button
+      type="button"
+      class="workspace-page__sidebar-item${isActive ? " is-active" : ""}"
+      data-workspace-tab="${tab.id}"
+      data-active="${isActive ? "true" : "false"}"
+      aria-label="${escapeHtml(tab.label)}"
+      title="${escapeHtml(tab.label)}"
+    >${renderIcon(tab.icon, { size: 22 })}</button>
+  `;
+}
+
+function collectWorkspaceDocChildPaths(
+  documents: readonly WorkspaceDocument[],
+  target: WorkspaceDocument,
+): string[] {
+  if (target.kind === "root") {
+    return documents.filter((item) => item.id !== target.id).map((item) => item.path);
   }
-  if (runInlineWorkspaceFormat(format)) {
-    return;
+  if (target.kind === "domain") {
+    return documents
+      .filter((item) => item.id !== target.id && item.domain === target.label)
+      .map((item) => item.path);
   }
-  const block = resolveWorkspaceBlockFormat(format);
-  if (block) {
-    document.execCommand("formatBlock", false, block);
-    return;
+  if (target.kind === "project") {
+    return documents
+      .filter((item) => item.id !== target.id && item.domain === target.domain && item.project === target.label)
+      .map((item) => item.path);
   }
-  if (format === "hr") {
-    document.execCommand("insertHorizontalRule");
+  return [];
+}
+
+async function deleteWorkspaceDocPaths(paths: readonly string[]): Promise<void> {
+  const response = await fetch("/api/workspace/docs", {
+    method: "DELETE",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ paths }),
+  });
+  const payload = (await response.json()) as { success?: boolean; error?: string };
+  if (!response.ok || !payload.success) {
+    throw new Error(payload.error ?? "工作日志删除失败");
   }
+}
+
+async function putWorkspaceDoc(pathValue: string, raw: string): Promise<void> {
+  const response = await fetch("/api/workspace/docs", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ path: pathValue, raw }),
+  });
+  const payload = (await response.json()) as { success?: boolean; error?: string };
+  if (!response.ok || !payload.success) {
+    throw new Error(payload.error ?? "工作日志保存失败");
+  }
+}
+
+async function postWorkspaceGalleryStatusMove(
+  pathValue: string,
+  status: WorkspaceGalleryStatus,
+): Promise<WorkspaceGalleryStatusMoveData> {
+  const response = await fetch("/api/workspace/docs/status", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ path: pathValue, status }),
+  });
+  const payload = (await response.json()) as WorkspaceGalleryStatusMovePayload;
+  if (!response.ok || !payload.success || !payload.data) {
+    throw new Error(payload.error ?? "沉淀库状态更新失败");
+  }
+  return payload.data;
+}
+
+function savedWorkspaceDocument(
+  document: WorkspaceDocument,
+  saved: SavedWorkspaceDocumentContent,
+): WorkspaceDocument {
+  return {
+    ...document,
+    title: saved.nextTitle,
+    raw: saved.raw,
+    html: saved.currentHtml,
+    modifiedAt: new Date().toISOString(),
+    contentLoaded: true,
+  };
+}
+
+function moveWorkspaceGalleryDocument(
+  state: WorkspaceDocsState,
+  moved: WorkspaceGalleryStatusMoveData,
+): WorkspaceDocsState {
+  return {
+    ...state,
+    documents: state.documents.map((item) => {
+      if (item.path !== moved.previousPath) return item;
+      return {
+        ...item,
+        path: moved.path,
+        gallery: item.gallery ? { ...item.gallery, status: moved.status } : item.gallery,
+        html: "",
+        raw: "",
+        contentLoaded: false,
+      };
+    }),
+  };
+}
+
+function removeWorkspaceDocsByPath(state: WorkspaceDocsState, paths: readonly string[]): WorkspaceDocsState {
+  const removed = new Set(paths);
+  const documents = state.documents.filter((item) => !removed.has(item.path));
+  const selectedId = removed.has(state.documents.find((item) => item.id === state.selectedId)?.path ?? "")
+    ? documents[0]?.id ?? ""
+    : state.selectedId;
+  return {
+    ...state,
+    documents,
+    selectedId,
+  };
+}
+
+function workspaceProjectKey(domain: string, project: string): string {
+  return `${domain}/${project}`;
+}
+
+function normalizeWorkspaceGalleryStatus(value: string): WorkspaceGalleryStatus | null {
+  return WORKSPACE_GALLERY_STATUSES.includes(value as WorkspaceGalleryStatus) ? value as WorkspaceGalleryStatus : null;
+}
+
+function readWorkspaceGalleryDraggedPath(event: DragEvent): string {
+  return event.dataTransfer?.getData(WORKSPACE_GALLERY_DRAG_TYPE)
+    || event.dataTransfer?.getData("text/plain")
+    || "";
+}
+
+function clearWorkspaceGalleryDragState(root: ParentNode): void {
+  root.querySelectorAll<HTMLElement>(
+    ".workspace-library-card.is-dragging, .workspace-library-gallery__column.is-drop-preview",
+  ).forEach((node) => node.classList.remove("is-dragging", "is-drop-preview"));
 }
 
 function htmlToMarkdown(html: string): string {
@@ -4608,39 +6151,6 @@ function renderMarkdownNode(node: ChildNode): string {
   }
   const renderer = WORKSPACE_MARKDOWN_RENDERERS[node.tagName.toLowerCase()];
   return renderer ? renderer(node) : renderInlineMarkdown(node.childNodes);
-}
-
-function runInlineWorkspaceFormat(format: string): boolean {
-  if (format === "bold") {
-    document.execCommand("bold");
-    return true;
-  }
-  if (format === "italic") {
-    document.execCommand("italic");
-    return true;
-  }
-  if (format === "ul") {
-    document.execCommand("insertUnorderedList");
-    return true;
-  }
-  if (format === "ol") {
-    document.execCommand("insertOrderedList");
-    return true;
-  }
-  return false;
-}
-
-function resolveWorkspaceBlockFormat(format: string): string | null {
-  if (format === "h1" || format === "h2" || format === "blockquote" || format === "pre") {
-    return format;
-  }
-  if (format === "quote") {
-    return "blockquote";
-  }
-  if (format === "code") {
-    return "pre";
-  }
-  return null;
 }
 
 const WORKSPACE_MARKDOWN_RENDERERS: Record<string, (node: HTMLElement) => string> = {
@@ -4695,17 +6205,6 @@ function renderInlineMarkdown(nodes: NodeListOf<ChildNode> | readonly ChildNode[
     .replace(/\n{3,}/g, "\n\n");
 }
 
-function extractWorkspaceHeadings(html: string): Array<{ id: string; level: number; text: string }> {
-  const wrapper = document.createElement("div");
-  wrapper.innerHTML = html;
-  return Array.from(wrapper.querySelectorAll<HTMLElement>("h1,h2,h3"))
-    .map((heading, index) => ({
-      id: heading.id || `workspace-heading-${index}`,
-      level: Number(heading.tagName.slice(1)),
-      text: heading.textContent ?? "",
-    }));
-}
-
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"]/g, (character) => {
     const escaped: Record<string, string> = {
@@ -4724,6 +6223,49 @@ function cssEscape(value: string): string {
     return css.escape(value);
   }
   return value.replace(/["\\]/g, "\\$&");
+}
+
+function readWorkspaceGraphyPosition(): WorkspaceGraphyPosition {
+  try {
+    const raw = window.localStorage.getItem(WORKSPACE_GRAPHY_POSITION_KEY);
+    if (!raw) {
+      return WORKSPACE_GRAPHY_DEFAULT_POSITION;
+    }
+    const parsed = JSON.parse(raw) as Partial<WorkspaceGraphyPosition>;
+    return normalizeWorkspaceGraphyPosition(parsed);
+  } catch {
+    return WORKSPACE_GRAPHY_DEFAULT_POSITION;
+  }
+}
+
+function writeWorkspaceGraphyPosition(position: WorkspaceGraphyPosition): void {
+  window.localStorage.setItem(WORKSPACE_GRAPHY_POSITION_KEY, JSON.stringify(position));
+}
+
+function applyWorkspaceGraphyPosition(panel: HTMLElement, position: WorkspaceGraphyPosition): void {
+  panel.style.setProperty("--workspace-graphy-right", `${position.x}px`);
+  panel.style.setProperty("--workspace-graphy-top", `${position.y}px`);
+}
+
+function normalizeWorkspaceGraphyPosition(value: Partial<WorkspaceGraphyPosition>): WorkspaceGraphyPosition {
+  const x = Number(value.x);
+  const y = Number(value.y);
+  return {
+    x: Number.isFinite(x) ? Math.max(0, x) : WORKSPACE_GRAPHY_DEFAULT_POSITION.x,
+    y: Number.isFinite(y) ? Math.max(0, y) : WORKSPACE_GRAPHY_DEFAULT_POSITION.y,
+  };
+}
+
+function consumeWorkflowRecorderOpenRequest(): boolean {
+  try {
+    if (window.sessionStorage.getItem(WORKFLOW_RECORDER_PENDING_KEY) !== "1") {
+      return false;
+    }
+    window.sessionStorage.removeItem(WORKFLOW_RECORDER_PENDING_KEY);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function readActiveTaskPoolDragTaskId(
@@ -4756,5 +6298,3 @@ function resolveTaskPoolGestureZoomPercent(
   const stepDirection = nextScale > baselineScale ? 1 : -1;
   return baselineZoomPercent + stepDirection * TASK_POOL_ZOOM_STEP;
 }
-
-

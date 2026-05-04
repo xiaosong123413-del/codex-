@@ -105,6 +105,17 @@
   fill: none;
 }
 
+.shell-rail__wechat {
+  font-size: 15px;
+  font-weight: 800;
+  color: #17823b;
+}
+
+.shell-rail__wechat[data-authenticated="true"] {
+  background: rgba(23, 130, 59, 0.12);
+  color: #11632d;
+}
+
 .shell-browser {
   grid-column: 2;
   display: flex;

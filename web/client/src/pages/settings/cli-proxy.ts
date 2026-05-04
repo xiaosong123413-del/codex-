@@ -126,7 +126,7 @@ export function renderCLIProxyPanel(): string {
   `;
 }
 
-export function bindCLIProxyControls(root: HTMLElement, refreshOAuthAccounts: OAuthAccountRefresh): void {
+function bindCLIProxyControls(root: HTMLElement, refreshOAuthAccounts: OAuthAccountRefresh): void {
   root.querySelector<HTMLButtonElement>("[data-cliproxy-toggle]")?.addEventListener("click", () => {
     toggleCLIProxySection(root);
   });

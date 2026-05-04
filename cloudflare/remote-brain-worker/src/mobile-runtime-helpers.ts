@@ -37,6 +37,7 @@ interface MobileWikiSyncStateArgs {
   lastCompileStatus: unknown;
 }
 
+// fallow-ignore-next-line complexity
 export function mobileEntryFromDbRow(row: Record<string, unknown>): Record<string, unknown> {
   return {
     id: String(row.id ?? ""),

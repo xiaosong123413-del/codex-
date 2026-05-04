@@ -1,0 +1,337 @@
+/*
+ * Wikipedia-style consolidation layer for non-Wiki application surfaces.
+ *
+ * This file is loaded after the page-specific styles so it can normalize the
+ * existing app pages without rewriting every legacy selector at once. It keeps
+ * business layout untouched and only maps shared UI surfaces to the blue-gray
+ * Wiki palette defined in tokens.css.
+ */
+
+body,
+#workspace-shell,
+.shell-main,
+.startup-screen,
+#welcome-screen,
+#setup-screen,
+.run-page,
+.review-page,
+.settings-page,
+.automation-page,
+.automation-log-page,
+.workspace-page,
+.sources-page,
+.source-gallery-page,
+.flash-diary-page,
+.workflow-artifacts-page {
+  background: var(--bg-app);
+  color: var(--text);
+}
+
+.startup-card,
+.panel,
+.shell-rail,
+.shell-browser,
+.shell-drawer,
+.chat-sidebar,
+.chat-thread,
+.wiki-annotation-panel,
+.run-page__hero,
+.run-card,
+.review-stat,
+.review-board,
+.review-card,
+.review-empty,
+.review-detail-panel,
+.review-guided-panel,
+.settings-sidebar,
+.settings-page__header,
+.settings-card,
+.settings-provider-card,
+.settings-llm-preset,
+.settings-llm-provider-item,
+.settings-run-panel,
+.settings-import-card,
+.settings-embedding-service,
+.automation-page__header,
+.automation-page__section,
+.automation-list-card,
+.automation-detail__header,
+.automation-detail__canvas,
+.automation-detail__comment-panel,
+.automation-spec-panel,
+.automation-spec-card,
+.automation-log-page__header,
+.automation-log-page__content,
+.workspace-page__shell,
+.workspace-page__hero,
+.workspace-page__content,
+.workspace-page__sidebar,
+.workspace-page__body,
+.sources-page__hero,
+.sources-panel,
+.sources-list-item,
+.sources-detail__section,
+.source-gallery-card,
+.source-gallery-page__chrome,
+.source-gallery-workspace__header,
+.source-gallery-workspace__pane,
+.flash-diary-page__list-panel,
+.flash-diary-page__editor-panel,
+.flash-diary-page__memory-layout,
+.flash-diary-page__list-item,
+.flash-diary-page__timeline-item,
+.flash-diary-visual-editor,
+.flash-diary-page__editor,
+.flash-diary-page__preview,
+.workflow-artifacts-page__card,
+.workflow-artifacts-page__row {
+  border-color: var(--border);
+  background: var(--bg-panel);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+
+.startup-logo,
+.chat-sidebar__action--primary {
+  border: 1px solid var(--border-strong);
+  background: linear-gradient(#FFFFFF, #D8D8D8);
+  color: var(--text);
+  box-shadow: none;
+}
+
+.btn-primary,
+.flash-diary-page__mode-switch .btn.is-active {
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: var(--text-on-primary);
+  box-shadow: none;
+}
+
+.btn-primary:hover:not(:disabled),
+.chat-sidebar__action--primary:hover {
+  border-color: var(--primary-hover);
+  background: var(--primary-hover);
+  color: var(--text-on-primary);
+}
+
+.btn-secondary,
+.icon-btn,
+.chat-sidebar__action,
+.chat-sidebar__rail-toggle,
+.chat-thread__action,
+.settings-sidebar__item,
+.automation-page__search input,
+.workspace-page__tab,
+.source-gallery-filter-pill,
+.source-gallery-filter-chip,
+.page-text-search,
+.page-text-search__button {
+  border-color: var(--border);
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+  box-shadow: none;
+}
+
+.btn-secondary:hover:not(:disabled),
+.icon-btn:hover,
+.chat-sidebar__action:hover,
+.chat-sidebar__rail-toggle:hover,
+.chat-thread__action.active,
+.settings-sidebar__item:hover,
+.settings-sidebar__item[data-active="true"],
+.workspace-page__tab.is-active,
+.source-gallery-filter-chip.is-active,
+.source-gallery-mode-switch button[aria-pressed="true"],
+.page-text-search__button:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-hover);
+  color: var(--primary);
+}
+
+input,
+select,
+textarea,
+.input,
+#account-identifier,
+#account-password,
+#account-auth-mode,
+#target-repo-path,
+#settings-target-vault,
+#feedback-comment,
+.settings-field input,
+.settings-field select,
+.settings-field textarea,
+.sources-field input,
+.sources-field textarea,
+.sources-field select,
+.source-gallery-workspace__composer textarea,
+.chat-composer__agent select,
+.chat-composer__input,
+.wiki-annotation-panel__input {
+  border-color: var(--border-strong);
+  background: var(--bg-panel);
+  color: var(--text);
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+.input:focus,
+#account-identifier:focus,
+#account-password:focus,
+#account-auth-mode:focus,
+#target-repo-path:focus,
+#settings-target-vault:focus,
+#feedback-comment:focus,
+.settings-field input:focus,
+.settings-field select:focus,
+.settings-field textarea:focus,
+.sources-field input:focus,
+.sources-field textarea:focus,
+.sources-field select:focus,
+.flash-diary-visual-editor:focus,
+.flash-diary-page__editor:focus,
+.wiki-annotation-panel__input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-ring);
+  outline: none;
+}
+
+a,
+.markdown-rendered a,
+.chat-inline-citation,
+.chat-message-ref__link:hover,
+.wiki-page__tab-action:hover,
+.automation-page__eyebrow,
+.settings-page__title,
+.run-card__label,
+.field-label,
+.eyebrow {
+  color: var(--primary);
+}
+
+.chip,
+.badge,
+.review-page__hint,
+.review-board__meta,
+.settings-card__badge,
+.settings-run-panel__chip,
+.settings-llm-provider-item__pill,
+.settings-import-card__badge,
+.automation-list-card__status,
+.workspace-page__meta-pill,
+.source-gallery-badge,
+.source-gallery-tag,
+.flash-diary-page__timeline-dot,
+.shell-drawer__alias {
+  border: 1px solid var(--border);
+  background: var(--bg-muted);
+  color: var(--text);
+}
+
+.chat-message--user,
+.chat-conversation-item.active,
+#tree a.active,
+#tree .tree-file-row.selected,
+.review-card--deep-research.is-active,
+.review-card--workspace-detail.is-active,
+.review-card--state-detail.is-active,
+.sources-list-item:hover,
+.sources-list-item.is-active,
+.flash-diary-page__list-item:hover,
+.flash-diary-page__list-item.is-active,
+.flash-diary-page__timeline-item:hover,
+.flash-diary-page__timeline-item.is-active {
+  border-color: var(--border-strong);
+  background: var(--primary-soft);
+  color: var(--text);
+}
+
+.chat-message--assistant,
+.chat-message--system,
+.chat-refs-panel,
+.chat-message-refs,
+.chat-message-ref,
+.wiki-page__search-image,
+.run-log,
+.sources-detail__raw,
+.sources-detail__ocr,
+.source-gallery-media-embed {
+  border-color: var(--border);
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+}
+
+.review-page,
+.settings-page,
+.flash-diary-page {
+  background-image: none;
+}
+
+.automation-page,
+.automation-log-page {
+  background: var(--bg-app);
+}
+
+.automation-page__header,
+.automation-log-page__header {
+  background: linear-gradient(#FFFFFF, #F8F9FA);
+}
+
+.automation-detail__mermaid-stage,
+.automation-detail__mermaid-diagram,
+.automation-detail__mermaid-toolbar,
+.automation-spec-node,
+.automation-spec-prompt,
+.automation-spec-schema,
+.automation-spec-rule {
+  border-color: var(--border);
+  background: var(--bg-panel);
+  color: var(--text);
+}
+
+.automation-detail__body[data-automation-spec-panel="true"] .automation-detail__mermaid-toolbar::before {
+  color: var(--primary);
+}
+
+.settings-import-card__badge.is-red,
+.settings-run-panel__chip.is-error,
+.review-board__status[data-tone="error"],
+.review-card.severity-error {
+  border-color: #D33;
+  background: #FFF5F5;
+  color: #A00;
+}
+
+.settings-import-card__badge.is-green,
+.settings-run-panel__chip.is-ok,
+.automation-list-card__status[data-enabled="true"] {
+  border-color: #14866D;
+  background: #F5FFFA;
+  color: #14866D;
+}
+
+.settings-import-card__badge.is-orange,
+.review-card__state-chip.is-suspicious {
+  border-color: #AC6600;
+  background: #FFF8E5;
+  color: #8A5200;
+}
+
+.settings-import-card__badge.is-blue,
+.settings-import-card__badge.is-purple,
+.settings-import-card__badge.is-black,
+.automation-list-card__status[data-enabled="false"] {
+  border-color: var(--border);
+  background: var(--bg-muted);
+  color: var(--text-secondary);
+}
+
+.panel-resize-handle::before {
+  background: var(--border);
+}
+
+.panel-resize-handle:hover::before,
+body.panel-resize-active .panel-resize-handle::before {
+  background: var(--primary);
+}

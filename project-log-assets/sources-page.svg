@@ -7,16 +7,20 @@
   <rect x="24" y="222" width="30" height="30" rx="10" fill="#D9D3C3"/>
   <text x="110" y="78" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="18" fill="#9A4A2B" font-weight="700">SOURCE GALLERY</text>
   <rect x="108" y="104" width="968" height="72" rx="24" fill="#FFFDFC" stroke="#E7DECF"/>
-  <rect x="132" y="126" width="274" height="30" rx="15" fill="#F6EFE4" stroke="#E7DECF"/>
-  <text x="150" y="146" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="14" fill="#8E8475">搜索标题 / 正文 / URL / 标签</text>
-  <rect x="426" y="126" width="124" height="30" rx="15" fill="#FFFDFC" stroke="#E7DECF"/>
-  <text x="450" y="146" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="14" fill="#5F564B">排序</text>
-  <rect x="570" y="126" width="138" height="30" rx="15" fill="#FFFDFC" stroke="#E7DECF"/>
-  <text x="594" y="146" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="14" fill="#5F564B">来源</text>
-  <rect x="728" y="126" width="138" height="30" rx="15" fill="#FFFDFC" stroke="#E7DECF"/>
-  <text x="752" y="146" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="14" fill="#5F564B">标签</text>
-  <rect x="886" y="126" width="138" height="30" rx="15" fill="#FFFDFC" stroke="#E7DECF"/>
-  <text x="910" y="146" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="14" fill="#5F564B">状态</text>
+  <rect x="132" y="122" width="176" height="38" rx="19" fill="#F6EFE4" stroke="#E7DECF"/>
+  <rect x="138" y="128" width="70" height="26" rx="13" fill="#5F564B"/>
+  <text x="160" y="146" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="13" fill="#FFFDFC" font-weight="700">源料</text>
+  <text x="222" y="146" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="13" fill="#5F564B" font-weight="700">订阅页</text>
+  <rect x="340" y="126" width="112" height="30" rx="15" fill="#FFFDFC" stroke="#E7DECF"/>
+  <text x="364" y="146" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="14" fill="#5F564B">排序</text>
+  <rect x="464" y="126" width="120" height="30" rx="15" fill="#FFFDFC" stroke="#E7DECF"/>
+  <text x="488" y="146" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="14" fill="#5F564B">来源</text>
+  <rect x="596" y="126" width="112" height="30" rx="15" fill="#FFFDFC" stroke="#E7DECF"/>
+  <text x="620" y="146" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="14" fill="#5F564B">标签</text>
+  <rect x="720" y="126" width="112" height="30" rx="15" fill="#FFFDFC" stroke="#E7DECF"/>
+  <text x="738" y="146" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="14" fill="#5F564B">状态 raw</text>
+  <rect x="844" y="126" width="212" height="30" rx="15" fill="#F6EFE4" stroke="#E7DECF"/>
+  <text x="862" y="146" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="14" fill="#8E8475">搜索标题 / URL / 标签</text>
   <text x="108" y="208" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="15" fill="#7D7265">筛选区固定，画册区独立滚动；来源 / 标签 / 状态都由后端动态返回。</text>
 
   <g transform="translate(108 232)">

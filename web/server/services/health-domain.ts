@@ -16,13 +16,11 @@ const HEALTH_CONNECTION_LABEL = "小米运动健康";
 const DEEP_SLEEP_TARGET_RATIO = 0.18;
 const BEDTIME_VARIANCE_THRESHOLD_MINUTES = 40;
 const LOW_ACTIVITY_THRESHOLD_STEPS = 4000;
-const SELF_HEALTH_SYNC_UNSUPPORTED_MESSAGE =
-  "当前 mi-fitness SDK 暂不支持读取当前登录账号本人的小米健康数据。";
 
 type HealthConnectionMode = "account" | "api" | null;
 type HealthConnectionStatus = "disconnected" | "connected" | "error";
 
-export interface XiaomiHealthSyncSnapshotDay {
+interface XiaomiHealthSyncSnapshotDay {
   date: string;
   bedTime: string;
   wakeTime: string;
@@ -52,7 +50,7 @@ interface HealthDomainStoredConnection {
   lastError: string | null;
 }
 
-export interface HealthDomainConnectionState {
+interface HealthDomainConnectionState {
   mode: HealthConnectionMode;
   status: HealthConnectionStatus;
   label: string | null;
@@ -60,7 +58,7 @@ export interface HealthDomainConnectionState {
   lastError: string | null;
 }
 
-export interface HealthDomainSleepLatestState {
+interface HealthDomainSleepLatestState {
   bedTime: string | null;
   wakeTime: string | null;
   totalSleep: string | null;
@@ -74,7 +72,7 @@ export interface HealthDomainSleepLatestState {
   intensityMinutes: string | null;
 }
 
-export interface HealthDomainSleepTrendsState {
+interface HealthDomainSleepTrendsState {
   bedTimes: string[];
   wakeTimes: string[];
   deepSleepMinutes: number[];
@@ -83,13 +81,13 @@ export interface HealthDomainSleepTrendsState {
   intensityMinutes: number[];
 }
 
-export interface HealthDomainSleepState {
+interface HealthDomainSleepState {
   latest: HealthDomainSleepLatestState;
   insights: string[];
   trends: HealthDomainSleepTrendsState;
 }
 
-export interface HealthDomainState {
+interface HealthDomainState {
   connection: HealthDomainConnectionState;
   sleep: HealthDomainSleepState;
 }
@@ -99,23 +97,24 @@ interface HealthDomainStoredState {
   sleep: HealthDomainSleepState;
 }
 
-export interface HealthDomainApiConnectionInput {
+interface HealthDomainApiConnectionInput {
   tokenJson: string;
   apiBaseUrl: string;
   relativeUid: string;
 }
 
-export interface HealthDomainAccountConnectionInput {
+interface HealthDomainAccountConnectionInput {
   tokenJson: string;
   relativeUid: string;
 }
 
-export interface XiaomiHealthSyncRunnerInput {
+interface XiaomiHealthSyncRunnerInput {
   tokenJson: string;
   apiBaseUrl: string | null;
   relativeUid: string | null;
 }
 
+// fallow-ignore-next-line unused-type
 export type XiaomiHealthSyncRunner = (
   input: XiaomiHealthSyncRunnerInput,
 ) => Promise<XiaomiHealthSyncSnapshot>;
@@ -407,80 +406,78 @@ function normalizeStoredHealthDomainState(
 ): HealthDomainStoredState {
   const defaults = createDefaultStoredHealthDomainState();
   return {
-    connection: {
-      mode:
-        input.connection?.mode === "account" || input.connection?.mode === "api"
-          ? input.connection.mode
-          : defaults.connection.mode,
-      status:
-        input.connection?.status === "connected" ||
-        input.connection?.status === "error"
-          ? input.connection.status
-          : defaults.connection.status,
-      label: normalizeOptionalText(input.connection?.label) ?? defaults.connection.label,
-      lastSyncedAt:
-        normalizeOptionalText(input.connection?.lastSyncedAt) ??
-        defaults.connection.lastSyncedAt,
-      tokenJson:
-        normalizeOptionalText(input.connection?.tokenJson) ??
-        defaults.connection.tokenJson,
-      apiBaseUrl:
-        normalizeOptionalText(input.connection?.apiBaseUrl) ??
-        defaults.connection.apiBaseUrl,
-      relativeUid:
-        normalizeOptionalText(input.connection?.relativeUid) ??
-        defaults.connection.relativeUid,
-      lastError:
-        normalizeOptionalText(input.connection?.lastError) ??
-        defaults.connection.lastError,
-    },
+    connection: normalizeStoredConnection(input.connection, defaults.connection),
     sleep: {
-      latest: {
-        bedTime: normalizeOptionalText(input.sleep?.latest?.bedTime) ?? defaults.sleep.latest.bedTime,
-        wakeTime: normalizeOptionalText(input.sleep?.latest?.wakeTime) ?? defaults.sleep.latest.wakeTime,
-        totalSleep: normalizeOptionalText(input.sleep?.latest?.totalSleep) ?? defaults.sleep.latest.totalSleep,
-        deepSleepQuality:
-          normalizeOptionalText(input.sleep?.latest?.deepSleepQuality) ??
-          defaults.sleep.latest.deepSleepQuality,
-        deepSleepMinutes:
-          typeof input.sleep?.latest?.deepSleepMinutes === "number"
-            ? input.sleep.latest.deepSleepMinutes
-            : defaults.sleep.latest.deepSleepMinutes,
-        restingHeartRate:
-          normalizeOptionalText(input.sleep?.latest?.restingHeartRate) ??
-          defaults.sleep.latest.restingHeartRate,
-        sleepScore:
-          normalizeOptionalText(input.sleep?.latest?.sleepScore) ??
-          defaults.sleep.latest.sleepScore,
-        awakeDuration:
-          normalizeOptionalText(input.sleep?.latest?.awakeDuration) ??
-          defaults.sleep.latest.awakeDuration,
-        sleepAverageHeartRate:
-          normalizeOptionalText(input.sleep?.latest?.sleepAverageHeartRate) ??
-          defaults.sleep.latest.sleepAverageHeartRate,
-        steps: normalizeOptionalText(input.sleep?.latest?.steps) ?? defaults.sleep.latest.steps,
-        intensityMinutes:
-          normalizeOptionalText(input.sleep?.latest?.intensityMinutes) ??
-          defaults.sleep.latest.intensityMinutes,
-      },
+      latest: normalizeStoredSleepLatest(input.sleep?.latest, defaults.sleep.latest),
       insights: Array.isArray(input.sleep?.insights)
         ? input.sleep.insights.filter(isNonEmptyString)
         : defaults.sleep.insights,
-      trends: {
-        bedTimes: normalizeNumberlessTrend(input.sleep?.trends?.bedTimes, defaults.sleep.trends.bedTimes),
-        wakeTimes: normalizeNumberlessTrend(input.sleep?.trends?.wakeTimes, defaults.sleep.trends.wakeTimes),
-        deepSleepMinutes: normalizeNumericTrend(
-          input.sleep?.trends?.deepSleepMinutes,
-          defaults.sleep.trends.deepSleepMinutes,
-        ),
-        sleepScores: normalizeNumericTrend(input.sleep?.trends?.sleepScores, defaults.sleep.trends.sleepScores),
-        steps: normalizeNumericTrend(input.sleep?.trends?.steps, defaults.sleep.trends.steps),
-        intensityMinutes: normalizeNumericTrend(
-          input.sleep?.trends?.intensityMinutes,
-          defaults.sleep.trends.intensityMinutes,
-        ),
-      },
+      trends: normalizeStoredSleepTrends(input.sleep?.trends, defaults.sleep.trends),
     },
+  };
+}
+
+// fallow-ignore-next-line complexity
+function normalizeStoredConnection(
+  input: Partial<HealthDomainStoredConnection> | undefined,
+  defaults: HealthDomainStoredConnection,
+): HealthDomainStoredConnection {
+  const opt = (value: unknown, fallback: string | null): string | null =>
+    normalizeOptionalText(value) ?? fallback;
+  return {
+    mode:
+      input?.mode === "account" || input?.mode === "api"
+        ? input.mode
+        : defaults.mode,
+    status:
+      input?.status === "connected" || input?.status === "error"
+        ? input.status
+        : defaults.status,
+    label: opt(input?.label, defaults.label),
+    lastSyncedAt: opt(input?.lastSyncedAt, defaults.lastSyncedAt),
+    tokenJson: opt(input?.tokenJson, defaults.tokenJson),
+    apiBaseUrl: opt(input?.apiBaseUrl, defaults.apiBaseUrl),
+    relativeUid: opt(input?.relativeUid, defaults.relativeUid),
+    lastError: opt(input?.lastError, defaults.lastError),
+  };
+}
+
+// fallow-ignore-next-line complexity
+function normalizeStoredSleepLatest(
+  input: Partial<HealthDomainSleepLatestState> | undefined,
+  defaults: HealthDomainSleepLatestState,
+): HealthDomainSleepLatestState {
+  const opt = (value: unknown, fallback: string | null): string | null =>
+    normalizeOptionalText(value) ?? fallback;
+  return {
+    bedTime: opt(input?.bedTime, defaults.bedTime),
+    wakeTime: opt(input?.wakeTime, defaults.wakeTime),
+    totalSleep: opt(input?.totalSleep, defaults.totalSleep),
+    deepSleepQuality: opt(input?.deepSleepQuality, defaults.deepSleepQuality),
+    deepSleepMinutes:
+      typeof input?.deepSleepMinutes === "number"
+        ? input.deepSleepMinutes
+        : defaults.deepSleepMinutes,
+    restingHeartRate: opt(input?.restingHeartRate, defaults.restingHeartRate),
+    sleepScore: opt(input?.sleepScore, defaults.sleepScore),
+    awakeDuration: opt(input?.awakeDuration, defaults.awakeDuration),
+    sleepAverageHeartRate: opt(input?.sleepAverageHeartRate, defaults.sleepAverageHeartRate),
+    steps: opt(input?.steps, defaults.steps),
+    intensityMinutes: opt(input?.intensityMinutes, defaults.intensityMinutes),
+  };
+}
+
+function normalizeStoredSleepTrends(
+  input: Partial<HealthDomainSleepTrendsState> | undefined,
+  defaults: HealthDomainSleepTrendsState,
+): HealthDomainSleepTrendsState {
+  return {
+    bedTimes: normalizeNumberlessTrend(input?.bedTimes, defaults.bedTimes),
+    wakeTimes: normalizeNumberlessTrend(input?.wakeTimes, defaults.wakeTimes),
+    deepSleepMinutes: normalizeNumericTrend(input?.deepSleepMinutes, defaults.deepSleepMinutes),
+    sleepScores: normalizeNumericTrend(input?.sleepScores, defaults.sleepScores),
+    steps: normalizeNumericTrend(input?.steps, defaults.steps),
+    intensityMinutes: normalizeNumericTrend(input?.intensityMinutes, defaults.intensityMinutes),
   };
 }
 
@@ -529,14 +526,6 @@ function toPublicHealthDomainState(
 function normalizeHealthConnectionError(error: string | null): string | null {
   if (!error) {
     return null;
-  }
-  if (
-    error.includes("relative_uid") ||
-    error.includes("not relatives") ||
-    error.includes("亲友") ||
-    error.includes("共享对象 UID")
-  ) {
-    return SELF_HEALTH_SYNC_UNSUPPORTED_MESSAGE;
   }
   return error;
 }

@@ -55,6 +55,7 @@ const md = new MarkdownIt({
   typographer: false,
 });
 
+// fallow-ignore-next-line complexity
 md.inline.ruler.before("link", "static-wikilink", (state, silent) => {
   if (state.src[state.pos] !== "[" || state.src[state.pos + 1] !== "[") return false;
   const match = /^\[\[([^\]|#]+)(?:#([^\]|]+))?(?:\|([^\]]+))?\]\]/.exec(state.src.slice(state.pos));
@@ -91,6 +92,7 @@ for (const page of pages) {
 
 console.log(`Exported ${pages.length} wiki pages to ${outRoot}`);
 
+// fallow-ignore-next-line complexity
 function stripFrontmatter(text) {
   const normalized = text.replace(/^\uFEFF/, "");
   const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(normalized);

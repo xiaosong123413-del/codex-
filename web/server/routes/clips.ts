@@ -9,6 +9,10 @@ import {
   type ClipRunOptions,
 } from "../services/clip-pipeline.js";
 import { detectClipPlatform } from "../services/clip-platform.js";
+import {
+  appendLocalClippingMedia,
+  readLocalMediaPaths,
+} from "../services/clipping-local-media.js";
 import { detectYtDlp, installYtDlp, type YtDlpStatus } from "../services/yt-dlp.js";
 import { runXhsSingle, type XhsRunOptions } from "../services/xhs-sync.js";
 
@@ -33,12 +37,14 @@ interface ClipRouteInput {
   url: string;
   title?: string;
   body?: string;
+  mediaPaths: string[];
   now: Date;
   desktopCapture: DesktopDouyinCapture | null;
 }
 
 interface ClipRouteResult {
   status: string;
+  path?: string;
   error?: unknown;
 }
 
@@ -47,6 +53,7 @@ export function handleClipCreate(cfg: ServerConfig, options: ClipRouteOptions = 
     try {
       const input = readClipRouteInput(req);
       const data = await routeClipCreate(cfg, input, options);
+      await appendSuccessfulClipMedia(cfg, data, input.mediaPaths);
       sendClipResult(res, data);
     } catch (error) {
       sendError(res, error);
@@ -98,9 +105,21 @@ function readClipRouteInput(req: Request): ClipRouteInput {
     url: stringBody(req.body?.url) ?? "",
     title: stringBody(req.body?.title),
     body: stringBody(req.body?.body),
+    mediaPaths: readLocalMediaPaths(req.body?.mediaPaths),
     now: readClipRouteDate(req.body?.now),
     desktopCapture: readDesktopDouyinCapture(req.body?.desktopCapture),
   };
+}
+
+async function appendSuccessfulClipMedia(
+  cfg: ServerConfig,
+  data: ClipRouteResult,
+  mediaPaths: readonly string[],
+): Promise<void> {
+  if (data.status === "failed" || !data.path || mediaPaths.length === 0) {
+    return;
+  }
+  await appendLocalClippingMedia(cfg.sourceVaultRoot, cfg.runtimeRoot, data.path, mediaPaths);
 }
 
 function readClipRouteDate(value: unknown): Date {
@@ -200,6 +219,7 @@ function createDesktopDouyinCollector(
   capture: DesktopDouyinCapture,
 ): DouyinCollector {
   return {
+    // fallow-ignore-next-line complexity
     async collect(input) {
       const sourceVideoPath = path.resolve(capture.localVideoPath);
       if (!fs.existsSync(sourceVideoPath)) {

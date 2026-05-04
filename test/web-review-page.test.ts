@@ -4,10 +4,45 @@ import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderReviewPage, renderReviewItems } from "../web/client/src/pages/review/index.js";
 
+class MockEventSource {
+  static instances: MockEventSource[] = [];
+
+  readonly url: string;
+
+  onerror: ((event: Event) => void) | null = null;
+
+  private readonly listeners: Record<string, EventListenerOrEventListenerObject[]> = {};
+
+  constructor(url: string | URL) {
+    this.url = String(url);
+    MockEventSource.instances.push(this);
+  }
+
+  addEventListener(type: string, listener: EventListenerOrEventListenerObject): void {
+    this.listeners[type] = [...(this.listeners[type] ?? []), listener];
+  }
+
+  close(): void {}
+
+  emitStatus(status: "running" | "succeeded" | "failed"): void {
+    this.emit("status", new MessageEvent("status", { data: JSON.stringify({
+      run: { id: "run-check-1", kind: "check", status },
+    }) }));
+  }
+
+  private emit(type: string, event: Event): void {
+    for (const listener of this.listeners[type] ?? []) {
+      if (typeof listener === "function") listener.call(this as unknown as EventTarget, event);
+      else listener.handleEvent(event);
+    }
+  }
+}
+
 describe("review page", () => {
   beforeEach(() => {
     document.head.innerHTML = "";
     document.body.innerHTML = "";
+    MockEventSource.instances = [];
     vi.restoreAllMocks();
     vi.stubGlobal(
       "fetch",
@@ -75,15 +110,13 @@ describe("review page", () => {
     expect(page.textContent).not.toContain("Build");
   });
 
-  it("loads workspace retained files in the right column", async () => {
+  it("does not mount workspace retained files inside the review page", async () => {
     const page = renderReviewPage();
     document.body.appendChild(page);
     await flush();
 
-    expect(page.querySelector("[data-review-workspace]")?.textContent).toContain("\u5de5\u4f5c\u533a\u7559\u5b58\u6587\u4ef6");
-    expect(page.querySelector("[data-review-workspace]")?.textContent).toContain("\u5efa\u8bae\u5220\u9664");
-    expect(page.querySelector("[data-review-workspace]")?.textContent).toContain("\u5f85\u5b8c\u6210");
-    expect(page.querySelector("[data-review-workspace]")?.textContent).toContain("Lint \u56fe\u7247\u6765\u6e90\u8ffd\u6eaf\u89c4\u5219");
+    expect(page.querySelector<HTMLElement>("[data-review-workspace]")?.hidden).toBe(true);
+    expect(page.textContent).not.toContain("\u5de5\u4f5c\u533a\u7559\u5b58\u6587\u4ef6");
   });
 
   it("shows a visible busy state when the toolbar refresh button reloads the queue", async () => {
@@ -228,6 +261,28 @@ describe("review page", () => {
     ]);
 
     expect(page.querySelector("[data-inbox-guide='inbox/source.md']")?.textContent).toContain("\u4eb2\u81ea\u6307\u5bfc\u5f55\u5165");
+  });
+
+  it("auto-opens the detail rail for a single inbox item so the page stays complete", () => {
+    const page = renderReviewPage();
+    document.body.appendChild(page);
+    renderReviewItems(page, [
+      {
+        id: "inbox-1",
+        kind: "inbox",
+        severity: "suggest",
+        title: "Inbox source",
+        detail: "Needs decision",
+        target: "inbox/source.md",
+        createdAt: "2026-04-17T01:00:00.000Z",
+      },
+    ]);
+
+    expect(page.classList.contains("review-page--workspace-open")).toBe(true);
+    expect(page.querySelector<HTMLElement>("[data-review-workspace]")?.hidden).toBe(false);
+    expect(page.querySelector("[data-review-detail-panel]")?.textContent).toContain("Inbox source");
+    expect(page.querySelector("[data-review-detail-panel]")?.textContent).toContain("亲自指导录入");
+    expect(page.querySelector("[data-review-detail-panel]")?.textContent).toContain("优先批量录入");
   });
 
   it("opens a guided ingest chat workspace in the review sidebar and keeps the inbox page selected", async () => {
@@ -796,6 +851,50 @@ describe("review page", () => {
     expect(getComputedStyle(main).overflow).toBe("hidden");
     expect(getComputedStyle(layout!).alignItems).toBe("stretch");
     expect(getComputedStyle(mainColumn!).overflow).toBe("hidden");
+  });
+
+  it("starts a backend system check run from broken-link review cards", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/review") {
+        return {
+          ok: true,
+          json: async () => ({ success: true, data: { items: [], state: null } }),
+        } as Response;
+      }
+      if (url === "/api/runs/check" && init?.method === "POST") {
+        return new Response(JSON.stringify({
+          success: true,
+          data: { id: "run-check-1", kind: "check", status: "running" },
+        }));
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("EventSource", MockEventSource);
+    const page = renderReviewPage();
+    document.body.appendChild(page);
+    await flush();
+    renderReviewItems(page, [{
+      id: "run-check-1",
+      kind: "run",
+      severity: "error",
+      title: "系统检查失败",
+      detail: "x error wiki/example.md:1 Broken wikilink [[Missing]] - no matching page found",
+      createdAt: "2026-05-03T00:00:00.000Z",
+      run: { kind: "check", status: "failed", exitCode: 1 },
+    }]);
+
+    page.querySelector<HTMLButtonElement>("[data-run-autofix-check]")?.click();
+    await flush();
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/runs/check", { method: "POST" });
+    expect(MockEventSource.instances[0]?.url).toBe("/api/runs/run-check-1/events");
+
+    MockEventSource.instances[0]?.emitStatus("succeeded");
+    await flush();
+
+    expect(page.querySelector("[data-review-status]")?.textContent).toContain("系统检查通过");
   });
 
   it("submits a batch delete request for selected xiaohongshu failures", async () => {
@@ -1470,6 +1569,7 @@ async function flush(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+// fallow-ignore-next-line complexity
 function installClientStyles(): void {
   const root = path.resolve(import.meta.dirname, "..");
   const style = document.createElement("style");

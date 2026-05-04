@@ -37,6 +37,22 @@ export function resolveMemoryFilePath(sourceVaultRoot: string): string {
   return path.join(sourceVaultRoot, ...MEMORY_PATH.split("/"));
 }
 
+function resolveRuntimeMemoryFilePath(runtimeRoot: string): string {
+  return path.join(runtimeRoot, ...MEMORY_PATH.split("/"));
+}
+
+export async function writeFlashDiaryMemoryCopies(
+  sourceVaultRoot: string,
+  runtimeRoot: string,
+  raw: string,
+): Promise<void> {
+  const normalizedRaw = raw.endsWith("\n") ? raw : `${raw}\n`;
+  await Promise.all([
+    writeMemoryFileIfChanged(resolveMemoryFilePath(sourceVaultRoot), normalizedRaw),
+    writeMemoryFileIfChanged(resolveRuntimeMemoryFilePath(runtimeRoot), normalizedRaw),
+  ]);
+}
+
 export function buildFlashDiaryMemoryPage(
   filePath: string,
   raw: string,
@@ -88,10 +104,19 @@ function resolveStateFilePath(runtimeRoot: string): string {
   return path.join(runtimeRoot, STATE_DIR, STATE_FILE);
 }
 
+async function writeMemoryFileIfChanged(filePath: string, raw: string): Promise<void> {
+  if (fs.existsSync(filePath) && fs.readFileSync(filePath, "utf8") === raw) {
+    return;
+  }
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, raw, "utf8");
+}
+
 function pad(value: number): string {
   return value.toString().padStart(2, "0");
 }
 
+// fallow-ignore-next-line complexity
 function isValidMemoryState(parsed: Partial<FlashDiaryMemoryState>): boolean {
   return typeof parsed.version === "number"
     && typeof parsed.memoryPath === "string"

@@ -66,7 +66,6 @@ describe("run-manager", () => {
         internalBatchCount: 2,
         batchLimit: 20,
         claimsUpdated: 6,
-        episodesUpdated: 4,
         proceduresUpdated: 1,
         wikiOutputDir: path.join(runtimeRoot, "wiki"),
         publishedAt: "2026-04-19T01:00:00.000Z",

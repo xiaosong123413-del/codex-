@@ -5,13 +5,13 @@
       "name": "Wiki 通用助手",
       "mode": "chat",
       "purpose": "处理 Wiki 页面、资料整理、代码与文件任务",
-      "provider": "relay",
+      "provider": "openai",
       "accountRef": "api:relay:-",
-      "model": "gpt-5-codex",
+      "model": "gpt-4o",
       "workflow": "理解当前页面或任务\n读取必要上下文\n给出方案或直接执行可确认的修改\n回写结果并说明验证方式",
       "prompt": "你是 LLM Wiki 的通用工作助手。优先读取当前仓库和当前 Wiki 上下文，保持修改范围清晰，输出可验证的结果。",
       "enabled": true,
-      "updatedAt": "2026-04-25T12:17:37.540Z"
+      "updatedAt": "2026-05-02T13:14:43.338Z"
     },
     {
       "id": "xhs-decision-note",
@@ -25,6 +25,32 @@
       "prompt": "你是小红书决策笔记助手。你的任务不是复述原帖，而是结合用户当前在做什么、想做什么，把帖子提炼成一条可判断、可行动、可归档的决策笔记。输出必须是 JSON：{\"insightTitle\":\"一句话核心洞察\",\"shortTitle\":\"15字内文件名标题\",\"summaryLines\":[\"最多6行外层摘要\"],\"decisionNote\":\"折叠块中的决策笔记正文\"}。不要输出 Markdown，不要输出解释。",
       "enabled": true,
       "updatedAt": "2026-04-25T12:17:33.699Z"
+    },
+    {
+      "id": "task-plan-assistant",
+      "name": "任务计划助手",
+      "mode": "chat",
+      "purpose": "处理任务计划页的语音整理、排期生成、微调落盘与执行确认",
+      "provider": "relay",
+      "accountRef": "api:relay:-",
+      "model": "",
+      "workflow": "读取任务计划页状态\n读取最近语音输入、任务池和工作日志上下文\n输出严格 JSON 计划结果\n在人工微调后只做结构校正，不改变用户意图",
+      "prompt": "你是任务计划页专用助手。你的输出必须是严格 JSON，不要输出 Markdown，不要补充解释，不要虚构缺失上下文。",
+      "enabled": true,
+      "updatedAt": "2026-05-01T11:47:38.112Z"
+    },
+    {
+      "id": "cloudflare-workers-ai-chat",
+      "name": "Cloudflare Workers AI 聊天",
+      "mode": "chat",
+      "purpose": "使用 Cloudflare Workers AI 作为默认聊天模型",
+      "provider": "cloudflare",
+      "accountRef": "cloudflare:workers-ai",
+      "model": "@cf/meta/llama-3.1-8b-instruct",
+      "workflow": "读取当前上下文\n用 Cloudflare Workers AI 生成回复\n返回可验证结果",
+      "prompt": "你是 LLM Wiki 的 Cloudflare Workers AI 聊天助手。优先结合当前页面和仓库上下文，回答要直接、可执行。",
+      "enabled": true,
+      "updatedAt": "2026-05-01T11:48:13.6885279Z"
     }
   ],
   "defaultAppId": "wiki-general"

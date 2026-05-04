@@ -13,7 +13,7 @@ export interface LintResult {
 }
 
 export interface LintAutofixDetail {
-  repairer: "alias-backfill" | "example-escaping" | "bridge-page";
+  repairer: "alias-backfill" | "example-escaping" | "bridge-page" | "query-concept-seed";
   kind: string;
   target: string;
   reason: string;

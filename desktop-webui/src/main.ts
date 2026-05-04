@@ -6,6 +6,7 @@ import http from "node:http";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
 import { execFile, spawn, type ChildProcess } from "node:child_process";
@@ -28,6 +29,7 @@ import {
   type WorkspaceMetadata,
 } from "./workspace-identity.js";
 import { buildWorkflowRecorderCaptureDataUrl } from "./workflow-recorder-capture.js";
+import { selectWorkflowRecorderTasks, type WorkflowRecorderTask } from "./workflow-recorder-tasks.js";
 
 type StartupState = "UNCONFIGURED" | "CONFIGURING" | "INITIALIZING" | "READY";
 
@@ -128,11 +130,38 @@ interface DesktopSubmissionResult {
   };
 }
 
+type WorkflowRecorderMarker = "normal" | "issue" | "resolved" | "method" | "end-node";
+
 interface WorkflowRecorderPayload {
   text: string;
+  taskId?: string;
   attachments: string[];
-  marker: "normal" | "issue" | "resolved" | "end-node";
+  marker: WorkflowRecorderMarker;
 }
+
+interface WorkflowRecorderTaskCreatePayload {
+  title?: string;
+}
+
+interface TaskPlanStateResponse {
+  success?: boolean;
+  data?: {
+    state?: unknown;
+  };
+}
+
+interface TaskPlanPoolSnapshot {
+  items: Array<Record<string, unknown>>;
+  stages: Array<Record<string, unknown>>;
+}
+
+const WORKFLOW_RECORDER_MARKERS = new Set<WorkflowRecorderMarker>([
+  "normal",
+  "issue",
+  "resolved",
+  "method",
+  "end-node",
+]);
 
 interface ShortcutSavePayload {
   id: keyof AppShortcuts;
@@ -2364,6 +2393,9 @@ ipcMain.handle("desktop:choose-flash-diary-media", async () => {
 });
 ipcMain.handle("desktop:open-workflow-recorder", () => showWorkflowRecorderCaptureWindow());
 ipcMain.handle("desktop:get-workflow-recorder-tasks", () => fetchWorkflowRecorderTasks());
+ipcMain.handle("desktop:create-workflow-recorder-task", (_event, payload: WorkflowRecorderTaskCreatePayload) =>
+  createWorkflowRecorderTask(payload),
+);
 // fallow-ignore-next-line complexity
 ipcMain.handle("desktop:choose-workflow-recorder-attachments", async () => {
   const parentWindow = workflowRecorderWindow && !workflowRecorderWindow.isDestroyed()
@@ -2400,19 +2432,86 @@ function workflowRecorderAttachmentDialogOptions(): OpenDialogOptions {
 }
 
 // fallow-ignore-next-line complexity
-async function fetchWorkflowRecorderTasks(): Promise<Array<{ title: string }>> {
-  const response = await fetch(`${serverUrl}api/task-plan/state`);
-  const payload = await response.json() as {
-    success?: boolean;
-    data?: { state?: { pool?: { items?: Array<{ title?: unknown; completedAt?: unknown }> } } };
+async function fetchWorkflowRecorderTasks(): Promise<WorkflowRecorderTask[]> {
+  const state = await fetchCurrentTaskPlanState();
+  return state ? selectWorkflowRecorderTasks(state) : [];
+}
+
+async function createWorkflowRecorderTask(payload: WorkflowRecorderTaskCreatePayload): Promise<WorkflowRecorderTask> {
+  const title = normalizeWorkflowRecorderTaskTitle(payload);
+  const state = await fetchCurrentTaskPlanState();
+  if (!state) throw new Error("任务池读取失败。");
+  const snapshot = readTaskPlanPoolSnapshot(state);
+  const item = createManualWorkflowRecorderTask(title);
+  await saveTaskPlanPoolSnapshot({ ...snapshot, items: [item, ...snapshot.items] });
+  return {
+    id: String(item.id),
+    title: String(item.title),
+    domain: "",
+    project: "",
+    badge: "当前任务",
   };
-  if (!response.ok || !payload.success) {
-    return [];
-  }
-  return (payload.data?.state?.pool?.items ?? [])
-    .filter((item) => typeof item.title === "string" && !item.completedAt)
-    .slice(0, 3)
-    .map((item) => ({ title: String(item.title) }));
+}
+
+async function fetchCurrentTaskPlanState(): Promise<unknown | null> {
+  const response = await fetch(`${serverUrl}api/task-plan/state`);
+  const payload = await response.json() as TaskPlanStateResponse;
+  if (!response.ok) return null;
+  return readTaskPlanStatePayload(payload);
+}
+
+function readTaskPlanStatePayload(payload: TaskPlanStateResponse): unknown | null {
+  return payload.success === true ? payload.data?.state ?? null : null;
+}
+
+function normalizeWorkflowRecorderTaskTitle(payload: WorkflowRecorderTaskCreatePayload): string {
+  const title = typeof payload.title === "string" ? payload.title.trim() : "";
+  if (!title) throw new Error("任务名不能为空。");
+  return title;
+}
+
+function readTaskPlanPoolSnapshot(state: unknown): TaskPlanPoolSnapshot {
+  const root = readObjectRecord(state);
+  const pool = readObjectRecord(root?.pool);
+  return {
+    items: readObjectArray(pool?.items),
+    stages: readObjectArray(pool?.stages),
+  };
+}
+
+function createManualWorkflowRecorderTask(title: string): Record<string, unknown> {
+  return {
+    id: `workflow-recorder-${randomUUID()}`,
+    title,
+    priority: "mid",
+    source: "手动新增",
+    zone: "mine",
+    createdAt: new Date().toISOString(),
+  };
+}
+
+async function saveTaskPlanPoolSnapshot(snapshot: TaskPlanPoolSnapshot): Promise<void> {
+  const response = await fetch(`${serverUrl}api/task-plan/pool`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(snapshot),
+  });
+  const result = await response.json() as { success?: boolean; error?: { message?: string } | string };
+  if (response.ok && result.success === true) return;
+  throw new Error(readTaskPlanPoolSaveError(result));
+}
+
+function readTaskPlanPoolSaveError(result: { error?: { message?: string } | string }): string {
+  if (typeof result.error === "string") return result.error;
+  return result.error?.message ?? "新增任务失败。";
+}
+
+function readObjectArray(value: unknown): Array<Record<string, unknown>> {
+  return Array.isArray(value) ? value.filter((item): item is Record<string, unknown> => Boolean(readObjectRecord(item))) : [];
+}
+
+function readObjectRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 }
 
 // fallow-ignore-next-line complexity
@@ -2435,14 +2534,18 @@ async function submitWorkflowRecorder(payload: WorkflowRecorderPayload): Promise
 function normalizeWorkflowRecorderPayload(payload: WorkflowRecorderPayload): WorkflowRecorderPayload {
   return {
     text: String(payload.text ?? "").trim(),
+    taskId: typeof payload.taskId === "string" ? payload.taskId.trim() : "",
     attachments: Array.isArray(payload.attachments) ? payload.attachments.map(String).filter(Boolean) : [],
     marker: readWorkflowRecorderMarker(payload.marker),
   };
 }
 
 function readWorkflowRecorderMarker(value: unknown): WorkflowRecorderPayload["marker"] {
-  if (value === "issue" || value === "resolved" || value === "end-node") return value;
-  return "normal";
+  return isWorkflowRecorderMarker(value) ? value : "normal";
+}
+
+function isWorkflowRecorderMarker(value: unknown): value is WorkflowRecorderMarker {
+  return typeof value === "string" && WORKFLOW_RECORDER_MARKERS.has(value as WorkflowRecorderMarker);
 }
 
 // fallow-ignore-next-line complexity

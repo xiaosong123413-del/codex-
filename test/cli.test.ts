@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import path from "path";
-import { mkdir, rm, writeFile } from "fs/promises";
+import { copyFile, mkdir, mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { fileURLToPath } from "url";
 
@@ -10,6 +10,8 @@ const exec = promisify(execFile);
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CLI = path.join(REPO_ROOT, "dist", "cli.js");
 const TSUP_CLI = path.join(REPO_ROOT, "node_modules", "tsup", "dist", "cli-default.js");
+let isolatedCliRoot = "";
+let cliUnderTest = CLI;
 
 async function cleanupDirectory(directory: string): Promise<void> {
   await rm(directory, { recursive: true, force: true });
@@ -22,7 +24,7 @@ async function runCompileWithoutSources(
   const cwd = path.join(tmpdir(), `llmwiki-test-${suffix}-${Date.now()}`);
   await mkdir(path.join(cwd, "sources"), { recursive: true });
   try {
-    const { stdout } = await exec("node", [CLI, "compile"], {
+    const { stdout } = await exec("node", [cliUnderTest, "compile"], {
       cwd,
       env: { ...process.env, ...envOverrides },
     });
@@ -53,9 +55,19 @@ async function createCompileWorkspace(
 describe("CLI smoke tests", () => {
   beforeAll(async () => {
     await exec(process.execPath, [TSUP_CLI], { cwd: REPO_ROOT });
+    isolatedCliRoot = await mkdtemp(path.join(REPO_ROOT, ".tmp-cli-dist-"));
+    await mkdir(path.join(isolatedCliRoot, "dist"), { recursive: true });
+    await copyFile(CLI, path.join(isolatedCliRoot, "dist", "cli.js"));
+    await copyFile(path.join(REPO_ROOT, "package.json"), path.join(isolatedCliRoot, "package.json"));
+    cliUnderTest = path.join(isolatedCliRoot, "dist", "cli.js");
   }, 30_000);
+
+  afterAll(async () => {
+    if (isolatedCliRoot) await cleanupDirectory(isolatedCliRoot);
+  });
+
   it("prints help and exits 0", async () => {
-    const { stdout } = await exec("node", [CLI, "--help"]);
+    const { stdout } = await exec("node", [cliUnderTest, "--help"]);
     expect(stdout).toContain("llmwiki");
     expect(stdout).toContain("ingest");
     expect(stdout).toContain("compile");
@@ -63,13 +75,13 @@ describe("CLI smoke tests", () => {
   }, 30_000);
 
   it("prints version", async () => {
-    const { stdout } = await exec("node", [CLI, "--version"]);
+    const { stdout } = await exec("node", [cliUnderTest, "--version"]);
     expect(stdout.trim()).toMatch(/^\d+\.\d+\.\d+$/);
   }, 30_000);
 
   it("compile fails without Anthropic credentials", async () => {
     try {
-      await exec("node", [CLI, "compile"], {
+      await exec("node", [cliUnderTest, "compile"], {
         env: {
           ...process.env,
           ANTHROPIC_API_KEY: "",
@@ -83,7 +95,7 @@ describe("CLI smoke tests", () => {
       // Should exit with non-zero or print an error
       expect(error.code).not.toBe(0);
     }
-  });
+  }, 30_000);
 
   it("compile without sources works with ANTHROPIC_AUTH_TOKEN", async () => {
     const stdout = await runCompileWithoutSources("compile-token", {
@@ -100,7 +112,7 @@ describe("CLI smoke tests", () => {
     );
 
     try {
-      const { stdout } = await exec("node", [CLI, "compile"], {
+      const { stdout } = await exec("node", [cliUnderTest, "compile"], {
         cwd: workspace.cwd,
         env: {
           ...process.env,
@@ -133,7 +145,7 @@ describe("CLI smoke tests", () => {
     );
 
     try {
-      await exec("node", [CLI, "compile"], {
+      await exec("node", [cliUnderTest, "compile"], {
         cwd: workspace.cwd,
         env: {
           ...process.env,
@@ -158,7 +170,7 @@ describe("CLI smoke tests", () => {
     await mkdir(cwd, { recursive: true });
     const fixture = path.join(REPO_ROOT, "test", "fixtures", "sample-source.md");
     try {
-      const { stdout } = await exec("node", [CLI, "ingest", fixture], { cwd });
+      const { stdout } = await exec("node", [cliUnderTest, "ingest", fixture], { cwd });
       expect(stdout).toContain("Next: llmwiki compile");
     } finally {
       await cleanupDirectory(cwd);

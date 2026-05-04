@@ -68,6 +68,7 @@ interface OAuthAccountLike {
   provider: string;
   email?: string;
   enabled?: boolean;
+  accountRef?: string;
 }
 
 interface LlmDefaultSelectionArgs {
@@ -311,7 +312,7 @@ function appendEnabledOAuthAccountOptions(
       continue;
     }
     options.push({
-      value: `oauth:${account.provider}:${account.name}`,
+      value: account.accountRef ?? `oauth:${account.provider}:${account.name}`,
       label: `${formatOAuthProvider(account.provider)} · ${account.email ?? account.name}`,
       provider: providerFromOAuthAccount(account.provider),
       source: "oauth",

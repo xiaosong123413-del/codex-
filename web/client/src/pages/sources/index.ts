@@ -1,4 +1,8 @@
+import { bindPageSearchShortcut } from "../../search-shortcut.js";
+import { eventMatchesShortcut, getClientKeyboardShortcut } from "../../keyboard-shortcuts.js";
+
 type SourceGallerySort = "modified-desc" | "modified-asc" | "created-desc" | "created-asc";
+type SourceGalleryViewMode = "sources" | "subscriptions";
 
 interface SourceGalleryItem {
   id: string;
@@ -95,6 +99,7 @@ interface PageState {
   selectedPaths: Map<string, string>;
   refreshId: number;
   sort: SourceGallerySort;
+  viewMode: SourceGalleryViewMode;
   filters: SourceGalleryFilterOptions;
   selectedBuckets: string[];
   selectedTags: string[];
@@ -105,12 +110,18 @@ interface SourcesPageRoot extends HTMLElement {
   __dispose?: () => void;
 }
 
+interface SourceWorkspaceElement extends HTMLElement {
+  __disposeSearchShortcut?: () => void;
+}
+
 const SOURCE_GALLERY_ROW_GAP_PX = 16;
 const SOURCE_GALLERY_MIN_ROW_HEIGHT_PX = 220;
 
 const TEXT = {
   search: "\u641c\u7d22",
   searchPlaceholder: "\u6807\u9898 / \u6b63\u6587 / URL / \u6807\u7b7e",
+  sourcesTab: "\u6e90\u6599",
+  subscriptionsTab: "\u8ba2\u9605\u9875",
   source: "\u6765\u6e90",
   tag: "\u6807\u7b7e",
   status: "\u72b6\u6001",
@@ -151,11 +162,11 @@ export function renderSourcesPage(): HTMLElement {
     <div class="source-gallery-page">
       <div class="source-gallery-page__chrome">
         <section class="source-gallery-page__filters panel">
-          <div class="source-gallery-filters">
-            <label class="source-gallery-filter-pill source-gallery-filter-pill--search">
-              <span>${TEXT.search}</span>
-              <input data-source-gallery-query type="search" placeholder="${TEXT.searchPlaceholder}" />
-            </label>
+          <div class="source-gallery-mode-switch" data-source-gallery-mode-switch role="tablist" aria-label="源料视图">
+            <button type="button" data-source-gallery-mode="sources" aria-pressed="true">${TEXT.sourcesTab}</button>
+            <button type="button" data-source-gallery-mode="subscriptions" aria-pressed="false">${TEXT.subscriptionsTab}</button>
+          </div>
+          <div class="source-gallery-filters" data-source-gallery-controls>
             <label class="source-gallery-filter-pill">
               <span>\u6392\u5e8f</span>
               <select data-source-gallery-sort>
@@ -182,6 +193,10 @@ export function renderSourcesPage(): HTMLElement {
               <select data-source-gallery-filter="layer">
                 <option value="">${TEXT.all}</option>
               </select>
+            </label>
+            <label class="source-gallery-filter-pill source-gallery-filter-pill--search">
+              <span>${TEXT.search}</span>
+              <input data-source-gallery-query type="search" placeholder="${TEXT.searchPlaceholder}" />
             </label>
           </div>
         </section>
@@ -212,10 +227,11 @@ export function renderSourcesPage(): HTMLElement {
     selectedPaths: new Map(),
     refreshId: 0,
     sort: "modified-desc",
+    viewMode: "sources",
     filters: { buckets: [], tags: [], layers: [] },
     selectedBuckets: [],
     selectedTags: [],
-    selectedLayers: [],
+    selectedLayers: ["raw"],
   };
 
   const handleResize = (): void => {
@@ -223,8 +239,10 @@ export function renderSourcesPage(): HTMLElement {
   };
 
   bindEvents(root, state);
+  const disposeSourceSearchShortcut = bindSourceGalleryQueryShortcut(root);
   window.addEventListener("resize", handleResize);
   root.__dispose = (): void => {
+    disposeSourceSearchShortcut();
     window.removeEventListener("resize", handleResize);
     closeSourceWorkspace();
   };
@@ -305,6 +323,14 @@ function bindEvents(root: HTMLElement, state: PageState): void {
       void refreshGallery(root, state);
     });
   });
+
+  root.querySelectorAll<HTMLButtonElement>("[data-source-gallery-mode]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.viewMode = button.dataset.sourceGalleryMode === "subscriptions" ? "subscriptions" : "sources";
+      syncViewModeButtons(root, state.viewMode);
+      void refreshGallery(root, state);
+    });
+  });
 }
 
 async function refreshGallery(root: HTMLElement, state: PageState): Promise<void> {
@@ -315,7 +341,8 @@ async function refreshGallery(root: HTMLElement, state: PageState): Promise<void
   try {
     const query = root.querySelector<HTMLInputElement>("[data-source-gallery-query]")?.value.trim() ?? "";
     const data = await request<SourceGalleryListResponse>(buildSourceGalleryRequestUrl(query, state));
-    const items = query ? await searchGalleryItems(data.items, query) : data.items;
+    const queriedItems = query ? await searchGalleryItems(data.items, query) : data.items;
+    const items = filterItemsByViewMode(queriedItems, state.viewMode);
     if (refreshId !== state.refreshId) return;
     state.items = items;
     state.filters = data.filters;
@@ -330,6 +357,49 @@ async function refreshGallery(root: HTMLElement, state: PageState): Promise<void
   }
 }
 
+function syncViewModeButtons(root: HTMLElement, mode: SourceGalleryViewMode): void {
+  root.querySelectorAll<HTMLButtonElement>("[data-source-gallery-mode]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.sourceGalleryMode === mode));
+  });
+}
+
+function bindSourceGalleryQueryShortcut(root: HTMLElement): () => void {
+  const onKeyDown = (event: KeyboardEvent): void => {
+    if (!isSourceGalleryQueryShortcut(event) || event.defaultPrevented || !root.isConnected) return;
+    if (document.querySelector("[data-source-gallery-workspace='true']")) return;
+    const query = root.querySelector<HTMLInputElement>("[data-source-gallery-query]");
+    if (!query) return;
+    event.preventDefault();
+    query.focus();
+    query.select();
+  };
+  document.addEventListener("keydown", onKeyDown);
+  return () => document.removeEventListener("keydown", onKeyDown);
+}
+
+function isSourceGalleryQueryShortcut(event: KeyboardEvent): boolean {
+  return eventMatchesShortcut(event, getClientKeyboardShortcut("pageTextSearch"));
+}
+
+function filterItemsByViewMode(
+  items: SourceGalleryItem[],
+  mode: SourceGalleryViewMode,
+): SourceGalleryItem[] {
+  return mode === "subscriptions"
+    ? items.filter(isSubscriptionSourceItem)
+    : items.filter((item) => !isSubscriptionSourceItem(item));
+}
+
+function isSubscriptionSourceItem(item: SourceGalleryItem): boolean {
+  const text = [
+    item.path,
+    item.bucket,
+    item.sourceUrl,
+    ...item.tags,
+  ].join(" ").toLowerCase();
+  return text.includes("rss") || text.includes("\u8ba2\u9605");
+}
+
 function syncSourceGalleryLayout(root: HTMLElement): void {
   const viewport = root.querySelector<HTMLElement>(".source-gallery-page__viewport");
   if (!viewport) return;
@@ -339,13 +409,33 @@ function syncSourceGalleryLayout(root: HTMLElement): void {
 }
 
 async function searchGalleryItems(items: SourceGalleryItem[], query: string): Promise<SourceGalleryItem[]> {
+  const normalizedQuery = query.trim().toLowerCase();
   const search = await request<SearchApiResponse>(
     `/api/search?scope=local&mode=hybrid&q=${encodeURIComponent(query)}`,
   );
   const rankByPath = new Map(search.local.results.map((result, index) => [normalizePath(result.path), index]));
   return items
-    .filter((item) => rankByPath.has(normalizePath(item.path)))
-    .sort((left, right) => rankByPath.get(normalizePath(left.path))! - rankByPath.get(normalizePath(right.path))!);
+    .filter((item) => {
+      const normalizedPath = normalizePath(item.path);
+      return rankByPath.has(normalizedPath) || sourceGalleryItemMatchesQuery(item, normalizedQuery);
+    })
+    .sort((left, right) => getSearchRank(rankByPath, left) - getSearchRank(rankByPath, right));
+}
+
+function sourceGalleryItemMatchesQuery(item: SourceGalleryItem, normalizedQuery: string): boolean {
+  if (!normalizedQuery) return true;
+  return [
+    item.title,
+    item.excerpt,
+    item.path,
+    item.bucket,
+    item.sourceUrl,
+    ...item.tags,
+  ].filter(Boolean).join("\n").toLowerCase().includes(normalizedQuery);
+}
+
+function getSearchRank(rankByPath: Map<string, number>, item: SourceGalleryItem): number {
+  return rankByPath.get(normalizePath(item.path)) ?? Number.MAX_SAFE_INTEGER;
 }
 
 function renderCards(grid: HTMLElement, state: PageState): void {
@@ -433,7 +523,7 @@ async function openSourceWorkspace(root: HTMLElement, state: PageState, id: stri
   const detail = await request<SourceGalleryDetail>(`/api/source-gallery/${encodeURIComponent(id)}`);
   const conversation = await ensureSourceWorkspaceConversation(detail);
   closeSourceWorkspace();
-  const workspace = document.createElement("section");
+  const workspace = document.createElement("section") as SourceWorkspaceElement;
   workspace.className = "source-gallery-workspace";
   workspace.dataset.sourceGalleryWorkspace = "true";
   workspace.dataset.sourceWorkspaceOrder = "content-first";
@@ -486,6 +576,10 @@ async function openSourceWorkspace(root: HTMLElement, state: PageState, id: stri
       </div>
     </div>
   `;
+  workspace.__disposeSearchShortcut = bindPageSearchShortcut(
+    workspace,
+    () => workspace.querySelector<HTMLElement>(".source-gallery-workspace__pane--content"),
+  );
   bindSourceWorkspaceResize(workspace);
   const form = workspace.querySelector<HTMLFormElement>("[data-source-workspace-form]");
   const sendButton = workspace.querySelector<HTMLButtonElement>("[data-source-workspace-send]");
@@ -521,7 +615,9 @@ async function openSourceWorkspace(root: HTMLElement, state: PageState, id: stri
 }
 
 function closeSourceWorkspace(): void {
-  document.querySelector("[data-source-gallery-workspace='true']")?.remove();
+  const workspace = document.querySelector<SourceWorkspaceElement>("[data-source-gallery-workspace='true']");
+  workspace?.__disposeSearchShortcut?.();
+  workspace?.remove();
 }
 
 function toggleSourceWorkspaceOrder(): void {

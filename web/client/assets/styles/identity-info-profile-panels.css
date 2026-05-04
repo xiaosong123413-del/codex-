@@ -1,0 +1,138 @@
+/**
+ * Panel-level styles for the fixed personal identity archive page.
+ */
+
+.identity-info-page__relation-map {
+  position: relative;
+  height: 158px;
+  display: grid;
+  place-items: center;
+}
+
+.identity-info-page__relation-map strong,
+.identity-info-page__relation-map span {
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+}
+
+.identity-info-page__relation-map strong {
+  width: 62px;
+  height: 62px;
+  background: linear-gradient(180deg, #2f78ff 0%, #3164f4 100%);
+  color: #ffffff;
+  font-size: 18px;
+}
+
+.identity-info-page__relation-map span {
+  position: absolute;
+  min-width: 66px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid #dce6fb;
+  background: #f4f8ff;
+  color: #31518a;
+  font-size: 12px;
+}
+
+.identity-info-page__relation-map span:nth-child(2) { top: 8px; left: 38%; }
+.identity-info-page__relation-map span:nth-child(3) { top: 54px; right: 12px; }
+.identity-info-page__relation-map span:nth-child(4) { bottom: 18px; right: 52px; }
+.identity-info-page__relation-map span:nth-child(5) { bottom: 18px; left: 52px; }
+.identity-info-page__relation-map span:nth-child(6) { top: 54px; left: 12px; }
+.identity-info-page__relation-map span:nth-child(7) { bottom: 0; left: 39%; }
+
+.identity-info-page__stack-list,
+.identity-info-page__media-list {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.identity-info-page__stack-list li {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  gap: 10px;
+  min-height: 42px;
+  padding: 9px 10px;
+  border: 1px solid #e8eef9;
+  border-radius: 10px;
+  background: #fbfdff;
+}
+
+.identity-info-page__stack-list strong {
+  color: #236ad8;
+  font-size: 12px;
+}
+
+.identity-info-page__stack-list span {
+  overflow: hidden;
+  color: #53627f;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.identity-info-page__metric-grid,
+.identity-info-page__symbol-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.identity-info-page__metric-grid span,
+.identity-info-page__symbol-grid span {
+  display: grid;
+  place-items: center;
+  min-height: 62px;
+  border: 1px solid #e6ecfa;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+  color: #315078;
+  font-size: 12px;
+  text-align: center;
+}
+
+.identity-info-page__metric-grid strong {
+  color: #182a55;
+  font-size: 20px;
+}
+
+.identity-info-page__media-list li {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.identity-info-page__media-list span {
+  height: 44px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #28475f 0%, #a7c3d6 100%);
+}
+
+.identity-info-page__media-list strong,
+.identity-info-page__media-list em {
+  display: block;
+  color: #203151;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.identity-info-page__media-list em {
+  color: #8b97ad;
+  font-size: 10px;
+  font-style: normal;
+}
+
+.identity-info-page__symbol-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.identity-info-page__symbol-grid small {
+  display: block;
+  margin-top: 6px;
+  color: #7f8aa2;
+  font-size: 11px;
+}

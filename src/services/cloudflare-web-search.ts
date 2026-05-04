@@ -85,9 +85,9 @@ function buildExternalSearchRequest(
       payload: {
         query,
         max_results: limit,
-        search_depth: "basic",
+        search_depth: "advanced",
         include_answer: false,
-        include_raw_content: false,
+        include_raw_content: true,
       },
     };
   }
@@ -133,7 +133,7 @@ function normalizeResult(value: unknown): WebSearchResult | null {
   const item = value as Record<string, unknown>;
   const title = typeof item.title === "string" ? item.title : "";
   const url = typeof item.url === "string" ? item.url : "";
-  const snippet = firstString(item.snippet, item.content, item.description, item.raw_content);
+  const snippet = firstString(item.raw_content, item.content, item.snippet, item.description);
   if (!title || !url) return null;
   return { title, url, snippet };
 }

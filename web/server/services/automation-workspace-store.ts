@@ -208,6 +208,7 @@ function readLogsStore(runtimeRoot: string): LogsStore {
   return { logsByAutomationId: normalized };
 }
 
+// fallow-ignore-next-line complexity
 function normalizeComment(input: unknown): AutomationWorkspaceComment[] {
   if (!isRecord(input)) return [];
   const targetType = normalizeTargetType(input.targetType);

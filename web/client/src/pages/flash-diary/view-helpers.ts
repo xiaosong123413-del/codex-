@@ -14,6 +14,7 @@ interface FlashDiaryFileSummary {
   date: string;
   entryCount: number;
   modifiedAt: string;
+  thumbnailUrl?: string | null;
 }
 
 interface FlashDiaryDocumentSummary {
@@ -66,10 +67,11 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
-export interface FlashDiaryPageRefs {
+interface FlashDiaryPageRefs {
   list: HTMLElement;
   title: HTMLElement;
   meta: HTMLElement;
+  visualEditorHost: HTMLElement;
   editor: HTMLTextAreaElement;
   saveButton: HTMLButtonElement;
   memoryRefreshButton: HTMLButtonElement;
@@ -109,10 +111,11 @@ export function applyDiaryView(refs: FlashDiaryPageRefs, page: FlashDiaryPageRes
   state.view = "diary";
   refs.title.textContent = page.title;
   refs.meta.textContent = `${formatTime(page.modifiedAt)} · ${page.entryCount} 条记录`;
+  refs.visualEditorHost.hidden = false;
   refs.editor.value = page.raw;
   refs.editor.placeholder = "尚未加载日记";
   refs.editor.readOnly = false;
-  refs.editor.hidden = false;
+  refs.editor.hidden = true;
   refs.memoryLayout.hidden = true;
   refs.saveButton.hidden = false;
   refs.saveButton.disabled = true;
@@ -129,6 +132,7 @@ export function applyDocumentView(
   state.view = "document";
   refs.title.textContent = page.title;
   refs.meta.textContent = formatDocumentMeta(summary);
+  refs.visualEditorHost.hidden = true;
   refs.editor.value = page.raw;
   refs.editor.placeholder = "文档内容";
   refs.editor.readOnly = false;
@@ -144,6 +148,7 @@ export function applyMemoryView(refs: FlashDiaryPageRefs, page: FlashDiaryMemory
   refs.title.textContent = page.title;
   refs.meta.textContent = `${formatTime(page.modifiedAt)} · 已处理到 ${page.lastAppliedDiaryDate ?? "尚未写入日记"}`;
   refs.memoryBody.innerHTML = page.html;
+  refs.visualEditorHost.hidden = true;
   refs.editor.hidden = true;
   refs.memoryLayout.hidden = false;
   refs.saveButton.hidden = true;
@@ -163,6 +168,7 @@ export function resetView(
   selectionToolbar.reset();
   refs.title.textContent = "未选中文档";
   refs.meta.textContent = "请从左侧选择一篇日记、十二个问题或 Memory。";
+  refs.visualEditorHost.hidden = true;
   refs.editor.value = "";
   refs.editor.placeholder = "尚未加载日记";
   refs.editor.readOnly = false;
@@ -176,10 +182,11 @@ export function resetView(
 }
 
 export function renderList(list: HTMLElement, state: FlashDiaryPageState, showDiaryEmpty = false): void {
+  const diaryItems = state.items.map((item) => renderDiaryListItem(item, item.path === state.currentPath));
   const items = [
     renderDocumentItem(state.twelveQuestions, state.currentPath === TWELVE_QUESTIONS_PATH),
     renderMemoryItem(state.memory, state.currentPath === MEMORY_PATH),
-    ...state.items.map((item) => renderDiaryListItem(item, item.path === state.currentPath)),
+    diaryItems.length > 0 ? `<div class="flash-diary-page__timeline" data-flash-diary-timeline>${diaryItems.join("")}</div>` : "",
   ];
   if (showDiaryEmpty || state.items.length === 0) {
     items.push(`<div class="flash-diary-page__empty">还没有闪念日记。</div>`);
@@ -266,11 +273,17 @@ function renderMemoryItem(item: FlashDiaryMemorySummary, active: boolean): strin
 }
 
 function renderDiaryListItem(item: FlashDiaryFileSummary, active: boolean): string {
+  const thumbnail = item.thumbnailUrl
+    ? `<span class="flash-diary-page__timeline-thumb"><img src="${escapeHtml(item.thumbnailUrl)}" alt=""></span>`
+    : `<span class="flash-diary-page__timeline-dot">${escapeHtml(item.date.slice(-2))}</span>`;
   return `
-    <button type="button" class="flash-diary-page__list-item${active ? " is-active" : ""}" data-flash-diary-path="${escapeHtml(item.path)}">
-      <strong>${escapeHtml(item.date)}</strong>
-      <span>${item.entryCount} 条记录</span>
-      <span>${escapeHtml(formatTime(item.modifiedAt))}</span>
+    <button type="button" class="flash-diary-page__timeline-item${active ? " is-active" : ""}" data-flash-diary-path="${escapeHtml(item.path)}">
+      <span class="flash-diary-page__timeline-marker">${thumbnail}</span>
+      <span class="flash-diary-page__timeline-copy">
+        <strong>${escapeHtml(item.date)}</strong>
+        <span>${item.entryCount} 条记录</span>
+        <span>${escapeHtml(formatTime(item.modifiedAt))}</span>
+      </span>
     </button>
   `;
 }

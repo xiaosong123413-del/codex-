@@ -81,6 +81,49 @@ describe("Cloudflare service adapters", () => {
     expect(output).toBe("REST answer");
   });
 
+  it("parses OpenAI-compatible Cloudflare text responses", async () => {
+    stubCloudflareEnv({
+      CLOUDFLARE_WORKER_URL: undefined,
+      CLOUDFLARE_REMOTE_TOKEN: undefined,
+    });
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({
+      choices: [{
+        message: {
+          content: [
+            { type: "output_text", text: "Cloudflare " },
+            { type: "output_text", text: "block answer" },
+          ],
+        },
+      }],
+    })));
+
+    const output = await new CloudflareProvider("@cf/test/llm").complete("sys", [], 20);
+
+    expect(output).toBe("Cloudflare block answer");
+  });
+
+  it("uses final Workers AI stream text when no OpenAI delta is present", async () => {
+    stubCloudflareEnv({
+      CLOUDFLARE_WORKER_URL: undefined,
+      CLOUDFLARE_REMOTE_TOKEN: undefined,
+    });
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(
+      'data: {"result":{"response":"stream final answer"}}\n\ndata: [DONE]\n\n',
+      {
+        status: 200,
+        headers: { "content-type": "text/event-stream" },
+      },
+    )));
+    const tokens: string[] = [];
+
+    const output = await new CloudflareProvider("@cf/test/llm").stream("sys", [], 20, (token) => {
+      tokens.push(token);
+    });
+
+    expect(output).toBe("stream final answer");
+    expect(tokens).toEqual(["stream final answer"]);
+  });
+
   it("redacts configured tokens from summaries", () => {
     stubCloudflareEnv();
 
@@ -240,18 +283,23 @@ describe("Cloudflare service adapters", () => {
       expect(JSON.parse(String(init?.body))).toEqual({
         query: "query",
         max_results: 2,
-        search_depth: "basic",
+        search_depth: "advanced",
         include_answer: false,
-        include_raw_content: false,
+        include_raw_content: true,
       });
       return jsonResponse({
-        results: [{ title: "Tavily Result", url: "https://example.com/tavily", content: "Content" }],
+        results: [{
+          title: "Tavily Result",
+          url: "https://example.com/tavily",
+          content: "Content",
+          raw_content: "Raw content",
+        }],
       });
     }));
 
     await expect(searchWebExternal("query", 2)).resolves.toEqual({
       ok: true,
-      data: [{ title: "Tavily Result", url: "https://example.com/tavily", snippet: "Content" }],
+      data: [{ title: "Tavily Result", url: "https://example.com/tavily", snippet: "Raw content" }],
     });
   });
 

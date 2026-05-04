@@ -103,7 +103,7 @@ function renderTopBar(
 ): string {
   return `
     <header class="about-me-profile__topbar">
-      <a class="about-me-profile__brand" href="${wikiHref("wiki/about-me.md")}">
+      <a class="about-me-profile__brand" href="${wikiHref("wiki/个人信息档案/about-me.md")}">
         <span class="about-me-profile__brand-mark">S</span>
         <span class="about-me-profile__brand-copy">
           <strong>${escapeHtml(title)}</strong>

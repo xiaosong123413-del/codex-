@@ -20,4 +20,21 @@ describe("workspace task-plan layout css", () => {
       /\.workspace-page\[data-workspace-mode="task-plan"\]\s+\.workspace-page__body\s*\{[\s\S]*grid-template-rows:\s*minmax\(0,\s*1fr\);[\s\S]*min-height:\s*0;/,
     );
   });
+
+  it("lets the work-log document tree resize freely and collapse to the drag rail", () => {
+    const source = readFileSync(path.join(process.cwd(), "web", "client", "src", "pages", "workspace", "index.ts"), "utf8");
+    const styles = readFileSync(path.join(process.cwd(), "web", "client", "styles.css"), "utf8");
+
+    expect(source).toContain("maxWidth: 420");
+    expect(source).toContain("minWidth: 1");
+    expect(source).toContain("WORKSPACE_TREE_COLLAPSE_WIDTH = 24");
+    expect(source).toContain("data-workspace-tree-collapsed");
+    expect(styles).toMatch(
+      /\.workspace-page\[data-workspace-tree-collapsed\]\s+\.workspace-log-shell,[\s\S]*grid-template-columns:\s*0 10px minmax\(0,\s*1fr\);/,
+    );
+    expect(source).toContain("wiki-page__path-tree workspace-doc-tree__path-tree");
+    expect(styles).toMatch(
+      /\.workspace-doc-tree__wiki-link\s*\{[\s\S]*color:\s*#0645ad;[\s\S]*text-overflow:\s*ellipsis;/,
+    );
+  });
 });

@@ -1,0 +1,229 @@
+/**
+ * Settings dialog and Obsidian-style settings navigation.
+ *
+ * These rules sit after the legacy settings styles so the same settings page
+ * can render either as a full page route or inside the rail-launched dialog.
+ */
+
+.settings-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #eef2f7;
+}
+
+.settings-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.settings-dialog__panel {
+  position: relative;
+  z-index: 1;
+  width: min(1180px, calc(100vw - 48px));
+  height: min(780px, calc(100vh - 48px));
+  overflow: hidden;
+  border: 1px solid #d9d9df;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
+}
+
+.settings-dialog__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #5f6368;
+  cursor: pointer;
+}
+
+.settings-dialog__close:hover {
+  background: #ececef;
+  color: #202124;
+}
+
+.settings-dialog__content,
+.settings-dialog .settings-page {
+  height: 100%;
+  min-height: 0;
+}
+
+.settings-page {
+  --settings-font-family: "Inter", "Noto Sans SC", "Microsoft YaHei UI", sans-serif;
+  --settings-font-size: 15px;
+  --settings-caption-size: 13px;
+  --settings-title-size: 28px;
+  --settings-section-title-size: 22px;
+  --settings-item-title-size: 20px;
+  --settings-icon-size: 18px;
+  --settings-icon-button-size: 34px;
+  --settings-toggle-width: 48px;
+  --settings-toggle-height: 28px;
+  --settings-toggle-knob-size: 22px;
+  --settings-toggle-offset: 3px;
+  --settings-toggle-translate: 20px;
+  font-family: var(--settings-font-family);
+  font-size: var(--settings-font-size);
+  line-height: 1.5;
+}
+
+.settings-page h1,
+.settings-page h2,
+.settings-page h3 {
+  letter-spacing: 0;
+  line-height: 1.25;
+}
+
+.settings-page h1,
+.settings-page h2 {
+  font-size: var(--settings-section-title-size);
+}
+
+.settings-page h3 {
+  font-size: var(--settings-item-title-size);
+}
+
+.settings-page__title {
+  font-size: var(--settings-title-size);
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.settings-page p,
+.settings-page button,
+.settings-page input,
+.settings-page select,
+.settings-page textarea {
+  font-size: var(--settings-font-size);
+}
+
+.settings-page .eyebrow,
+.settings-page .settings-sidebar__group-title {
+  font-size: var(--settings-caption-size);
+}
+
+.settings-page .lucide-icon,
+.settings-dialog__close .lucide-icon {
+  width: var(--settings-icon-size);
+  height: var(--settings-icon-size);
+}
+
+.settings-page .icon-btn {
+  width: var(--settings-icon-button-size);
+  height: var(--settings-icon-button-size);
+}
+
+.settings-page .settings-switch,
+.settings-page .settings-plugin-switch {
+  width: var(--settings-toggle-width);
+  height: var(--settings-toggle-height);
+}
+
+.settings-page .settings-switch::before,
+.settings-page .settings-plugin-switch span,
+.settings-page .settings-plugin-switch::before {
+  top: var(--settings-toggle-offset);
+  left: var(--settings-toggle-offset);
+  width: var(--settings-toggle-knob-size);
+  height: var(--settings-toggle-knob-size);
+}
+
+.settings-page .settings-switch.is-on::before,
+.settings-page .settings-plugin-switch.is-on span {
+  transform: translateX(var(--settings-toggle-translate));
+}
+
+.settings-sidebar__header {
+  display: none;
+}
+
+.settings-sidebar__nav,
+.settings-sidebar__group {
+  display: grid;
+}
+
+.settings-sidebar__nav {
+  gap: 26px;
+}
+
+.settings-sidebar__group {
+  gap: 4px;
+}
+
+.settings-sidebar__group-title {
+  margin: 0 0 8px;
+  padding: 0 10px;
+  color: #9a9a9f;
+  font-weight: 800;
+}
+
+.settings-sidebar__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  border-radius: 6px;
+  padding: 0 10px;
+  font-weight: 500;
+}
+
+.settings-sidebar__item .lucide-icon {
+  flex: 0 0 auto;
+  color: #666a70;
+}
+
+.settings-sidebar__item--plugin {
+  padding-left: 12px;
+}
+
+.settings-sidebar__item[data-active="true"] {
+  background: #e9e9ec;
+  color: #1f2328;
+}
+
+.settings-sidebar__item[data-active="true"] .lucide-icon {
+  color: #1f2328;
+}
+
+.settings-plugins__header {
+  display: none;
+}
+
+.settings-plugin-preferences,
+.settings-plugin-installed {
+  width: 100%;
+}
+
+@media (max-width: 760px) {
+  .settings-dialog {
+    padding: 12px;
+  }
+
+  .settings-dialog__panel {
+    width: calc(100vw - 24px);
+    height: calc(100vh - 24px);
+  }
+
+  .settings-page--dialog.settings-page--with-sidebar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-page--dialog .settings-sidebar,
+  .settings-page--dialog .settings-sidebar-resize {
+    display: none;
+  }
+}

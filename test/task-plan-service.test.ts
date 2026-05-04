@@ -21,6 +21,7 @@ import {
   saveTaskPlanStatusSummary,
   saveTaskPlanText,
 } from "../web/server/services/task-plan-service.js";
+import { generateTaskPoolCandidates } from "../web/server/services/task-pool-generation-service.js";
 import { writeTaskPlanState } from "../web/server/services/task-plan-store.js";
 
 const roots: string[] = [];
@@ -109,18 +110,49 @@ describe("task plan service", () => {
     const result = await saveTaskPlanPool({
       items: [
         { id: "pool-manual-1", title: "手动新增任务", priority: "mid", source: "手动新增" },
-        { id: "pool-manual-2", title: "来自工作日志的任务", priority: "low", source: "工作日志" },
+        {
+          id: "pool-manual-2",
+          title: "来自工作日志的任务",
+          priority: "low",
+          source: "工作日志",
+          domain: "知识管理",
+          project: "个人知识库",
+        },
       ],
       storageRoot: root,
     });
 
     expect(result.state.pool.items).toEqual([
-      { id: "pool-manual-1", title: "手动新增任务", priority: "mid", source: "手动新增" },
-      { id: "pool-manual-2", title: "来自工作日志的任务", priority: "low", source: "工作日志" },
+      {
+        id: "pool-manual-1",
+        title: "手动新增任务",
+        priority: "mid",
+        source: "手动新增",
+        stageId: "stage:待分组领域:未归类项目:待推进",
+      },
+      {
+        id: "pool-manual-2",
+        title: "来自工作日志的任务",
+        priority: "low",
+        source: "工作日志",
+        domain: "知识管理",
+        project: "个人知识库",
+        stageId: "stage:知识管理:个人知识库:待推进",
+      },
+    ]);
+    expect(result.state.pool.stages).toEqual([
+      { id: "stage:待分组领域:未归类项目:待推进", title: "待推进", domain: "待分组领域", project: "未归类项目", order: 0 },
+      { id: "stage:知识管理:个人知识库:待推进", title: "待推进", domain: "知识管理", project: "个人知识库", order: 0 },
     ]);
 
     const persisted = await readCurrentTaskPlanState({ storageRoot: root });
     expect(persisted.pool.items).toEqual(result.state.pool.items);
+    const taxonomy = JSON.parse(fs.readFileSync(path.join(root, "taxonomy.json"), "utf8")) as {
+      domains: string[];
+      projects: Array<{ domain: string; name: string }>;
+    };
+    expect(taxonomy.domains).toContain("知识管理");
+    expect(taxonomy.projects).toContainEqual({ domain: "知识管理", name: "个人知识库" });
   });
 
   it("blocks generation when voice transcript is missing", async () => {
@@ -155,7 +187,7 @@ describe("task plan service", () => {
     });
   });
 
-  it("persists generated schedule items and generation id with an injected provider", async () => {
+  it("persists generated schedule items from fenced JSON with an injected provider", async () => {
     const root = makeTempRoot("task-plan-service-generate");
     const wikiRoot = path.join(root, "wiki-root");
     const projectRoot = path.join(root, "project-root");
@@ -176,12 +208,13 @@ describe("task plan service", () => {
       },
     }, { storageRoot: root });
 
-    const provider = createProvider(JSON.stringify({
+    const generatedPayload = JSON.stringify({
       items: [
         { id: "generated-1", title: "完成需求文档初稿", startTime: "09:00", priority: "high" },
         { id: "generated-2", title: "整理用户反馈并归类", startTime: "14:00", priority: "mid" },
       ],
-    }));
+    });
+    const provider = createProvider(`\`\`\`json\n${generatedPayload}\n\`\`\``);
 
     const result = await generateTaskPlan({
       projectRoot,
@@ -537,6 +570,66 @@ describe("task plan service", () => {
     const state = await readCurrentTaskPlanState({ storageRoot: root });
     expect(state.schedule.confirmed).toBe(false);
     expect(state.morningFlow.fineTuneDone).toBe(false);
+  });
+
+  it("generates task-pool candidates from fenced JSON for only unrecorded flash diaries", async () => {
+    const root = makeTempRoot("task-pool-candidates");
+    const wikiRoot = path.join(root, "wiki-root");
+    const projectRoot = path.join(root, "project-root");
+    const diaryRoot = path.join(wikiRoot, "raw", "闪念日记");
+    fs.mkdirSync(projectRoot, { recursive: true });
+    fs.mkdirSync(diaryRoot, { recursive: true });
+    fs.writeFileSync(path.join(diaryRoot, "2026-04-25.md"), "# 2026-04-25\n\nNeed a task pool drawer.\n", "utf8");
+    fs.writeFileSync(path.join(diaryRoot, "2026-04-26.md"), "# 2026-04-26\n\nTrack generated task batches.\n", "utf8");
+
+    const initialState = await readCurrentTaskPlanState({ storageRoot: root });
+    const duplicateTitle = initialState.pool.items[0]?.title ?? "duplicate";
+    const generatedPayload = JSON.stringify({
+      tasks: [
+        { title: duplicateTitle, priority: "high", owner: "me", reason: "Already exists." },
+        {
+          title: "Build task-pool generation history",
+          priority: "mid",
+          owner: "ai",
+          reason: "Both new diaries mention batch tracking.",
+          domain: "Personal system",
+          project: "Task pool",
+          dueDate: "05-09",
+        },
+      ],
+    });
+    const capture = createCapturingProvider(`\`\`\`json\n${generatedPayload}\n\`\`\``);
+
+    const result = await generateTaskPoolCandidates({
+      projectRoot,
+      wikiRoot,
+      storageRoot: root,
+      provider: capture.provider,
+      now: new Date("2026-04-28T02:30:00.000Z"),
+    });
+
+    expect(result.generationRecord?.diaryDates).toEqual(["2026-04-25", "2026-04-26"]);
+    expect(result.generationRecord?.createdTaskIds).toHaveLength(1);
+    expect(result.generationRecord?.skippedDuplicateTitles).toEqual([duplicateTitle]);
+    const candidate = result.state.pool.items.find((item) => item.title === "Build task-pool generation history");
+    expect(candidate).toMatchObject({
+      zone: "candidate",
+      owner: "ai",
+      source: "AI 生成",
+      createdAt: "2026-04-28T02:30:00.000Z",
+      generatedReason: "Both new diaries mention batch tracking.",
+    });
+    expect(capture.calls[0]?.messages[0]?.content).toContain("2026-04-25");
+    expect(capture.calls[0]?.messages[0]?.content).toContain("2026-04-26");
+    expect(capture.calls[0]?.system).toContain("结合YYYY-M-D日记说");
+
+    const second = await generateTaskPoolCandidates({
+      projectRoot,
+      wikiRoot,
+      storageRoot: root,
+      provider: createProvider(JSON.stringify({ tasks: [] })),
+    });
+    expect(second.generationRecord).toBeNull();
   });
 
   it("rejects whitespace-only schedule save fields with a structured 400 payload", async () => {

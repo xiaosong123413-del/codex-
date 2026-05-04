@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI 维护的项目层级</title>
+  <style>
+    :root {
+      --bg: #f5f6f8;
+      --paper: #fff;
+      --ink: #1f2329;
+      --muted: #646a73;
+      --weak: #8f959e;
+      --line: #dee0e3;
+      --soft-line: #eff0f1;
+      --hover: #f2f3f5;
+      --blue: #3370ff;
+      --blue-soft: #e8f0ff;
+      --green: #2f9e61;
+      --green-soft: #eaf8ef;
+      --amber: #b7791f;
+      --amber-soft: #fff4de;
+      --red: #d83931;
+      --red-soft: #fff0ee;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr) 248px;
+      min-height: 100vh;
+    }
+
+    .sidebar,
+    .rightbar {
+      background: #fbfbfc;
+    }
+
+    .sidebar {
+      border-right: 1px solid var(--soft-line);
+      padding: 16px 12px;
+    }
+
+    .rightbar {
+      border-left: 1px solid var(--soft-line);
+      padding: 18px 16px;
+    }
+
+    .side-title,
+    .right-title {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .side-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px 10px;
+    }
+
+    .icon-btn {
+      width: 26px;
+      height: 26px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .search {
+      margin: 0 8px 12px;
+      padding: 8px 10px;
+      border: 1px solid var(--soft-line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--weak);
+      font-size: 12px;
+    }
+
+    .tree {
+      display: grid;
+      gap: 2px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .node {
+      position: relative;
+      display: grid;
+      gap: 2px;
+      min-height: 44px;
+      padding: 8px;
+      border-radius: 6px;
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    .node span {
+      color: var(--weak);
+      font-size: 12px;
+    }
+
+    .node.project { margin-left: 16px; }
+    .node.task { margin-left: 32px; }
+    .node.action { margin-left: 48px; }
+
+    .node::before {
+      position: absolute;
+      top: 21px;
+      left: -8px;
+      width: 8px;
+      height: 1px;
+      background: #c7ccd3;
+      content: "";
+    }
+
+    .node:first-child::before { display: none; }
+
+    .node.active {
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-weight: 700;
+    }
+
+    .auto {
+      display: inline-block;
+      width: fit-content;
+      margin-top: 3px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: var(--green-soft);
+      color: var(--green);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .manual {
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
+
+    .document-area {
+      min-width: 0;
+      background: var(--paper);
+    }
+
+    .doc {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 42px 48px 72px;
+    }
+
+    .mobile-path {
+      display: none;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--soft-line);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .crumb {
+      color: var(--weak);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    h1 {
+      margin: 12px 0 10px;
+      font-size: 32px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 680px;
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .properties {
+      display: grid;
+      grid-template-columns: 104px 1fr;
+      gap: 8px 12px;
+      margin: 18px 0 30px;
+      padding: 12px 0;
+      border-top: 1px solid var(--soft-line);
+      border-bottom: 1px solid var(--soft-line);
+    }
+
+    .prop-key {
+      color: var(--weak);
+      font-size: 13px;
+    }
+
+    .prop-value {
+      color: var(--ink);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: var(--hover);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .tag.blue { background: var(--blue-soft); color: var(--blue); }
+    .tag.green { background: var(--green-soft); color: var(--green); }
+    .tag.amber { background: var(--amber-soft); color: var(--amber); }
+    .tag.red { background: var(--red-soft); color: var(--red); }
+
+    .doc-section {
+      position: relative;
+      margin-top: 34px;
+    }
+
+    .doc-section::before {
+      position: absolute;
+      top: 4px;
+      left: -24px;
+      color: #c0c4cc;
+      font-size: 18px;
+      content: "+";
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.35;
+      letter-spacing: 0;
+    }
+
+    .section-desc {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .recorder {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .recorder-head {
+      display: grid;
+      grid-template-columns: 108px 1fr 110px;
+      gap: 0;
+      border-bottom: 1px solid var(--line);
+      background: #fafafa;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .recorder-row {
+      display: grid;
+      grid-template-columns: 108px 1fr 110px;
+      border-bottom: 1px solid var(--soft-line);
+      font-size: 14px;
+    }
+
+    .recorder-row:last-child { border-bottom: 0; }
+
+    .recorder-head div,
+    .recorder-row div {
+      padding: 11px 12px;
+      line-height: 1.62;
+    }
+
+    .recorder-row div + div,
+    .recorder-head div + div {
+      border-left: 1px solid var(--soft-line);
+    }
+
+    .record-meta {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .block-table {
+      width: 100%;
+      margin-top: 14px;
+      border-collapse: collapse;
+      border-top: 1px solid var(--line);
+      font-size: 14px;
+    }
+
+    .block-table tr {
+      border-bottom: 1px solid var(--soft-line);
+    }
+
+    .block-table th,
+    .block-table td {
+      padding: 12px 10px;
+      text-align: left;
+      vertical-align: top;
+      line-height: 1.62;
+    }
+
+    .block-table th {
+      width: 116px;
+      color: var(--muted);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .ai-box {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-left: 3px solid var(--green);
+      background: #f8fcfa;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .add-row {
+      margin-top: 8px;
+      color: var(--weak);
+      font-size: 13px;
+    }
+
+    .outline {
+      display: grid;
+      gap: 6px;
+      margin: 10px 0 22px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .outline li {
+      padding: 5px 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .outline li.active {
+      color: var(--blue);
+      font-weight: 700;
+    }
+
+    .rule {
+      display: grid;
+      gap: 10px;
+      padding-top: 16px;
+      border-top: 1px solid var(--soft-line);
+    }
+
+    .rule p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    @media (max-width: 1040px) {
+      .shell { grid-template-columns: 1fr; }
+      .sidebar, .rightbar { display: none; }
+      .mobile-path { display: block; }
+      .doc { padding: 28px 22px 56px; }
+      h1 { font-size: 28px; }
+    }
+
+    @media (max-width: 640px) {
+      .properties { grid-template-columns: 82px 1fr; }
+      .recorder-head { display: none; }
+      .recorder-row { grid-template-columns: 1fr; }
+      .recorder-row div + div { border-left: 0; border-top: 1px solid var(--soft-line); }
+      .block-table,
+      .block-table tbody,
+      .block-table tr,
+      .block-table th,
+      .block-table td {
+        display: block;
+        width: 100%;
+      }
+      .block-table th { padding-bottom: 2px; }
+      .block-table td { padding-top: 2px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="side-title">
+        <span>项目空间</span>
+        <button class="icon-btn" aria-label="新增">+</button>
+      </div>
+      <div class="search">搜索记录、任务、资源</div>
+      <ul class="tree">
+        <li class="node"><strong>领域</strong><span>个人知识管理</span><em class="auto">AI 维护</em></li>
+        <li class="node project"><strong>项目</strong><span>LLM Wiki 改版</span><em class="auto">AI 维护</em></li>
+        <li class="node task"><strong>任务</strong><span>侧栏信息架构</span><em class="auto">AI 维护</em></li>
+        <li class="node action active"><strong>行动记录器</strong><span>今天做了什么</span><em class="auto manual">手动填写</em></li>
+      </ul>
+    </aside>
+
+    <main class="document-area">
+      <div class="mobile-path">行动记录器 · AI 自动维护任务 / 项目 / 领域</div>
+      <article class="doc">
+        <div class="crumb">个人知识管理 / LLM Wiki 改版 / 侧栏信息架构</div>
+        <h1>行动执行记录器</h1>
+        <p class="lead">用户只维护最底层的行为记录。AI 根据这些记录向上维护任务、项目、领域的过去记录、现在判断和未来意图。</p>
+
+        <section class="properties" aria-label="维护规则">
+          <div class="prop-key">人工输入</div>
+          <div class="prop-value"><span class="tag blue">行动执行记录</span></div>
+          <div class="prop-key">AI 维护</div>
+          <div class="prop-value">任务摘要、项目判断、领域趋势、资源索引、未来建议。</div>
+          <div class="prop-key">可编辑性</div>
+          <div class="prop-value">用户可以改 AI 生成的摘要；AI 下次维护时保留人工修正。</div>
+          <div class="prop-key">更新依据</div>
+          <div class="prop-value">只从下一级记录、人工修正、明确资源链接中抽取，不凭空补业务结论。</div>
+        </section>
+
+        <section class="doc-section">
+          <h2>唯一人工输入：行动记录</h2>
+          <p class="section-desc">这里像飞书表格块或轻量数据库。用户只写做了什么、结果是什么、卡在哪里、用了什么资源。</p>
+          <div class="recorder">
+            <div class="recorder-head">
+              <div>时间</div>
+              <div>行为记录</div>
+              <div>归属</div>
+            </div>
+            <div class="recorder-row">
+              <div><strong>今天</strong><br><span class="record-meta">现在判断</span></div>
+              <div>把“矩阵式项目驾驶舱”改成“飞书式文档面板”，发现文档页更清爽，但仍需要明确 AI 如何自动维护上层。</div>
+              <div><span class="tag blue">侧栏任务</span></div>
+            </div>
+            <div class="recorder-row">
+              <div><strong>今天</strong><br><span class="record-meta">问题</span></div>
+              <div>如果领域、项目、任务都让用户手动写，会变成维护负担；真正应该手写的是执行现场。</div>
+              <div><span class="tag red">卡点</span></div>
+            </div>
+            <div class="recorder-row">
+              <div><strong>今天</strong><br><span class="record-meta">资源</span></div>
+              <div>可用资源包括旧侧栏截图、当前对话、HTML 草图、已有 WebUI 侧栏和飞书文档式交互经验。</div>
+              <div><span class="tag green">资源</span></div>
+            </div>
+          </div>
+          <div class="add-row">+ 继续记录一次行动</div>
+        </section>
+
+        <section class="doc-section">
+          <h2>AI 维护：任务层</h2>
+          <p class="section-desc">任务从行动记录中更新，不要求用户单独写任务总结。</p>
+          <table class="block-table">
+            <tbody>
+              <tr>
+                <th>任务</th>
+                <td>侧栏信息架构</td>
+              </tr>
+              <tr>
+                <th>过去记录</th>
+                <td>已经尝试目录树、三方案对比、时间矩阵、飞书式文档面板。</td>
+              </tr>
+              <tr>
+                <th>现在判断</th>
+                <td>任务重点从“怎么展示四层结构”转为“用户只写行动，AI 向上维护结构”。</td>
+              </tr>
+              <tr>
+                <th>未来意图</th>
+                <td>定义行动记录器字段，并验证它能否稳定生成任务摘要。</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="ai-box">AI 维护痕迹：这段来自 3 条行动记录，其中“手动维护负担”被识别为当前核心问题。</div>
+        </section>
+
+        <section class="doc-section">
+          <h2>AI 维护：项目层</h2>
+          <p class="section-desc">项目从任务状态中更新，重点是当前判断和下一步方向。</p>
+          <table class="block-table">
+            <tbody>
+              <tr>
+                <th>项目</th>
+                <td>LLM Wiki 改版</td>
+              </tr>
+              <tr>
+                <th>过去记录</th>
+                <td>项目从知识目录整理，逐步转向“执行记录驱动的知识维护”。</td>
+              </tr>
+              <tr>
+                <th>现在判断</th>
+                <td>产品的核心入口应是行动执行记录器，而不是要求用户维护完整项目文档。</td>
+              </tr>
+              <tr>
+                <th>未来意图</th>
+                <td>让 AI 把执行记录沉淀成项目脉络、资源索引、问题列表和下一步建议。</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="ai-box">AI 维护痕迹：项目判断来自任务“侧栏信息架构”的最新变化，而不是用户直接填写项目文档。</div>
+        </section>
+
+        <section class="doc-section">
+          <h2>AI 维护：领域层</h2>
+          <p class="section-desc">领域从多个项目中抽象趋势，更新频率更低，不参与日常填写。</p>
+          <table class="block-table">
+            <tbody>
+              <tr>
+                <th>领域</th>
+                <td>个人知识管理</td>
+              </tr>
+              <tr>
+                <th>过去记录</th>
+                <td>过去更偏向收集、分类、整理信息。</td>
+              </tr>
+              <tr>
+                <th>现在判断</th>
+                <td>当前更需要把知识和行动连接起来：记录行为，自动沉淀理解。</td>
+              </tr>
+              <tr>
+                <th>未来意图</th>
+                <td>形成一个从行动到任务、从任务到项目、从项目到领域的自动维护系统。</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="ai-box">AI 维护痕迹：领域变化只在多个项目反复出现同类模式时更新，避免一次行动就改长期方向。</div>
+        </section>
+      </article>
+    </main>
+
+    <aside class="rightbar">
+      <div class="right-title">页面结构</div>
+      <ul class="outline">
+        <li class="active">行动记录</li>
+        <li>AI 维护：任务层</li>
+        <li>AI 维护：项目层</li>
+        <li>AI 维护：领域层</li>
+      </ul>
+
+      <div class="right-title">维护规则</div>
+      <div class="rule">
+        <p>用户只写行动层，减少维护负担。</p>
+        <p>AI 从下往上维护，不从上往下要求用户补文档。</p>
+        <p>每次 AI 更新都显示依据，用户可以修正。</p>
+        <p>人工修正优先级高于 AI 下次推断。</p>
+      </div>
+    </aside>
+  </div>
+</body>
+</html>

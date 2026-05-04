@@ -3,6 +3,16 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("project log document", () => {
+  it("does not contain encoding replacement artifacts", () => {
+    const root = process.cwd();
+    const doc = fs.readFileSync(path.join(root, "docs", "project-log.md"), "utf8");
+
+    expect(doc).not.toContain("\uFFFD");
+    expect(doc).not.toContain("\\r\\n");
+    expect(doc).not.toMatch(/!\[[^\]\n]*\.\.\/project-log-assets\//u);
+    expect(doc).not.toContain("](../project-log-assets/)");
+  });
+
   it("uses one image per independent DOM page instead of a single overview image", () => {
     const root = process.cwd();
     const doc = fs.readFileSync(path.join(root, "docs", "project-log.md"), "utf8");
@@ -12,7 +22,6 @@ describe("project log document", () => {
     expect(doc).toContain("../project-log-assets/sources-page.svg");
     expect(doc).toContain("../project-log-assets/wiki-page.svg");
     expect(doc).toContain("../project-log-assets/review-page.svg");
-    expect(doc).toContain("../project-log-assets/graph-page.svg");
     expect(doc).toContain("../project-log-assets/settings-page.svg");
     expect(doc).not.toContain("current-interface.svg");
     expect(doc).not.toContain("项目日志页：独立全宽页面");

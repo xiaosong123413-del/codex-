@@ -127,8 +127,21 @@ interface CLIProxyCodexAccountSelectionInput extends Partial<CLIProxyConfig> {
   enabled: unknown;
 }
 
+interface CLIProxyAccountDeleteInput extends Partial<CLIProxyConfig> {
+  projectRoot: string;
+  name: unknown;
+}
+
 interface CLIProxyAuthFileModelsInput extends Partial<CLIProxyConfig> {
   name: unknown;
+}
+
+interface CLIProxyCodexWorkerSyncInput extends Partial<CLIProxyConfig> {
+  projectRoot: string;
+  name: unknown;
+  ownerUid: unknown;
+  workerUrl: unknown;
+  remoteToken: unknown;
 }
 
 interface CLIProxyModelDescriptor {
@@ -379,6 +392,22 @@ export async function setCLIProxyAccountEnabled(
 
 export const setCLIProxyCodexAccountEnabled = setCLIProxyAccountEnabled;
 
+export async function deleteCLIProxyAccount(input: CLIProxyAccountDeleteInput): Promise<{ ok: boolean }> {
+  const name = readText(input.name);
+  if (!name) throw new Error("OAuth account name is required");
+  const authDir = path.join(cliproxyConfigDir(input.projectRoot), "auths");
+  const filePath = path.resolve(authDir, path.basename(name));
+  const resolvedAuthDir = path.resolve(authDir);
+  if (!filePath.startsWith(`${resolvedAuthDir}${path.sep}`)) {
+    throw new Error("Invalid OAuth account name.");
+  }
+  if (!fs.existsSync(filePath)) {
+    return { ok: false };
+  }
+  fs.rmSync(filePath, { force: true });
+  return { ok: true };
+}
+
 export async function getCLIProxyAuthFileModels(
   input: CLIProxyAuthFileModelsInput,
   fetcher: CLIProxyFetcher = fetch,
@@ -395,6 +424,46 @@ export async function getCLIProxyAuthFileModels(
   return {
     models: payload.models.map(readModelDescriptor).filter((model): model is CLIProxyModelDescriptor => model !== null),
   };
+}
+
+export async function syncCLIProxyCodexTokenToWorker(
+  input: CLIProxyCodexWorkerSyncInput,
+  fetcher: CLIProxyFetcher = fetch,
+): Promise<{ ok: boolean; accountName: string }> {
+  const ownerUid = readText(input.ownerUid);
+  const name = readText(input.name);
+  const workerUrl = readText(input.workerUrl)?.replace(/\/+$/, "");
+  const remoteToken = readText(input.remoteToken);
+  if (!ownerUid) throw new Error("ownerUid is required");
+  if (!name) throw new Error("Codex account name is required");
+  if (!workerUrl) throw new Error("Cloudflare Worker URL is required");
+  if (!remoteToken) throw new Error("Cloudflare Remote Token is required");
+
+  const authDir = path.join(cliproxyConfigDir(input.projectRoot), "auths");
+  const tokenFile = readCodexTokenFile(authDir, name);
+  const response = await fetcher(`${workerUrl}/mobile/codex-quota/sync-token`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${remoteToken}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      ownerUid,
+      account: {
+        name,
+        email: readText(tokenFile.email),
+        planType: readCodexPlanType(tokenFile),
+        accessToken: readText(tokenFile.access_token),
+        refreshToken: readText(tokenFile.refresh_token),
+        accountId: readText(tokenFile.account_id),
+      },
+    }),
+  });
+  const payload = await response.json().catch(() => ({})) as { ok?: unknown; error?: unknown };
+  if (!response.ok || payload.ok === false) {
+    throw new Error(readText(payload.error) ?? `Worker token sync failed: HTTP ${response.status}`);
+  }
+  return { ok: true, accountName: name };
 }
 
 async function fetchAccounts(config: CLIProxyConfig, fetcher: CLIProxyFetcher): Promise<CLIProxyAccount[]> {
@@ -421,6 +490,7 @@ async function fetchAccountsWithCodexCliImport(
   return fetchAccounts(config, fetcher);
 }
 
+// fallow-ignore-next-line complexity
 async function importCodexCliAuth(
   config: CLIProxyConfig,
   projectRoot: string,
@@ -475,6 +545,7 @@ async function importCodexCliAuth(
   return true;
 }
 
+// fallow-ignore-next-line complexity
 function readAccount(value: unknown): CLIProxyAccount | null {
   if (!isRecord(value)) return null;
   const name = readText(value.name);
@@ -617,6 +688,15 @@ function readQuotaError(payload: unknown): string | null {
   return readText(payload.error)
     ?? readText(readRecord(payload.error).message)
     ?? readText(payload.message);
+}
+
+function readCodexPlanType(tokenFile: Record<string, unknown>): string | null {
+  const direct = readText(tokenFile.plan_type);
+  if (direct) return direct;
+  const idToken = readText(tokenFile.id_token);
+  if (!idToken) return null;
+  const claims = readJwtPayload(idToken);
+  return readText(readRecord(claims["https://api.openai.com/auth"]).chatgpt_plan_type);
 }
 
 async function managementFetch(

@@ -2,20 +2,55 @@ import { attachResizeHandle } from "../../shell/resize-handle.js";
 import { renderIcon } from "../../components/icon.js";
 import { hydrateAppPublishSection, renderAppPublishSection } from "../publish/index.js";
 import {
-  bindCLIProxyControls,
   fetchCLIProxyAccountModels,
   fetchCLIProxyOAuthAccounts,
   formatCLIProxyProvider,
-  renderCLIProxyPanel,
   type CLIProxyOAuthAccountResponse,
 } from "./cli-proxy.js";
 import { readSettingsJsonPayload } from "./json.js";
 import {
   bindNetworkSearchPanel,
-  renderEmbeddingPanel,
-  renderNetworkSearchPanel,
-  renderPluginsPanel,
+  renderNetworkSearchProviderCard,
+  renderVectorSearchProviderCard,
 } from "./network-search.js";
+import {
+  bindPluginsPanel,
+  renderPluginsPanel,
+  renderPluginSidebarGroups,
+  selectPluginPanelTarget,
+  type PluginPanelTarget,
+} from "./plugin-panel.js";
+import {
+  disposeSettingsAutomationPanel,
+  mountSettingsAutomationPanel,
+  renderSettingsAutomationPanel,
+  type SettingsAutomationPanelState,
+} from "./automation-workspace-panel.js";
+import {
+  disposeSettingsProjectLogPanel,
+  mountSettingsProjectLogPanel,
+  renderSettingsProjectLogPanel,
+} from "./project-log-panel.js";
+import {
+  disposeSettingsUserGuidePanel,
+  mountSettingsUserGuidePanel,
+  renderSettingsUserGuidePanel,
+} from "./user-guide-panel.js";
+import {
+  bindRssImportPanel,
+  renderRssImportPanel,
+} from "./rss-import-panel.js";
+import {
+  bindFlashNoteImportPanel,
+  renderFlashNoteImportPanel,
+} from "./flash-note-import-panel.js";
+import {
+  DEFAULT_SHORTCUTS,
+  acceleratorFromKeyboardEvent,
+  setClientKeyboardShortcuts,
+  type AppShortcuts,
+  type ShortcutId,
+} from "../../keyboard-shortcuts.js";
 import {
   buildLlmDefaultAccountOptions,
   buildXiaohongshuImportDirState,
@@ -29,8 +64,90 @@ import {
   resolveRenderedLlmDefaultOptions,
 } from "./state-helpers.js";
 
-const DEFAULT_FLASH_DIARY_SHORTCUT = "CommandOrControl+Shift+J";
 const SETTINGS_SIDEBAR_WIDTH_KEY = "llm-wiki-settings-sidebar-width";
+interface ShortcutDefinition {
+  readonly id: ShortcutId;
+  readonly title: string;
+  readonly description: string;
+}
+
+const SETTINGS_SHORTCUTS: readonly ShortcutDefinition[] = [
+  {
+    id: "flashDiaryCapture",
+    title: "闪念日记快速记录",
+    description: "打开独立小窗口。",
+  },
+  {
+    id: "pageTextSearch",
+    title: "页面内查找",
+    description: "在当前页面内容中查找文本。",
+  },
+  {
+    id: "workflowRecorder",
+    title: "执行记录器",
+    description: "打开任务池的快捷记录窗口。",
+  },
+  {
+    id: "workspaceSave",
+    title: "工作台保存",
+    description: "保存当前正在编辑的工作台文档。",
+  },
+];
+const LLM_PROVIDER_API_TYPE_OPTIONS = [
+  "OpenAI Compatible",
+  "OpenAI Responses",
+  "Anthropic API",
+  "Gemini API",
+] as const;
+const LLM_PROVIDER_TRANSPORT_OPTIONS = [
+  "自动（推荐）",
+  "仅浏览器 fetch",
+  "仅 Obsidian requestUrl",
+  "仅桌面端 Node fetch",
+] as const;
+const LLM_PROVIDER_LABELS_STORAGE_KEY = "llm-wiki-provider-display-labels";
+const LLM_PROVIDER_OAUTH_POLL_ATTEMPTS = 150;
+const LLM_PROVIDER_OAUTH_POLL_DELAY_MS = 2000;
+const LLM_PROVIDER_OAUTH_MIN_POLL_DELAY_MS = 1000;
+
+interface LlmProviderPreset {
+  label: string;
+  hint: string;
+  provider: string;
+  baseUrl: string;
+  apiType: (typeof LLM_PROVIDER_API_TYPE_OPTIONS)[number];
+  defaultModel: string;
+  suggestedModels: readonly string[];
+}
+
+const LLM_PROVIDER_PRESETS: readonly LlmProviderPreset[] = [
+  { label: "Anthropic (Claude)", hint: "Official Claude API", provider: "anthropic", baseUrl: "https://api.anthropic.com", apiType: "Anthropic API", defaultModel: "claude-sonnet-4-20250514", suggestedModels: ["claude-sonnet-4-20250514", "claude-3-5-sonnet-latest"] },
+  { label: "OpenAI (GPT)", hint: "Official OpenAI API", provider: "openai", baseUrl: "https://api.openai.com/v1", apiType: "OpenAI Compatible", defaultModel: "gpt-4o", suggestedModels: ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "o4-mini"] },
+  { label: "Google (Gemini)", hint: "Generative Language API", provider: "gemini", baseUrl: "https://generativelanguage.googleapis.com", apiType: "Gemini API", defaultModel: "gemini-2.5-flash", suggestedModels: ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"] },
+  { label: "DeepSeek", hint: "api.deepseek.com", provider: "deepseek", baseUrl: "https://api.deepseek.com/v1", apiType: "OpenAI Compatible", defaultModel: "deepseek-chat", suggestedModels: ["deepseek-chat", "deepseek-reasoner"] },
+  { label: "Groq", hint: "api.groq.com", provider: "groq", baseUrl: "https://api.groq.com/openai/v1", apiType: "OpenAI Compatible", defaultModel: "llama-3.3-70b-versatile", suggestedModels: ["llama-3.3-70b-versatile", "openai/gpt-oss-120b", "qwen/qwen3-32b"] },
+  { label: "xAI (Grok)", hint: "api.x.ai", provider: "xai", baseUrl: "https://api.x.ai/v1", apiType: "OpenAI Compatible", defaultModel: "grok-4", suggestedModels: ["grok-4", "grok-3", "grok-code-fast-1"] },
+  { label: "NVIDIA NIM", hint: "integrate.api.nvidia.com", provider: "nvidia", baseUrl: "https://integrate.api.nvidia.com/v1", apiType: "OpenAI Compatible", defaultModel: "meta/llama-3.3-70b-instruct", suggestedModels: ["meta/llama-3.3-70b-instruct", "nvidia/llama-3.3-nemotron-super-49b-v1.5", "deepseek-ai/deepseek-v3.2", "minimaxai/minimax-m2.7", "openai/gpt-oss-120b"] },
+  { label: "Kimi (Moonshot)", hint: "api.moonshot.ai", provider: "kimi-global", baseUrl: "https://api.moonshot.ai/v1", apiType: "OpenAI Compatible", defaultModel: "kimi-k2.6", suggestedModels: ["kimi-k2.6", "kimi-k2.5", "kimi-k2-thinking", "kimi-for-coding"] },
+  { label: "Kimi (Moonshot, 中国)", hint: "api.moonshot.cn", provider: "kimi-cn", baseUrl: "https://api.moonshot.cn/v1", apiType: "OpenAI Compatible", defaultModel: "kimi-k2.6", suggestedModels: ["kimi-k2.6", "kimi-k2.5", "kimi-k2-thinking", "kimi-for-coding"] },
+  { label: "智谱 GLM (Zhipu)", hint: "open.bigmodel.cn", provider: "glm", baseUrl: "https://open.bigmodel.cn/api/paas/v4", apiType: "OpenAI Compatible", defaultModel: "glm-4.6", suggestedModels: ["glm-4.6", "glm-4.5", "glm-4.5-air", "glm-4-flash"] },
+  { label: "MiniMax (Global)", hint: "api.minimax.io/anthropic", provider: "minimax", baseUrl: "https://api.minimax.io/anthropic", apiType: "Anthropic API", defaultModel: "MiniMax-M2.7", suggestedModels: ["MiniMax-M2.7", "MiniMax-M2.5"] },
+  { label: "MiniMax (中国)", hint: "api.minimaxi.com/anthropic", provider: "minimax", baseUrl: "https://api.minimaxi.com/anthropic", apiType: "Anthropic API", defaultModel: "MiniMax-M2.7", suggestedModels: ["MiniMax-M2.7", "MiniMax-M2.5"] },
+  { label: "阿里百炼 Coding Plan", hint: "coding.dashscope.aliyuncs.com", provider: "custom", baseUrl: "https://coding.dashscope.aliyuncs.com/v1", apiType: "OpenAI Compatible", defaultModel: "qwen3.6-plus", suggestedModels: ["qwen3.6-plus", "qwen3-coder-plus", "MiniMax-M2.5", "kimi-k2.5"] },
+  { label: "小米 MiMo (Xiaomi)", hint: "api.xiaomimimo.com", provider: "custom", baseUrl: "https://api.xiaomimimo.com/v1", apiType: "OpenAI Compatible", defaultModel: "mimo-v2-pro", suggestedModels: ["mimo-v2-pro", "mimo-v2-omni", "mimo-v2-flash"] },
+  { label: "火山引擎 Ark (Volcengine)", hint: "ark.cn-beijing.volces.com/api/coding/v3", provider: "custom", baseUrl: "https://ark.cn-beijing.volces.com/api/coding/v3", apiType: "OpenAI Compatible", defaultModel: "Doubao-Seed-2.0-Code", suggestedModels: ["Doubao-Seed-2.0-Code", "Doubao-Seed-2.0-pro", "DeepSeek-V3"] },
+  { label: "小马 / 神马中转", hint: "api.whatai.cc", provider: "relay", baseUrl: "https://api.whatai.cc/v1", apiType: "OpenAI Compatible", defaultModel: "gpt-4o", suggestedModels: ["gpt-4o", "gpt-4.1", "claude-sonnet-4-20250514", "gemini-2.5-pro"] },
+  { label: "Ollama (Local)", hint: "localhost:11434", provider: "ollama", baseUrl: "http://localhost:11434/v1", apiType: "OpenAI Compatible", defaultModel: "llama3.1", suggestedModels: ["llama3.1", "qwen2.5", "deepseek-r1:latest"] },
+  { label: "Ollama Cloud", hint: "ollama.com", provider: "custom", baseUrl: "https://ollama.com/v1", apiType: "OpenAI Compatible", defaultModel: "gpt-oss:120b", suggestedModels: ["gpt-oss:120b", "gpt-oss:20b", "qwen3-coder:480b"] },
+  { label: "OpenRouter", hint: "openrouter.ai", provider: "openrouter", baseUrl: "https://openrouter.ai/api/v1", apiType: "OpenAI Compatible", defaultModel: "openai/gpt-4o", suggestedModels: ["openai/gpt-4o", "anthropic/claude-sonnet-4", "google/gemini-2.5-pro"] },
+  { label: "Custom", hint: "Any OpenAI-compatible endpoint", provider: "custom", baseUrl: "", apiType: "OpenAI Compatible", defaultModel: "gpt-4o", suggestedModels: ["gpt-4o", "claude-sonnet-4-20250514", "gemini-2.5-pro"] },
+  { label: "ChatGPT OAuth", hint: "Browser OAuth", provider: "codex-cli", baseUrl: "", apiType: "OpenAI Compatible", defaultModel: "gpt-5-codex", suggestedModels: ["gpt-5-codex"] },
+  { label: "Gemini OAuth", hint: "Gemini CLI OAuth", provider: "gemini", baseUrl: "", apiType: "Gemini API", defaultModel: "gemini-2.5-pro", suggestedModels: ["gemini-2.5-pro"] },
+];
+const LLM_PROVIDER_PRESET_OPTIONS = LLM_PROVIDER_PRESETS.map((preset) => preset.label);
+const LLM_PROVIDER_PRESET_BY_LABEL: Readonly<Record<string, LlmProviderPreset>> = Object.fromEntries(
+  LLM_PROVIDER_PRESETS.map((preset) => [preset.label, preset]),
+);
 
 interface LlmProviderConfigResponse {
   accountRef?: string;
@@ -62,6 +179,63 @@ interface LlmProviderTestResponse {
   message: string;
 }
 
+interface LlmProviderDraftInput {
+  id?: string;
+  name: string;
+  provider: string;
+  url: string;
+  key: string;
+  model: string;
+  enabled: boolean;
+}
+
+interface LlmProviderOAuthStatusResponse {
+  status: "ok" | "wait" | "error";
+  error?: string;
+}
+
+interface LlmProviderOAuthStartResponse {
+  url: string;
+  state: string;
+  userCode?: string;
+  pollIntervalSeconds?: number;
+}
+
+interface LlmProviderOAuthFlow {
+  state: string;
+  pollDelayMs: number;
+}
+
+interface LlmProviderOAuthAccountResponse extends CLIProxyOAuthAccountResponse {
+  accountRef?: string;
+  connectionText?: string;
+}
+
+interface LlmProviderCardView {
+  accountRef: string;
+  accountName: string;
+  displayId: string;
+  provider: string;
+  source: "api" | "oauth" | "cloudflare";
+  enabled: boolean;
+  title: string;
+  connectionText: string;
+  description: string;
+  model: string;
+  apps: readonly AppDefinitionResponse[];
+  embeddingModels: readonly string[];
+  canManage: boolean;
+}
+
+interface LlmCloudflareProviderResponse {
+  accountRef: "cloudflare:workers-ai";
+  configured: boolean;
+  runtime: "worker" | "workers-ai-rest" | "unconfigured";
+  endpoint: string | null;
+  aiModel: string | null;
+  embeddingModels: string[];
+}
+
 interface AppConfigResponse {
   apps: AppDefinitionResponse[];
   defaultAppId: string | null;
@@ -80,53 +254,6 @@ interface AppDefinitionResponse {
   prompt: string;
   enabled: boolean;
   updatedAt: string;
-}
-
-interface AutomationConfigResponse {
-  automations: AutomationDefinitionResponse[];
-  path?: string;
-}
-
-interface AutomationFlowNodeResponse {
-  id: string;
-  type: "trigger" | "action" | "branch" | "merge";
-  title: string;
-  description: string;
-  appId?: string;
-  modelMode: "explicit" | "default";
-  model?: string;
-}
-
-interface AutomationFlowEdgeResponse {
-  id: string;
-  source: string;
-  target: string;
-}
-
-interface AutomationFlowBranchResponse {
-  id: string;
-  title: string;
-  sourceNodeId: string;
-  mergeNodeId?: string;
-  nodeIds: string[];
-}
-
-interface AutomationDefinitionResponse {
-  id: string;
-  name: string;
-  summary: string;
-  icon: string;
-  trigger: "schedule" | "webhook" | "message";
-  appId: string;
-  enabled: boolean;
-  schedule: string;
-  webhookPath: string;
-  updatedAt: string;
-  flow: {
-    nodes: AutomationFlowNodeResponse[];
-    edges: AutomationFlowEdgeResponse[];
-    branches: AutomationFlowBranchResponse[];
-  };
 }
 
 interface AgentAccountOption {
@@ -174,11 +301,14 @@ interface XhsFavoritesSyncResponse extends XhsActionResponse {
 type ImportSource =
   | "xiaohongshu"
   | "wechat"
+  | "flash-note"
   | "douyin"
   | "bilibili"
   | "xiaoyuzhou"
   | "rss"
   | "x";
+
+const IMPORT_SOURCE_UNAVAILABLE_MESSAGE = "之后将支持，现在暂不开放。";
 
 interface SyncRepoState {
   targetRepoPath: string;
@@ -255,21 +385,21 @@ type SettingsSection =
   | "app-config"
   | "automation"
   | "workspace-sync"
-  | "network-search"
-  | "embedding"
   | "plugins"
   | "shortcuts"
+  | "user-guide"
   | "project-log";
+
+type SettingsPluginKind = "core" | "third-party";
 
 const SETTINGS_SECTION_VALUES = new Set<SettingsSection>([
   "llm",
   "app-config",
   "automation",
   "workspace-sync",
-  "network-search",
-  "embedding",
   "plugins",
   "shortcuts",
+  "user-guide",
   "project-log",
 ]);
 
@@ -290,11 +420,21 @@ const PROVIDERS: readonly ProviderDefinition[] = [
   { id: "kimi-global", name: "Kimi (Moonshot)", endpoint: "https://api.moonshot.ai/v1", note: "Moonshot Global" },
   { id: "kimi-cn", name: "Kimi (Moonshot, \u4e2d\u56fd)", endpoint: "https://api.moonshot.cn/v1", note: "Moonshot China" },
   { id: "glm", name: "\u667a\u8c31 GLM (Zhipu)", endpoint: "https://open.bigmodel.cn/api/paas/v4", note: "Zhipu AI" },
-  { id: "minimax", name: "MiniMax", endpoint: "https://api.minimax.chat/v1", note: "MiniMax API" },
+  { id: "nvidia", name: "NVIDIA NIM", endpoint: "https://integrate.api.nvidia.com/v1", note: "NVIDIA API Catalog" },
+  { id: "bailian-cn", name: "\u963f\u91cc\u4e91\u767e\u70bc\uff08\u4e2d\u56fd\u7ad9\uff09", endpoint: "https://dashscope.aliyuncs.com/compatible-mode/v1", note: "DashScope OpenAI compatible" },
+  { id: "bailian-us", name: "\u963f\u91cc\u4e91\u767e\u70bc\uff08\u7f8e\u56fd\uff09", endpoint: "https://dashscope-us.aliyuncs.com/compatible-mode/v1", note: "DashScope OpenAI compatible" },
+  { id: "bailian-intl", name: "\u963f\u91cc\u4e91\u767e\u70bc\uff08\u56fd\u9645\u7ad9\uff09", endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1", note: "DashScope OpenAI compatible" },
+  { id: "openrouter", name: "OpenRouter", endpoint: "https://openrouter.ai/api/v1", note: "OpenAI-compatible router" },
+  { id: "perplexity", name: "Perplexity", endpoint: "https://api.perplexity.ai", note: "Sonar API" },
+  { id: "mistral", name: "Mistral AI", endpoint: "https://api.mistral.ai/v1", note: "Mistral API" },
+  { id: "morph", name: "Morph", endpoint: "https://api.morphllm.com/v1", note: "Morph API" },
+  { id: "minimax", name: "MiniMax", endpoint: "https://api.minimax.io/anthropic", note: "MiniMax Anthropic Messages API" },
   { id: "ollama", name: "Ollama", endpoint: "http://localhost:11434/v1", note: "\u672c\u5730\u6a21\u578b" },
+  { id: "lm-studio", name: "LM Studio", endpoint: "http://localhost:1234/v1", note: "\u672c\u5730 OpenAI-compatible" },
   { id: "custom", name: "\u81ea\u5b9a\u4e49 OpenAI-compatible", endpoint: "custom endpoint", note: "\u517c\u5bb9 /v1/chat/completions" },
   { id: "relay", name: "\u4e2d\u8f6c\u7ad9 API", endpoint: "OpenAI-compatible relay", note: "\u652f\u6301\u4f59\u989d\u67e5\u8be2\u63a5\u53e3" },
   { id: "codex-cli", name: "Codex CLI", endpoint: "local executable", note: "\u8bfb\u53d6\u672c\u673a Codex CLI \u767b\u5f55\u548c\u4f59\u989d\u72b6\u6001" },
+  { id: "cloudflare", name: "Cloudflare Workers AI", endpoint: "Cloudflare Worker / Workers AI REST", note: "\u652f\u6301 Workers AI \u548c\u5d4c\u5165\u6a21\u578b" },
 ];
 
 const MODEL_OPTIONS_BY_PROVIDER: Readonly<Record<string, readonly string[]>> = {
@@ -307,11 +447,91 @@ const MODEL_OPTIONS_BY_PROVIDER: Readonly<Record<string, readonly string[]>> = {
   "kimi-global": ["kimi-k2-0711-preview", "moonshot-v1-8k", "moonshot-v1-32k"],
   "kimi-cn": ["kimi-k2-0711-preview", "moonshot-v1-8k", "moonshot-v1-32k"],
   glm: ["glm-4.5", "glm-4.5-air", "glm-4.1v-thinking-flash"],
-  minimax: ["MiniMax-M2.7", "MiniMax-Text-01"],
+  nvidia: ["meta/llama-3.3-70b-instruct", "nvidia/llama-3.3-nemotron-super-49b-v1.5", "minimaxai/minimax-m2.7"],
+  "bailian-cn": ["qwen-plus", "qwen-max", "qwen3-max"],
+  "bailian-us": ["qwen-plus", "qwen-max", "qwen3-max"],
+  "bailian-intl": ["qwen-plus", "qwen-max", "qwen3-max"],
+  openrouter: ["openai/gpt-4o", "anthropic/claude-sonnet-4", "google/gemini-2.5-pro"],
+  perplexity: ["sonar", "sonar-pro", "sonar-reasoning"],
+  mistral: ["mistral-large-latest", "mistral-medium-latest", "codestral-latest"],
+  morph: ["morph-v3-large", "morph-v3-fast"],
+  minimax: ["MiniMax-M2.7", "MiniMax-M2.5"],
   ollama: ["llama3.1", "qwen2.5", "deepseek-r1:latest"],
+  "lm-studio": ["local-model", "qwen2.5", "llama3.1"],
   relay: ["gpt-5-codex", "gpt-4o", "claude-sonnet-4-20250514", "gemini-2.5-pro"],
   custom: ["gpt-5-codex", "gpt-4o", "claude-sonnet-4-20250514", "gemini-2.5-pro"],
   "codex-cli": ["gpt-5-codex", "gpt-4.1", "o4-mini"],
+  cloudflare: ["@cf/meta/llama-3.1-8b-instruct"],
+};
+
+const PRESET_PROVIDER_BY_LABEL: Readonly<Record<string, string>> = {
+  OpenAI: "openai",
+  "OpenAI (GPT)": "openai",
+  Anthropic: "anthropic",
+  "Anthropic (Claude)": "anthropic",
+  Gemini: "gemini",
+  "Google (Gemini)": "gemini",
+  Groq: "groq",
+  "xAI (Grok)": "xai",
+  "NVIDIA NIM": "nvidia",
+  "Alibaba Bailian CN": "bailian-cn",
+  "Alibaba Bailian US": "bailian-us",
+  "Alibaba Bailian Intl": "bailian-intl",
+  "阿里百炼 Coding Plan": "custom",
+  OpenRouter: "openrouter",
+  Perplexity: "perplexity",
+  Mistral: "mistral",
+  Morph: "morph",
+  MiniMax: "minimax",
+  "MiniMax (Global)": "minimax",
+  "MiniMax (中国)": "minimax",
+  Ollama: "ollama",
+  "Ollama (Local)": "ollama",
+  "Ollama Cloud": "custom",
+  "LM Studio": "lm-studio",
+  DeepSeek: "deepseek",
+  Moonshot: "kimi-global",
+  "Kimi (Moonshot)": "kimi-global",
+  "Kimi (Moonshot, 中国)": "kimi-cn",
+  "智谱 GLM (Zhipu)": "glm",
+  "小米 MiMo (Xiaomi)": "custom",
+  "火山引擎 Ark (Volcengine)": "custom",
+  "小马 / 神马中转": "relay",
+  Custom: "custom",
+};
+
+const PRESET_LABEL_BY_PROVIDER: Readonly<Record<string, string>> = {
+  openai: "OpenAI (GPT)",
+  anthropic: "Anthropic (Claude)",
+  gemini: "Google (Gemini)",
+  groq: "Groq",
+  xai: "xAI (Grok)",
+  nvidia: "NVIDIA NIM",
+  openrouter: "OpenRouter",
+  minimax: "MiniMax (Global)",
+  ollama: "Ollama (Local)",
+  deepseek: "DeepSeek",
+  "kimi-global": "Kimi (Moonshot)",
+  "kimi-cn": "Kimi (Moonshot, 中国)",
+  glm: "智谱 GLM (Zhipu)",
+  relay: "Custom",
+  custom: "Custom",
+};
+
+const PROVIDER_BY_HOST: Readonly<Record<string, string>> = {
+  "integrate.api.nvidia.com": "nvidia",
+  "dashscope.aliyuncs.com": "bailian-cn",
+  "dashscope-us.aliyuncs.com": "bailian-us",
+  "dashscope-intl.aliyuncs.com": "bailian-intl",
+  "openrouter.ai": "openrouter",
+  "api.perplexity.ai": "perplexity",
+  "api.mistral.ai": "mistral",
+  "api.morphllm.com": "morph",
+  "api.minimax.io": "minimax",
+  "api.minimaxi.com": "minimax",
+  "api.whatai.cc": "relay",
+  "localhost:1234": "lm-studio",
+  "127.0.0.1:1234": "lm-studio",
 };
 
 const IMPORT_SOURCE_DEFINITIONS: ReadonlyArray<{
@@ -323,6 +543,7 @@ const IMPORT_SOURCE_DEFINITIONS: ReadonlyArray<{
 }> = [
   { id: "xiaohongshu", name: "小红书", description: "导入小红书笔记数据", badge: "红", badgeClass: "is-red" },
   { id: "wechat", name: "微信聊天记录", description: "导入微信聊天记录", badge: "微", badgeClass: "is-green" },
+  { id: "flash-note", name: "闪念笔记", description: "导入外部闪念笔记导出数据", badge: "闪", badgeClass: "is-purple" },
   { id: "douyin", name: "抖音", description: "导入抖音作品数据", badge: "抖", badgeClass: "is-dark" },
   { id: "bilibili", name: "b站", description: "导入 B 站视频数据", badge: "B", badgeClass: "is-blue" },
   { id: "xiaoyuzhou", name: "小宇宙", description: "导入小宇宙播客数据", badge: "宙", badgeClass: "is-orange" },
@@ -331,11 +552,13 @@ const IMPORT_SOURCE_DEFINITIONS: ReadonlyArray<{
 ];
 
 const appConfigState = new WeakMap<HTMLElement, AppConfigResponse>();
+const agentEditSnapshotState = new WeakMap<HTMLElement, AppDefinitionResponse>();
 const agentAccountOptionsState = new WeakMap<HTMLElement, AgentAccountOption[]>();
-const automationConfigState = new WeakMap<HTMLElement, AutomationConfigResponse>();
 const llmConfigState = new WeakMap<HTMLElement, LlmProviderConfigResponse>();
 const llmDefaultAccountOptionsState = new WeakMap<HTMLElement, AgentAccountOption[]>();
 const llmAccountsState = new WeakMap<HTMLElement, LlmApiAccountResponse[]>();
+const llmOAuthAccountsState = new WeakMap<HTMLElement, readonly LlmProviderOAuthAccountResponse[]>();
+const llmCloudflareProviderState = new WeakMap<HTMLElement, LlmCloudflareProviderResponse | null>();
 const workspaceSyncState = new WeakMap<HTMLElement, SyncRepoState>();
 const xiaohongshuImportState = new WeakMap<HTMLElement, XiaohongshuImportState>();
 const xiaohongshuImportPollers = new WeakMap<HTMLElement, number>();
@@ -343,6 +566,15 @@ const douyinCookieState = new WeakMap<HTMLElement, DouyinCookieState>();
 
 type XiaohongshuProgressDraft = Parameters<typeof buildXiaohongshuProgressSnapshot>[1];
 type DouyinCookieDraft = Parameters<typeof buildDouyinCookieSnapshot>[1];
+type SettingsPageRoot = HTMLElement & { __dispose?: () => void };
+
+interface SettingsPageRouteState {
+  anchor?: string;
+  automationPanel?: SettingsAutomationPanelState;
+  isDialog?: boolean;
+  pluginKind?: SettingsPluginKind;
+  pluginId?: string;
+}
 
 interface SuccessDataPayload<T> {
   success?: boolean;
@@ -351,7 +583,14 @@ interface SuccessDataPayload<T> {
 }
 
 function readErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  const message = error instanceof Error ? error.message : String(error);
+  if (message === "codex_oauth_device_start_failed") {
+    return "ChatGPT 授权码创建失败：OpenAI 当前没有返回设备授权码。通常是请求太频繁或网络被限制，请等 1-2 分钟后重新点击“授权并添加”。";
+  }
+  if (message.includes("Codex device code HTTP 429")) {
+    return "ChatGPT 授权码创建太频繁，OpenAI 返回 429。请等 1-2 分钟后重新点击“授权并添加”。";
+  }
+  return message;
 }
 
 function setOptionalText(element: HTMLElement | null, text: string): void {
@@ -385,6 +624,22 @@ async function readSuccessData<T>(
 async function loadOptionalCliProxyOAuthAccounts(): Promise<readonly CLIProxyOAuthAccountResponse[]> {
   try {
     return await fetchCLIProxyOAuthAccounts(false);
+  } catch {
+    return [];
+  }
+}
+
+async function loadOptionalAccountCodexOAuthAccounts(): Promise<readonly LlmProviderOAuthAccountResponse[]> {
+  try {
+    const response = await fetch("/api/account-ai/codex-quota");
+    const payload = await readSuccessData<{ accounts?: CLIProxyOAuthAccountResponse[] }>(response, "Worker OAuth 账号读取失败");
+    return (payload.accounts ?? []).map((account) => ({
+      ...account,
+      provider: "codex",
+      accountRef: "oauth:codex:cloud-account",
+      authIndex: "Worker OAuth",
+      connectionText: account.email ? `已连接 · ${account.email}` : "已连接 · Worker OAuth",
+    }));
   } catch {
     return [];
   }
@@ -465,9 +720,12 @@ function readSelectedLlmDefaultAccount(root: HTMLElement): string {
   );
 }
 
-export function renderSettingsPage(initialSection?: string): HTMLElement {
+export function renderSettingsPage(
+  initialSection?: string,
+  routeState: SettingsPageRouteState = {},
+): HTMLElement {
   const activeSection = normalizeSettingsSection(initialSection);
-  const root = document.createElement("section");
+  const root = document.createElement("section") as SettingsPageRoot;
   root.className = "settings-page settings-page--with-sidebar";
   root.innerHTML = `
     <aside class="settings-sidebar" data-settings-sidebar>
@@ -475,62 +733,198 @@ export function renderSettingsPage(initialSection?: string): HTMLElement {
         <div class="eyebrow">SETTINGS</div>
         <h2 class="settings-page__title">&#x8bbe;&#x7f6e;</h2>
       </div>
-        <nav class="settings-sidebar__nav">
-        ${renderSettingsNavItem("llm", "LLM &#x5927;&#x6a21;&#x578b;")}
-        ${renderSettingsNavItem("app-config", "&#x5e94;&#x7528;")}
-        ${renderSettingsNavItem("automation", "&#x81ea;&#x52a8;&#x5316;")}
-        ${renderSettingsNavItem("workspace-sync", "&#x4ed3;&#x5e93;&#x4e0e;&#x540c;&#x6b65;")}
-        ${renderSettingsNavItem("network-search", "&#x7f51;&#x7edc;&#x641c;&#x7d22;")}
-        ${renderSettingsNavItem("embedding", "Vector Search / Embedding")}
-        ${renderSettingsNavItem("plugins", "&#x63d2;&#x4ef6; / MCP")}
-        ${renderSettingsNavItem("shortcuts", "&#x5feb;&#x6377;&#x952e;")}
-        ${renderSettingsNavItem("project-log", "&#x9879;&#x76ee;&#x65e5;&#x5fd7;")}
+      <nav class="settings-sidebar__nav">
+        <div class="settings-sidebar__group">
+          <p class="settings-sidebar__group-title">&#x9009;&#x9879;</p>
+          ${renderSettingsNavItem("llm", "LLM &#x5927;&#x6a21;&#x578b;", "globe")}
+          ${renderSettingsNavItem("app-config", "&#x5e94;&#x7528;", "archive")}
+          ${renderSettingsNavItem("automation", "&#x81ea;&#x52a8;&#x5316;", "hammer")}
+          ${renderSettingsNavItem("workspace-sync", "&#x4ed3;&#x5e93;&#x4e0e;&#x540c;&#x6b65;", "refresh-cw")}
+          ${renderSettingsNavItem("plugins", "&#x7b2c;&#x4e09;&#x65b9;&#x63d2;&#x4ef6;", "plus", "third-party")}
+          ${renderSettingsNavItem("shortcuts", "&#x5feb;&#x6377;&#x952e;", "settings")}
+          ${renderSettingsNavItem("user-guide", "&#x4f7f;&#x7528;&#x8bf4;&#x660e;", "book-open-text")}
+          ${renderSettingsNavItem("project-log", "&#x9879;&#x76ee;&#x65e5;&#x5fd7;", "clipboard-list")}
+        </div>
+        ${renderPluginSidebarGroups()}
       </nav>
     </aside>
     <div class="settings-sidebar-resize panel-resize-handle" data-settings-sidebar-resize></div>
       <main class="settings-content">
         ${renderLlmPanel()}
         ${renderAgentConfigPanel()}
-        ${renderAutomationPanel()}
+        ${renderSettingsAutomationPanel()}
         ${renderWorkspaceSyncPanel()}
-      ${renderNetworkSearchPanel()}
-      ${renderEmbeddingPanel()}
       ${renderPluginsPanel()}
       ${renderShortcutSection()}
-      ${renderProjectLogSection()}
+      ${renderSettingsUserGuidePanel()}
+      ${renderSettingsProjectLogPanel()}
       <p class="settings-page__status" data-settings-status></p>
     </main>
   `;
   root.querySelector<HTMLElement>("[data-settings-panel=\"app-config\"]")?.appendChild(renderAppPublishSection());
-  bindSettingsPage(root, activeSection);
+  bindSettingsPage(root, activeSection, routeState);
+  root.__dispose = () => {
+    disposeSettingsAutomationPanel(root);
+    disposeSettingsUserGuidePanel(root);
+    disposeSettingsProjectLogPanel(root);
+  };
   return root;
 }
 
-function renderSettingsNavItem(section: SettingsSection, label: string): string {
-  return `<button type="button" class="settings-sidebar__item" data-settings-nav="${section}" data-settings-section="${section}" data-active="false">${label}</button>`;
+function renderSettingsNavItem(
+  section: SettingsSection,
+  label: string,
+  icon: string,
+  pluginKind?: SettingsPluginKind,
+): string {
+  const pluginKindAttribute = pluginKind ? ` data-settings-plugin-kind="${pluginKind}"` : "";
+  return `<button type="button" class="settings-sidebar__item" data-settings-nav="${section}" data-settings-section="${section}"${pluginKindAttribute} data-active="false">${renderIcon(icon, { size: 18 })}<span>${label}</span></button>`;
 }
 
 function renderLlmPanel(): string {
   return `
     <section class="settings-panel" data-settings-panel="llm">
-      <div class="settings-page__header">
-        <div class="settings-page__header-copy">
-          <div class="eyebrow">LLM PROVIDERS</div>
-          <h1 class="settings-page__title">LLM &#x5927;&#x6a21;&#x578b;</h1>
-          <p>&#x6bcf;&#x4e2a;&#x5382;&#x5546;&#x53ef;&#x4ee5;&#x914d;&#x7f6e;&#x591a;&#x4e2a;&#x8d26;&#x6237;&#xff0c;&#x6253;&#x5f00;&#x5f00;&#x5173;&#x540e;&#x4f5c;&#x4e3a;&#x53ef;&#x7528 provider&#x3002;</p>
-          <p class="settings-page__status" data-llm-config-status>&#x6b63;&#x5728;&#x8bfb;&#x53d6; LLM &#x914d;&#x7f6e;...</p>
-        </div>
-        <button type="button" class="btn btn-primary" data-settings-save>&#x4fdd;&#x5b58;&#x914d;&#x7f6e;</button>
-      </div>
-      <div class="settings-llm-overview">
-        ${renderLlmDefaultCard()}
-        ${renderLlmAccountSummaryCard()}
-      </div>
-      ${renderCLIProxyPanel()}
-      <div class="settings-provider-list">
-        ${PROVIDERS.map(renderLlmProvider).join("")}
-      </div>
+      ${renderLlmProviderEmptyCard()}
+      ${renderNetworkSearchProviderCard()}
+      ${renderVectorSearchProviderCard()}
+      ${renderLlmProviderDialog()}
     </section>
+  `;
+}
+
+function renderLlmProviderEmptyCard(): string {
+  return `
+    <article class="settings-card settings-card--llm-provider-empty">
+      <div class="settings-card__header">
+        <div>
+          <h2>&#x63d0;&#x4f9b;&#x5546;</h2>
+          <p class="settings-card__hint" data-llm-provider-count>&#x5df2;&#x6dfb;&#x52a0; 0 &#x4e2a;&#x63d0;&#x4f9b;&#x5546;</p>
+        </div>
+        <button type="button" class="btn btn-primary" data-llm-provider-add>&#x6dfb;&#x52a0;&#x63d0;&#x4f9b;&#x5546;</button>
+      </div>
+      <div class="settings-llm-preset-grid" data-llm-preset-grid>
+        ${LLM_PROVIDER_PRESETS.map(renderLlmProviderPresetButton).join("")}
+      </div>
+      <div class="settings-llm-provider-list" data-llm-provider-list></div>
+      <p class="settings-llm-provider-status" data-llm-provider-list-status></p>
+    </article>
+  `;
+}
+
+function renderLlmProviderPresetButton(preset: LlmProviderPreset): string {
+  return `
+    <button type="button" class="settings-llm-preset" data-llm-provider-preset-open="${escapeHtml(preset.label)}">
+      <strong>${escapeHtml(preset.label)}</strong>
+      <small>${escapeHtml(preset.hint)}</small>
+    </button>
+  `;
+}
+
+function renderLlmProviderDialog(): string {
+  return `
+    <div class="settings-modal" data-llm-provider-dialog hidden>
+      <button type="button" class="settings-modal__backdrop" data-llm-provider-close aria-label="关闭添加提供商"></button>
+      <form class="settings-modal__dialog settings-modal__dialog--provider" data-llm-provider-form role="dialog" aria-modal="true" aria-labelledby="llm-provider-dialog-title">
+        <div class="settings-modal__header settings-modal__header--provider">
+          <h2 id="llm-provider-dialog-title">添加提供商</h2>
+          <button type="button" class="settings-modal__close" data-llm-provider-close aria-label="关闭">×</button>
+        </div>
+        ${renderLlmProviderDialogRows()}
+        ${renderLlmProviderOAuthDeviceCode()}
+        <p class="settings-provider-dialog__status" data-llm-provider-status></p>
+        <div class="settings-provider-dialog__footer">
+          <button type="submit" class="btn btn-primary" data-llm-provider-submit>添加</button>
+          <button type="button" class="btn btn-secondary" data-llm-provider-close>取消</button>
+        </div>
+      </form>
+    </div>
+  `;
+}
+
+function renderLlmProviderDialogRows(): string {
+  return `
+    ${renderProviderTextRow("ID *", "为此提供商指定一个用于设置中的 ID，仅供你自己区分使用。", "my-custom-provider", "id")}
+    ${renderProviderSelectRow("Provider preset *", "preset", LLM_PROVIDER_PRESET_OPTIONS, "", "Custom")}
+    ${renderProviderSelectRow("API type *", "apiType", LLM_PROVIDER_API_TYPE_OPTIONS)}
+    ${renderProviderTextRow("API 密钥", "（如不需要可留空）", "输入你的 API 密钥", "apiKey", "password")}
+    ${renderProviderTextRow("基础 URL *", "第三方服务的 API 端点地址，例如：https://api.example.com/v1 或 https://your-proxy.com/openai（使用默认值可留空）", "https://api.example.com", "baseUrl")}
+    ${renderProviderModelRow()}
+    ${renderProviderSwitchRow()}
+    ${renderProviderSelectRow("请求传输模式", "transport", LLM_PROVIDER_TRANSPORT_OPTIONS, "自动模式会先尝试浏览器 fetch，再尝试桌面端 Node fetch，最后在 CORS/网络错误时回退到 Obsidian requestUrl。仅 Obsidian 模式下流式响应会被缓冲；Node 模式使用桌面端 Node fetch 获取真实流式。")}
+    ${renderProviderHeaderRow()}
+  `;
+}
+
+function renderProviderModelRow(): string {
+  return `
+    <label class="settings-provider-dialog__row settings-provider-dialog__row--model">
+      <span><strong>模型 ID *</strong><small>选择常用模型，或直接输入服务商后台展示的真实模型 ID。</small></span>
+      <div class="settings-provider-dialog__model-field">
+        <input data-llm-provider-field="model" type="text" placeholder="openai/gpt-oss-120b" />
+        <div class="settings-provider-dialog__model-chips" data-llm-provider-model-suggestions></div>
+      </div>
+    </label>
+  `;
+}
+
+function renderLlmProviderOAuthDeviceCode(): string {
+  return `
+    <div class="settings-provider-dialog__oauth-code" data-llm-provider-oauth-code hidden>
+      <div>
+        <strong>授权码</strong>
+        <small>这个码会同步显示在这里，填入打开的 ChatGPT 授权页即可。</small>
+      </div>
+      <code data-llm-provider-oauth-user-code></code>
+      <div class="settings-provider-dialog__oauth-actions">
+        <button type="button" class="btn btn-secondary" data-llm-provider-oauth-copy>复制</button>
+        <a class="btn btn-secondary" data-llm-provider-oauth-link target="_blank" rel="noreferrer">打开授权页</a>
+      </div>
+    </div>
+  `;
+}
+
+function renderProviderTextRow(label: string, hint: string, placeholder: string, field: string, type = "text"): string {
+  return `
+    <label class="settings-provider-dialog__row">
+      <span><strong>${label}</strong><small>${hint}</small></span>
+      <input data-llm-provider-field="${field}" type="${type}" placeholder="${placeholder}" />
+    </label>
+  `;
+}
+
+function renderProviderSelectRow(
+  label: string,
+  field: string,
+  options: readonly string[],
+  hint = "",
+  selected = options[0] ?? "",
+): string {
+  return `
+    <label class="settings-provider-dialog__row">
+      <span><strong>${label}</strong>${hint ? `<small>${hint}</small>` : ""}</span>
+      <select data-llm-provider-field="${field}">
+        ${options.map((option) => `<option value="${escapeHtml(option)}"${option === selected ? " selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+      </select>
+    </label>
+  `;
+}
+
+function renderProviderSwitchRow(): string {
+  return `
+    <label class="settings-provider-dialog__row">
+      <span><strong>无 Stainless 请求头</strong><small>如果你遇到与 Stainless 请求头相关的 CORS 错误（x-stainless-os 等），请启用此选项</small></span>
+      <input class="settings-provider-dialog__switch" data-llm-provider-field="noStainless" type="checkbox" />
+    </label>
+  `;
+}
+
+function renderProviderHeaderRow(): string {
+  return `
+    <div class="settings-provider-dialog__row">
+      <span><strong>自定义请求头</strong><small>为此提供商发出的所有请求附加额外的 HTTP Header。</small></span>
+      <button type="button" class="btn btn-secondary" data-llm-provider-header-add>添加请求头</button>
+    </div>
+    <div class="settings-provider-dialog__headers" data-llm-provider-headers></div>
   `;
 }
 
@@ -653,8 +1047,7 @@ function renderAgentConfigPanel(): string {
           <p class="settings-page__status" data-agent-config-status>&#x6b63;&#x5728;&#x8bfb;&#x53d6;&#x5e94;&#x7528;&#x914d;&#x7f6e;...</p>
         </div>
         <div class="settings-run-panel__actions">
-          <button type="button" class="btn btn-secondary" data-agent-config-add>&#x65b0;&#x589e;&#x5e94;&#x7528;</button>
-          <button type="button" class="btn btn-primary" data-agent-config-save>&#x4fdd;&#x5b58;</button>
+          <button type="button" class="btn btn-primary" data-agent-config-add>${renderIcon("plus", { size: 18 })}<span>&#x65b0;&#x5efa; Agent</span></button>
         </div>
       </div>
       <article class="settings-card settings-card--agent-config">
@@ -662,21 +1055,37 @@ function renderAgentConfigPanel(): string {
           <aside class="settings-agent-config__list">
               <div class="settings-card__header">
                 <div>
-                  <div class="eyebrow">APPS</div>
-                  <h2>&#x5e94;&#x7528;&#x5217;&#x8868;</h2>
+                  <h2>Agents</h2>
+                  <p class="settings-card__hint">&#x70b9;&#x51fb;&#x914d;&#x7f6e;&#x4ee5;&#x7f16;&#x8f91;&#x6bcf;&#x4e2a; Agent &#x7684;&#x8d44;&#x6599;&#x4e0e;&#x63d0;&#x793a;&#x8bcd;&#x3002;</p>
                 </div>
               </div>
               <div class="settings-agent-config__items" data-agent-config-list>
                 <div class="settings-source-empty">&#x6682;&#x672a;&#x8bfb;&#x53d6;&#x5e94;&#x7528;</div>
               </div>
+              <button type="button" class="settings-agent-config__create" data-agent-config-add>
+                <span>${renderIcon("plus", { size: 34 })}</span>
+                <strong>&#x65b0;&#x5efa; Agent</strong>
+              </button>
             </aside>
-            <section class="settings-agent-config__editor" data-agent-config-editor>
+            <section class="settings-agent-config__editor" data-agent-config-editor data-agent-config-modal hidden>
+              <button type="button" class="settings-agent-config__modal-backdrop" data-agent-config-close aria-label="Close agent editor"></button>
+              <div class="settings-agent-config__modal-panel" role="dialog" aria-modal="true" aria-labelledby="agent-config-modal-title">
               <div class="settings-card__header">
                 <div>
                   <div class="eyebrow">EDITOR</div>
-                  <h2>&#x9009;&#x62e9;&#x5de6;&#x4fa7;&#x5e94;&#x7528;&#x540e;&#x7f16;&#x8f91;</h2>
+                  <h2 id="agent-config-modal-title" data-agent-config-modal-title>Agent</h2>
+                  <p class="settings-card__hint">&#x914d;&#x7f6e;&#x6b64; Agent &#x7684;&#x80fd;&#x529b;&#x3001;&#x6a21;&#x578b;&#x4e0e;&#x884c;&#x4e3a;&#x3002;</p>
                 </div>
-                <button type="button" class="btn btn-secondary btn-inline" data-agent-config-delete>&#x5220;&#x9664;</button>
+                <div class="settings-agent-config__editor-actions">
+                  <button type="button" class="btn btn-secondary btn-inline" data-agent-config-delete>&#x5220;&#x9664;</button>
+                  <button type="button" class="settings-modal__close" data-agent-config-close aria-label="Close agent editor">${renderIcon("x", { size: 24 })}</button>
+                </div>
+              </div>
+              <div class="settings-agent-modal__tabs" aria-label="Agent sections">
+                <button type="button" data-active="true">${renderIcon("settings", { size: 18 })}<span>&#x8d44;&#x6599;</span></button>
+                <button type="button">${renderIcon("hammer", { size: 18 })}<span>&#x5de5;&#x5177;</span></button>
+                <button type="button">${renderIcon("book-open-text", { size: 18 })}<span>&#x6280;&#x80fd;</span></button>
+                <button type="button">${renderIcon("folder-open", { size: 18 })}<span>&#x5de5;&#x4f5c;&#x533a;</span></button>
               </div>
               <div class="settings-agent-config__form">
                 <label class="settings-field"><span>App ID</span><input data-agent-config-field="id" type="text" readonly /></label>
@@ -690,65 +1099,16 @@ function renderAgentConfigPanel(): string {
                 <label class="settings-field settings-field--wide"><span>Prompt</span><textarea data-agent-config-field="prompt" rows="8"></textarea></label>
                 <label class="settings-check-row"><input data-agent-config-field="enabled" type="checkbox" /> <span>&#x542f;&#x7528;&#x8fd9;&#x4e2a;&#x5e94;&#x7528;</span></label>
               </div>
+              <div class="settings-agent-modal__footer">
+                <span></span>
+                <button type="button" class="btn btn-secondary" data-agent-config-close>&#x53d6;&#x6d88;</button>
+                <button type="button" class="btn btn-primary" data-agent-config-save>&#x4fdd;&#x5b58;</button>
+              </div>
+              </div>
             </section>
           </div>
         </article>
       </section>
-  `;
-}
-
-function renderAutomationPanel(): string {
-  return `
-    <section class="settings-panel" data-settings-panel="automation" hidden>
-      <div class="settings-page__header">
-        <div class="settings-page__header-copy">
-          <div class="eyebrow">AUTOMATIONS</div>
-          <h1 class="settings-page__title">&#x81ea;&#x52a8;&#x5316;</h1>
-          <p>&#x5b9a;&#x65f6;&#x3001;Webhook &#x548c;&#x6d88;&#x606f;&#x89e6;&#x53d1;&#x90fd;&#x5728;&#x8fd9;&#x91cc;&#x7edf;&#x4e00;&#x7ed1;&#x5b9a;&#x5e94;&#x7528;&#xff0c;&#x4e0d;&#x76f4;&#x63a5;&#x8dd1;&#x88f8; LLM &#x6216;&#x5e95;&#x5c42;&#x8fd0;&#x884c;&#x5355;&#x5143;&#x3002;</p>
-          <p class="settings-page__status" data-automation-config-status>&#x6b63;&#x5728;&#x8bfb;&#x53d6;&#x81ea;&#x52a8;&#x5316;...</p>
-        </div>
-        <div class="settings-run-panel__actions">
-          <button type="button" class="btn btn-secondary" data-automation-config-add>&#x65b0;&#x589e;&#x81ea;&#x52a8;&#x5316;</button>
-          <button type="button" class="btn btn-primary" data-automation-config-save>&#x4fdd;&#x5b58;</button>
-        </div>
-      </div>
-      <article class="settings-card settings-card--agent-config">
-        <div class="settings-agent-config">
-          <aside class="settings-agent-config__list">
-            <div class="settings-card__header">
-              <div>
-                <div class="eyebrow">AUTOMATIONS</div>
-                <h2>&#x81ea;&#x52a8;&#x5316;&#x5217;&#x8868;</h2>
-              </div>
-            </div>
-            <div class="settings-agent-config__items" data-automation-config-list>
-              <div class="settings-source-empty">&#x6682;&#x672a;&#x8bfb;&#x53d6;&#x81ea;&#x52a8;&#x5316;</div>
-            </div>
-          </aside>
-          <section class="settings-agent-config__editor" data-automation-config-editor>
-            <div class="settings-card__header">
-              <div>
-                <div class="eyebrow">EDITOR</div>
-                <h2>&#x9009;&#x62e9;&#x5de6;&#x4fa7;&#x81ea;&#x52a8;&#x5316;&#x540e;&#x7f16;&#x8f91;</h2>
-              </div>
-              <button type="button" class="btn btn-secondary btn-inline" data-automation-config-delete>&#x5220;&#x9664;</button>
-            </div>
-            <div class="settings-agent-config__form">
-              <label class="settings-field"><span>Automation ID</span><input data-automation-config-field="id" type="text" readonly /></label>
-              <label class="settings-field"><span>&#x540d;&#x79f0;</span><input data-automation-config-field="name" type="text" /></label>
-              <label class="settings-field"><span>&#x6458;&#x8981;</span><input data-automation-config-field="summary" type="text" /></label>
-              <label class="settings-field"><span>&#x56fe;&#x6807;</span><input data-automation-config-field="icon" type="text" placeholder="calendar" /></label>
-              <label class="settings-field"><span>&#x89e6;&#x53d1;&#x65b9;&#x5f0f;</span><select data-automation-config-field="trigger">${renderAutomationTriggerOptions()}</select></label>
-              <label class="settings-field"><span>&#x76ee;&#x6807;&#x5e94;&#x7528;</span><select data-automation-config-field="appId"><option value="">&#x8bf7;&#x5148;&#x9009;&#x62e9;&#x5e94;&#x7528;</option></select></label>
-              <label class="settings-field"><span>&#x5b9a;&#x65f6;&#x8868;&#x8fbe;&#x5f0f;</span><input data-automation-config-field="schedule" type="text" placeholder="0 9 * * *" /></label>
-              <label class="settings-field"><span>Webhook Path</span><input data-automation-config-field="webhookPath" type="text" placeholder="/hooks/publish" /></label>
-              <label class="settings-check-row"><input data-automation-config-field="enabled" type="checkbox" /> <span>&#x542f;&#x7528;&#x8fd9;&#x6761;&#x81ea;&#x52a8;&#x5316;</span></label>
-              <label class="settings-field"><span>Flow JSON</span><textarea data-automation-config-field="flow" rows="12" placeholder='{"nodes":[],"edges":[],"branches":[]}'></textarea></label>
-            </div>
-          </section>
-        </div>
-      </article>
-    </section>
   `;
 }
 
@@ -763,14 +1123,6 @@ function renderAppModeOptions(): string {
     { value: "knowledge", label: "知识" },
     { value: "hybrid", label: "混合" },
   ].map((mode) => `<option value="${mode.value}">${mode.label}</option>`).join("");
-}
-
-function renderAutomationTriggerOptions(): string {
-  return [
-    { value: "schedule", label: "定时" },
-    { value: "webhook", label: "Webhook" },
-    { value: "message", label: "消息触发" },
-  ].map((trigger) => `<option value="${trigger.value}">${trigger.label}</option>`).join("");
 }
 
 function renderModelOptions(provider: string, selected = ""): string {
@@ -791,7 +1143,7 @@ function renderWorkspaceSyncPanel(): string {
   return `
     <section class="settings-panel" data-settings-panel="workspace-sync" hidden>
       <div class="settings-workspace-sync">
-        <section class="settings-sync-section">
+        <section class="settings-sync-section" data-import-home>
           <div class="settings-sync-section__intro">
             <h1>数据导入</h1>
             <p>支持从多种来源导入数据，每个来源将以一个小卡片的形式展示。</p>
@@ -807,7 +1159,7 @@ function renderWorkspaceSyncPanel(): string {
             </div>
           </div>
         </section>
-        <section class="settings-sync-section">
+        <section class="settings-sync-section" data-import-home>
           <div class="settings-sync-section__panel settings-sync-section__panel--sync">
             <div class="settings-sync-section__panel-header settings-sync-section__panel-header--actions">
               <div>
@@ -840,6 +1192,8 @@ function renderWorkspaceSyncPanel(): string {
             </div>
           </div>
         </section>
+        ${renderRssImportPanel()}
+        ${renderFlashNoteImportPanel()}
         ${renderXiaohongshuImportModal()}
         ${renderDouyinCookieModal()}
       </div>
@@ -953,29 +1307,7 @@ function renderDouyinCookieModal(): string {
 function renderShortcutSection(): string {
   return `
     <section class="settings-panel" data-settings-panel="shortcuts" hidden>
-      <div class="settings-page__header">
-        <div class="settings-page__header-copy">
-          <div class="eyebrow">SHORTCUTS</div>
-          <h1 class="settings-page__title">&#x5feb;&#x6377;&#x952e;</h1>
-          <p>&#x5728;&#x8fd9;&#x91cc;&#x7edf;&#x4e00;&#x7ba1;&#x7406; Electron &#x684c;&#x9762;&#x7aef;&#x7684;&#x5feb;&#x6377;&#x952e;&#x3002;</p>
-        </div>
-      </div>
       ${renderShortcutPanel()}
-    </section>
-  `;
-}
-
-function renderProjectLogSection(): string {
-  return `
-    <section class="settings-panel" data-settings-panel="project-log" hidden>
-      <div class="settings-page__header">
-        <div class="settings-page__header-copy">
-          <div class="eyebrow">PROJECT MEMORY</div>
-          <h1 class="settings-page__title">&#x9879;&#x76ee;&#x65e5;&#x5fd7;</h1>
-          <p>&#x67e5;&#x770b;&#x754c;&#x9762;&#x3001;&#x6d41;&#x7a0b;&#x548c;&#x65f6;&#x95f4;&#x7ebf;&#xff0c;&#x5e76;&#x8fdb;&#x5165;&#x53ef;&#x8bc4;&#x8bba;&#x7684;&#x9879;&#x76ee;&#x65e5;&#x5fd7;&#x9875;&#x3002;</p>
-        </div>
-      </div>
-      ${renderProjectLogCard()}
     </section>
   `;
 }
@@ -1032,15 +1364,22 @@ function renderXhsSyncPanel(): string {
 }
 
 function renderShortcutPanel(): string {
+  const rows = SETTINGS_SHORTCUTS.map(renderShortcutRow).join("");
   return `
     <article class="settings-card settings-card--shortcuts">
-      <div class="settings-card__header"><div><div class="eyebrow">SHORTCUTS</div><h2>&#x5feb;&#x6377;&#x952e;</h2></div><span class="settings-card__badge">Electron</span></div>
-      <div class="settings-shortcut-row">
-        <div class="settings-shortcut-row__copy"><strong>&#x95ea;&#x5ff5;&#x65e5;&#x8bb0;&#x5feb;&#x901f;&#x8bb0;&#x5f55;</strong><span>&#x6253;&#x5f00;&#x72ec;&#x7acb;&#x5c0f;&#x7a97;&#x53e3;&#x3002;</span></div>
-        <div class="settings-shortcut-row__control"><input data-shortcut-id="flashDiaryCapture" type="text" value="${DEFAULT_FLASH_DIARY_SHORTCUT}" /><button type="button" class="btn btn-secondary" data-shortcut-save="flashDiaryCapture">&#x4fdd;&#x5b58;&#x5feb;&#x6377;&#x952e;</button></div>
-      </div>
+      <div class="settings-card__header"><div><div class="eyebrow">SHORTCUTS</div><h2>&#x5feb;&#x6377;&#x952e;</h2></div><span class="settings-card__badge">&#x53ef;&#x7f16;&#x8f91;</span></div>
+      ${rows}
       <p class="settings-shortcut-status" data-shortcut-status></p>
     </article>
+  `;
+}
+
+function renderShortcutRow(shortcut: ShortcutDefinition): string {
+  return `
+    <div class="settings-shortcut-row">
+      <div class="settings-shortcut-row__copy"><strong>${escapeHtml(shortcut.title)}</strong><span>${escapeHtml(shortcut.description)}</span></div>
+      <div class="settings-shortcut-row__control"><input data-shortcut-id="${shortcut.id}" type="text" value="${escapeHtml(DEFAULT_SHORTCUTS[shortcut.id])}" readonly /><button type="button" class="btn btn-secondary" data-shortcut-save="${shortcut.id}">&#x4fdd;&#x5b58;&#x5feb;&#x6377;&#x952e;</button></div>
+    </div>
   `;
 }
 
@@ -1104,29 +1443,1016 @@ function renderCompileRunCard(): string {
   `;
 }
 
-function renderProjectLogCard(): string {
-  return `
-    <article class="settings-card settings-card--project-log" data-settings-project-log>
-      <div class="settings-card__header"><div><div class="eyebrow">PROJECT MEMORY</div><h2>&#x9879;&#x76ee;&#x65e5;&#x5fd7;</h2></div></div>
-      <p>&#x67e5;&#x770b; LLM Wiki &#x5e94;&#x7528;&#x5f53;&#x524d;&#x754c;&#x9762;&#x3001;&#x5f53;&#x524d;&#x6d41;&#x7a0b;&#x548c;&#x642d;&#x5efa;&#x65f6;&#x95f4;&#x7ebf;&#x3002;</p>
-    </article>
-  `;
-}
-
-function bindSettingsPage(root: HTMLElement, initialSection: SettingsSection): void {
+function bindSettingsPage(
+  root: HTMLElement,
+  initialSection: SettingsSection,
+  routeState: SettingsPageRouteState,
+): void {
   bindSettingsNavigation(root);
   bindWorkspaceSyncPanel(root);
   bindProviderCards(root);
   bindProviderStatusControls(root);
   bindSettingsSidebarResize(root);
   bindLegacySettingsControls(root);
+  bindLlmProviderDraftControls(root);
   bindLlmProviderConfig(root);
   bindAgentConfigControls(root);
-  bindAutomationConfigControls(root);
-  bindCLIProxyControls(root, hydrateLlmDefaultAccountOptions);
   bindSyncRunPanel(root);
   bindNetworkSearchPanel(root);
-  selectSettingsSection(root, initialSection);
+  bindPluginsPanel(root);
+  selectSettingsSection(root, initialSection, routeState);
+}
+
+function bindLlmProviderDraftControls(root: HTMLElement): void {
+  root.querySelectorAll<HTMLButtonElement>("[data-llm-provider-preset-open]").forEach((button) => {
+    button.addEventListener("click", () => {
+      openLlmProviderDialog(root, button.dataset.llmProviderPresetOpen);
+    });
+  });
+  root.querySelector<HTMLButtonElement>("[data-llm-provider-add]")?.addEventListener("click", () => {
+    openLlmProviderDialog(root);
+    void hydrateLlmProviderDraftAccounts(root, true);
+  });
+  root.querySelector<HTMLSelectElement>("[data-llm-provider-field=\"preset\"]")?.addEventListener("change", () => {
+    applyLlmProviderPreset(root, readLlmProviderField(root, "preset"), { overwriteId: false });
+    clearLlmProviderOAuthDeviceCode(root);
+    syncLlmProviderDraftMode(root, true);
+    syncLlmProviderDraftModelDefault(root, { overwrite: true });
+    syncLlmProviderModelSuggestions(root);
+    maybeStartLlmProviderOAuthFromSelection(root);
+  });
+  root.querySelector<HTMLInputElement>("[data-llm-provider-field=\"baseUrl\"]")?.addEventListener("input", () => {
+    syncLlmProviderDraftModelDefault(root, { overwrite: false });
+  });
+  root.querySelector<HTMLInputElement>("[data-llm-provider-field=\"model\"]")?.addEventListener("input", (event) => {
+    delete (event.currentTarget as HTMLInputElement).dataset.llmProviderAutoModel;
+  });
+  root.querySelector<HTMLInputElement>("[data-llm-provider-field=\"id\"]")?.addEventListener("input", () => {
+    syncLlmProviderDraftMode(root, false);
+  });
+  root.querySelectorAll<HTMLButtonElement>("[data-llm-provider-close]").forEach((button) => {
+    button.addEventListener("click", () => closeLlmProviderDialog(root));
+  });
+  root.querySelector<HTMLButtonElement>("[data-llm-provider-header-add]")?.addEventListener("click", () => {
+    appendLlmProviderHeaderRow(root);
+  });
+  root.querySelector<HTMLButtonElement>("[data-llm-provider-oauth-copy]")?.addEventListener("click", () => {
+    void copyLlmProviderOAuthDeviceCode(root);
+  });
+  root.querySelector<HTMLElement>("[data-llm-provider-model-suggestions]")?.addEventListener("click", (event) => {
+    const button = (event.target as HTMLElement | null)?.closest<HTMLButtonElement>("[data-llm-provider-model-chip]");
+    if (!button) return;
+    writeLlmProviderField(root, "model", button.dataset.llmProviderModelChip ?? "");
+    delete root.querySelector<HTMLInputElement>("[data-llm-provider-field=\"model\"]")?.dataset.llmProviderAutoModel;
+  });
+  root.querySelector<HTMLFormElement>("[data-llm-provider-form]")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void submitLlmProviderDraft(root, event.currentTarget as HTMLFormElement);
+  });
+  root.addEventListener("click", (event) => {
+    const target = event.target as HTMLElement;
+    const collapseButton = target.closest<HTMLButtonElement>("[data-llm-provider-card-collapse]");
+    if (collapseButton) {
+      toggleLlmProviderCard(collapseButton);
+      return;
+    }
+    const configureButton = target.closest<HTMLButtonElement>("[data-llm-provider-card-configure]");
+    if (configureButton) {
+      configureLlmProviderCard(root, configureButton);
+      return;
+    }
+    const startButton = target.closest<HTMLButtonElement>("[data-llm-provider-card-start]");
+    if (startButton) {
+      void startLlmProviderCard(root, startButton);
+      return;
+    }
+    const removeButton = target.closest<HTMLButtonElement>("[data-llm-provider-card-remove], [data-llm-provider-card-disconnect]");
+    if (removeButton) {
+      void removeLlmProviderCard(root, removeButton);
+      return;
+    }
+    const addChatButton = target.closest<HTMLButtonElement>("[data-llm-provider-add-chat]");
+    if (addChatButton) {
+      void createLlmProviderChatApp(root, addChatButton);
+      return;
+    }
+    const chatAppButton = target.closest<HTMLButtonElement>("[data-llm-provider-chat-app]");
+    if (chatAppButton) {
+      openLlmProviderChatApp(root, chatAppButton);
+    }
+  });
+  syncLlmProviderModelSuggestions(root);
+  void hydrateLlmProviderDraftAccounts(root, false);
+}
+
+function openLlmProviderDialog(root: HTMLElement, presetLabel?: string): void {
+  const dialog = root.querySelector<HTMLElement>("[data-llm-provider-dialog]");
+  if (!dialog) return;
+  clearLlmProviderOAuthDeviceCode(root);
+  if (presetLabel) {
+    resetLlmProviderDraft(root);
+    applyLlmProviderPreset(root, presetLabel, { overwriteId: true });
+  }
+  syncLlmProviderDraftMode(root, false);
+  syncLlmProviderDraftModelDefault(root, { overwrite: false });
+  syncLlmProviderModelSuggestions(root);
+  dialog.hidden = false;
+  root.querySelector<HTMLInputElement>("[data-llm-provider-field=\"id\"]")?.focus();
+}
+
+function closeLlmProviderDialog(root: HTMLElement): void {
+  const dialog = root.querySelector<HTMLElement>("[data-llm-provider-dialog]");
+  if (dialog) dialog.hidden = true;
+}
+
+function appendLlmProviderHeaderRow(root: HTMLElement): void {
+  const headers = root.querySelector<HTMLElement>("[data-llm-provider-headers]");
+  headers?.insertAdjacentHTML("beforeend", `
+    <div class="settings-provider-dialog__header-row">
+      <input type="text" placeholder="Header" />
+      <input type="text" placeholder="Value" />
+    </div>
+  `);
+}
+
+function resetLlmProviderDraft(root: HTMLElement): void {
+  const form = root.querySelector<HTMLFormElement>("[data-llm-provider-form]");
+  if (!form) return;
+  form.reset();
+  delete form.dataset.llmProviderExistingId;
+  delete form.dataset.llmProviderExistingName;
+  delete form.dataset.llmProviderExistingProvider;
+  delete form.dataset.llmProviderExistingModel;
+  const headers = form.querySelector<HTMLElement>("[data-llm-provider-headers]");
+  if (headers) headers.innerHTML = "";
+}
+
+function applyLlmProviderPreset(root: HTMLElement, label: string, options: { overwriteId: boolean }): void {
+  const form = root.querySelector<HTMLFormElement>("[data-llm-provider-form]");
+  const preset = LLM_PROVIDER_PRESET_BY_LABEL[label];
+  if (!form || !preset) return;
+  writeLlmProviderField(form, "preset", preset.label);
+  writeLlmProviderField(form, "apiType", preset.apiType);
+  writeLlmProviderField(form, "baseUrl", preset.baseUrl);
+  writeLlmProviderField(form, "model", preset.defaultModel);
+  const model = form.querySelector<HTMLInputElement>("[data-llm-provider-field=\"model\"]");
+  if (model) model.dataset.llmProviderAutoModel = "true";
+  if (options.overwriteId && preset.label !== "Custom") {
+    writeLlmProviderField(form, "id", preset.label);
+  }
+  setLlmProviderDraftStatus(root, `${preset.label} 已套用：${preset.hint}`);
+}
+
+function syncLlmProviderDraftMode(root: HTMLElement, showHint: boolean): void {
+  const form = root.querySelector<HTMLFormElement>("[data-llm-provider-form]");
+  if (!form) return;
+  const isOAuth = isLlmProviderOAuthDraft(form);
+  setLlmProviderApiRowsHidden(form, isOAuth);
+  const submit = form.querySelector<HTMLButtonElement>("[data-llm-provider-submit]");
+  if (submit) submit.textContent = isOAuth ? "授权并添加" : "添加";
+  form.toggleAttribute("data-llm-provider-oauth-mode", isOAuth);
+  if (!isOAuth) clearLlmProviderOAuthDeviceCode(root);
+  if (!showHint || !isOAuth) return;
+  const provider = oauthProviderFromPreset(readLlmProviderField(form, "preset"));
+  setLlmProviderDraftStatus(
+    root,
+    provider
+      ? "OAuth 会打开浏览器认证；认证成功后会自动新增 provider。"
+      : "这个 OAuth provider 后端暂未支持。",
+  );
+}
+
+function setLlmProviderApiRowsHidden(form: HTMLElement, hidden: boolean): void {
+  ["apiType", "apiKey", "baseUrl", "model", "noStainless", "transport"].forEach((field) => {
+    const row = form
+      .querySelector<HTMLElement>(`[data-llm-provider-field="${field}"]`)
+      ?.closest<HTMLElement>(".settings-provider-dialog__row");
+    if (row) row.hidden = hidden;
+  });
+  const headerButtonRow = form
+    .querySelector<HTMLElement>("[data-llm-provider-header-add]")
+    ?.closest<HTMLElement>(".settings-provider-dialog__row");
+  if (headerButtonRow) headerButtonRow.hidden = hidden;
+  const headers = form.querySelector<HTMLElement>("[data-llm-provider-headers]");
+  if (headers) headers.hidden = hidden;
+}
+
+function syncLlmProviderDraftModelDefault(root: HTMLElement, options: { overwrite: boolean }): void {
+  const form = root.querySelector<HTMLFormElement>("[data-llm-provider-form]");
+  const model = form?.querySelector<HTMLInputElement>("[data-llm-provider-field=\"model\"]");
+  if (!form || !model) return;
+  if (!options.overwrite && model.value.trim() && model.dataset.llmProviderAutoModel !== "true") return;
+  model.value = modelForLlmProviderDraft(form, resolveLlmProviderDraftProvider(form));
+  model.dataset.llmProviderAutoModel = "true";
+}
+
+function syncLlmProviderModelSuggestions(root: HTMLElement): void {
+  const form = root.querySelector<HTMLFormElement>("[data-llm-provider-form]");
+  const container = form?.querySelector<HTMLElement>("[data-llm-provider-model-suggestions]");
+  if (!form || !container) return;
+  const preset = LLM_PROVIDER_PRESET_BY_LABEL[readLlmProviderField(form, "preset")];
+  const provider = resolveLlmProviderDraftProvider(form);
+  const models = preset?.suggestedModels.length ? preset.suggestedModels : MODEL_OPTIONS_BY_PROVIDER[provider] ?? [];
+  container.innerHTML = models.map(renderLlmProviderModelChip).join("");
+}
+
+function renderLlmProviderModelChip(model: string): string {
+  return `<button type="button" data-llm-provider-model-chip="${escapeHtml(model)}">${escapeHtml(model)}</button>`;
+}
+
+function maybeStartLlmProviderOAuthFromSelection(root: HTMLElement): void {
+  const form = root.querySelector<HTMLFormElement>("[data-llm-provider-form]");
+  if (!form || !isLlmProviderOAuthDraft(form)) return;
+  if (form.dataset.llmProviderSubmitting === "true") return;
+  const hasDisplayId = Boolean(readLlmProviderField(form, "id"));
+  const provider = oauthProviderFromPreset(readLlmProviderField(form, "preset"));
+  if (!hasDisplayId || !provider) return;
+  void submitLlmProviderDraft(root, form);
+}
+
+async function hydrateLlmProviderDraftAccounts(root: HTMLElement, prefill: boolean): Promise<void> {
+  if (typeof fetch !== "function") return;
+  let accounts: LlmApiAccountResponse[] = [];
+  let oauthAccounts: readonly LlmProviderOAuthAccountResponse[] = [];
+  let cloudflareProvider: LlmCloudflareProviderResponse | null = null;
+  try {
+    const response = await fetch("/api/llm/accounts");
+    const payload = await readJsonPayload<{ success?: boolean; data?: LlmApiAccountsResponse }>(response);
+    accounts = response.ok && payload.success && Array.isArray(payload.data?.accounts) ? payload.data.accounts : [];
+  } catch {
+    accounts = [];
+  }
+  oauthAccounts = [
+    ...await loadOptionalAccountCodexOAuthAccounts(),
+    ...await loadOptionalCliProxyOAuthAccounts(),
+  ];
+  cloudflareProvider = await loadOptionalCloudflareProvider();
+  llmAccountsState.set(root, accounts);
+  llmOAuthAccountsState.set(root, oauthAccounts);
+  llmCloudflareProviderState.set(root, cloudflareProvider);
+  renderLlmProviderCards(root, accounts, oauthAccounts, cloudflareProvider);
+  if (prefill) prefillLlmProviderDraft(root, accounts[0]);
+}
+
+async function loadOptionalCloudflareProvider(): Promise<LlmCloudflareProviderResponse | null> {
+  try {
+    const response = await fetch("/api/llm/cloudflare-provider");
+    const payload = await readJsonPayload<{ success?: boolean; data?: LlmCloudflareProviderResponse }>(response);
+    if (!response.ok || !payload.success || !payload.data?.accountRef) return null;
+    return payload.data;
+  } catch {
+    return null;
+  }
+}
+
+function renderLlmProviderDraftCount(root: HTMLElement, count: number): void {
+  setOptionalText(root.querySelector("[data-llm-provider-count]"), `已添加 ${count} 个提供商`);
+}
+
+function renderLlmProviderCards(
+  root: HTMLElement,
+  accounts: readonly LlmApiAccountResponse[],
+  oauthAccounts: readonly LlmProviderOAuthAccountResponse[],
+  cloudflareProvider: LlmCloudflareProviderResponse | null,
+): void {
+  const apiAccounts = Array.isArray(accounts) ? accounts : [];
+  const oauthProviderAccounts = Array.isArray(oauthAccounts) ? oauthAccounts : [];
+  const apps = appConfigState.get(root)?.apps ?? [];
+  const cards = [
+    ...apiAccounts.map((account) => toApiProviderCardView(account, apps)),
+    ...oauthProviderAccounts.map((account) => toOAuthProviderCardView(account, apps)),
+    ...(cloudflareProvider?.configured
+      ? [toCloudflareProviderCardView(cloudflareProvider, apps)]
+      : []),
+  ];
+  renderLlmProviderDraftCount(root, cards.length);
+  const list = root.querySelector<HTMLElement>("[data-llm-provider-list]");
+  if (!list) return;
+  list.innerHTML = cards.map(renderLlmProviderCard).join("");
+}
+
+function toApiProviderCardView(account: LlmApiAccountResponse, apps: readonly AppDefinitionResponse[]): LlmProviderCardView {
+  const accountRef = `api:${account.id}`;
+  const title = presetLabelFromApiAccount(account);
+  return {
+    accountRef,
+    accountName: account.name,
+    displayId: readLlmProviderDisplayLabel(accountRef, account.name),
+    provider: account.provider,
+    source: "api",
+    enabled: account.enabled !== false,
+    title,
+    connectionText: account.keyConfigured
+      ? `${account.enabled === false ? "已停用" : "已连接"} · ${readHost(account.url) ?? account.url}`
+      : "已保存 · 未配置密钥",
+    description: `${title} 支持流式传输；自动模式会在可用请求通道之间选择。`,
+    model: account.model,
+    apps: apps.filter((app) => app.accountRef === accountRef),
+    embeddingModels: [],
+    canManage: true,
+  };
+}
+
+function toOAuthProviderCardView(
+  account: LlmProviderOAuthAccountResponse,
+  apps: readonly AppDefinitionResponse[],
+): LlmProviderCardView {
+  const accountRef = account.accountRef ?? `oauth:${account.provider}:${account.name}`;
+  const title = oauthTitleFromProvider(account.provider);
+  return {
+    accountRef,
+    accountName: account.name,
+    displayId: readLlmProviderDisplayLabel(accountRef, account.email ?? account.name),
+    provider: providerFromOAuthAccount(account.provider),
+    source: "oauth",
+    enabled: account.enabled !== false,
+    title,
+    connectionText: account.enabled === false
+      ? `已停用 · ${account.email ?? account.authIndex ?? account.name}`
+      : account.connectionText ?? `已连接 · ${account.authIndex ?? account.name}`,
+    description: `${title} 支持流式传输；使用 Obsidian requestUrl 时会退化为缓冲输出，桌面端 Node fetch 可提供实时流式。`,
+    model: "",
+    apps: apps.filter((app) => app.accountRef === accountRef),
+    embeddingModels: [],
+    canManage: true,
+  };
+}
+
+function toCloudflareProviderCardView(
+  provider: LlmCloudflareProviderResponse,
+  apps: readonly AppDefinitionResponse[],
+): LlmProviderCardView {
+  const endpoint = provider.endpoint ? readHost(provider.endpoint) ?? provider.endpoint : "Cloudflare Workers AI";
+  return {
+    accountRef: provider.accountRef,
+    accountName: "cloudflare-workers-ai",
+    displayId: "Cloudflare Workers AI",
+    provider: "cloudflare",
+    source: "cloudflare",
+    enabled: true,
+    title: "Cloudflare Workers AI",
+    connectionText: `已配置 · ${endpoint}`,
+    description: provider.runtime === "worker"
+      ? "通过 Cloudflare Worker /embed 接入嵌入模型；token 只保存在本地环境变量中。"
+      : "通过 Cloudflare Workers AI REST 接入嵌入模型；API token 只保存在本地环境变量中。",
+    model: provider.aiModel ?? "",
+    apps: apps.filter((app) => app.accountRef === provider.accountRef),
+    embeddingModels: provider.embeddingModels,
+    canManage: false,
+  };
+}
+
+function renderLlmProviderCard(card: LlmProviderCardView): string {
+  const tools = renderLlmProviderCardTools(card);
+  const toplineActions = renderLlmProviderCardToplineActions(card);
+  return `
+    <section
+      class="settings-llm-provider-item"
+      data-llm-provider-card="${escapeHtml(card.accountRef)}"
+      data-llm-provider-source="${escapeHtml(card.source)}"
+      data-llm-provider-provider="${escapeHtml(card.provider)}"
+      data-llm-provider-account-name="${escapeHtml(card.accountName)}"
+      data-llm-provider-model="${escapeHtml(card.model)}"
+      data-llm-provider-display-id="${escapeHtml(card.displayId)}"
+      data-llm-provider-enabled="${card.enabled ? "true" : "false"}"
+    >
+      <div class="settings-llm-provider-item__header">
+        <div class="settings-llm-provider-item__title">
+          <span class="settings-llm-provider-item__grip" aria-hidden="true">⠿</span>
+          <button type="button" class="settings-llm-provider-item__chevron" data-llm-provider-card-collapse aria-expanded="false" aria-label="展开或收起 provider">›</button>
+          <strong data-llm-provider-card-id>${escapeHtml(card.displayId)}</strong>
+        </div>
+        <div class="settings-llm-provider-item__tools">${tools}</div>
+      </div>
+      <div class="settings-llm-provider-item__body" data-llm-provider-card-body hidden>
+        <div class="settings-llm-provider-item__topline">
+          <h3>${escapeHtml(card.title)}</h3>
+          ${toplineActions}
+        </div>
+        <p class="settings-llm-provider-item__connection">${escapeHtml(card.connectionText)}</p>
+        <p class="settings-llm-provider-item__description">${escapeHtml(card.description)}</p>
+        ${renderLlmProviderChatAppsSection(card)}
+        ${renderLlmProviderEmbeddingSection(card)}
+      </div>
+    </section>
+  `;
+}
+
+function renderLlmProviderCardTools(card: LlmProviderCardView): string {
+  return [
+    `<span class="settings-llm-provider-item__pill">${card.apps.length} 聊天模型 · ${card.embeddingModels.length} 嵌入模型</span>`,
+    card.enabled ? "" : `<span class="settings-llm-provider-item__pill">已停用</span>`,
+    card.canManage ? `<button type="button" class="btn btn-secondary btn-inline" data-llm-provider-card-start>启动</button>` : "",
+    card.canManage ? `<button type="button" data-llm-provider-card-configure aria-label="配置 provider">${renderIcon("settings", { size: 22 })}</button>` : "",
+    card.canManage ? `<button type="button" data-llm-provider-card-remove aria-label="删除 provider">⌫</button>` : "",
+  ].join("");
+}
+
+function renderLlmProviderCardToplineActions(card: LlmProviderCardView): string {
+  if (!card.canManage) return "";
+  return [
+    `<button type="button" class="btn btn-secondary btn-inline" data-llm-provider-card-start>启动 provider</button>`,
+    `<button type="button" class="btn btn-secondary btn-inline" data-llm-provider-card-disconnect>删除 provider</button>`,
+  ].join("");
+}
+
+function renderLlmProviderChatAppsSection(card: LlmProviderCardView): string {
+  return `
+    <div class="settings-llm-provider-models">
+      <div class="settings-llm-provider-models__header">
+        <h4>聊天模型</h4>
+        <button type="button" class="btn btn-secondary btn-inline" data-llm-provider-add-chat>+ 添加聊天模型</button>
+      </div>
+      ${card.apps.length > 0
+        ? `<div class="settings-llm-provider-apps">${card.apps.map(renderLlmProviderChatApp).join("")}</div>`
+        : `<p>未配置聊天模型</p>`}
+    </div>
+  `;
+}
+
+function renderLlmProviderChatApp(app: AppDefinitionResponse): string {
+  return `
+    <button type="button" class="settings-llm-provider-app" data-llm-provider-chat-app="${escapeHtml(app.id)}">
+      <strong>${escapeHtml(app.name)}</strong>
+      <small>${escapeHtml([app.model, formatAppModeLabel(app.mode), app.enabled ? "已启用" : "已停用"].filter(Boolean).join(" · "))}</small>
+    </button>
+  `;
+}
+
+function renderLlmProviderEmbeddingSection(card: LlmProviderCardView): string {
+  return `
+    <div class="settings-llm-provider-models">
+      <div class="settings-llm-provider-models__header">
+        <h4>嵌入模型</h4>
+      </div>
+      ${card.embeddingModels.length > 0
+        ? `<div class="settings-llm-provider-embeddings">${card.embeddingModels.map(renderLlmProviderEmbeddingModel).join("")}</div>`
+        : `<p>未配置嵌入模型</p>`}
+    </div>
+  `;
+}
+
+function renderLlmProviderEmbeddingModel(model: string): string {
+  return `
+    <div class="settings-llm-provider-embedding">
+      <strong>${escapeHtml(model)}</strong>
+      <small>可用 · Cloudflare Workers AI</small>
+    </div>
+  `;
+}
+
+function toggleLlmProviderCard(button: HTMLButtonElement): void {
+  const card = button.closest<HTMLElement>("[data-llm-provider-card]");
+  const body = card?.querySelector<HTMLElement>("[data-llm-provider-card-body]");
+  if (!body) return;
+  body.hidden = !body.hidden;
+  button.setAttribute("aria-expanded", body.hidden ? "false" : "true");
+  button.textContent = body.hidden ? "›" : "⌄";
+}
+
+function configureLlmProviderCard(root: HTMLElement, button: HTMLButtonElement): void {
+  const card = button.closest<HTMLElement>("[data-llm-provider-card]");
+  if (!card) return;
+  const accountRef = card.dataset.llmProviderCard ?? "";
+  if (accountRef.startsWith("api:")) {
+    const account = findApiAccountByRef(root, accountRef);
+    if (!account) return;
+    openLlmProviderDialog(root);
+    prefillLlmProviderDraft(root, account, true);
+    return;
+  }
+  openLlmProviderDialog(root);
+  writeLlmProviderField(root, "id", card.dataset.llmProviderDisplayId ?? "");
+  writeLlmProviderField(root, "preset", oauthPresetFromAccountRef(accountRef));
+  setLlmProviderDraftStatus(root, "OAuth provider 会重新授权并更新显示 ID。");
+}
+
+async function removeLlmProviderCard(root: HTMLElement, button: HTMLButtonElement): Promise<void> {
+  const card = button.closest<HTMLElement>("[data-llm-provider-card]");
+  if (!card) return;
+  const accountRef = card.dataset.llmProviderCard ?? "";
+  setLlmProviderListStatus(root, "正在删除 provider...");
+  try {
+    if (accountRef.startsWith("api:")) {
+      await deleteLlmProviderApiAccount(accountRef);
+    } else {
+      await deleteLlmProviderOAuthAccount(card);
+    }
+    removeLlmProviderDisplayLabel(accountRef);
+    await hydrateLlmProviderDraftAccounts(root, false);
+    setLlmProviderListStatus(root, "Provider 已删除。");
+  } catch (error) {
+    setLlmProviderListStatus(root, readErrorMessage(error));
+  }
+}
+
+async function startLlmProviderCard(root: HTMLElement, button: HTMLButtonElement): Promise<void> {
+  const card = button.closest<HTMLElement>("[data-llm-provider-card]");
+  if (!card) return;
+  const accountRef = card.dataset.llmProviderCard ?? "";
+  setLlmProviderListStatus(root, "正在启动 provider...");
+  try {
+    if (accountRef.startsWith("api:")) {
+      await startLlmProviderApiAccount(accountRef);
+    } else {
+      await setLlmProviderOAuthAccountEnabled(card, true);
+      await saveLlmProviderDefaultAccount(accountRef);
+    }
+    await hydrateLlmProviderDraftAccounts(root, false);
+    setLlmProviderListStatus(root, "Provider 已启动。");
+  } catch (error) {
+    setLlmProviderListStatus(root, readErrorMessage(error));
+  }
+}
+
+async function createLlmProviderChatApp(root: HTMLElement, button: HTMLButtonElement): Promise<void> {
+  const card = button.closest<HTMLElement>("[data-llm-provider-card]");
+  if (!card) return;
+  await ensureAgentConfigLoaded(root);
+  const config = appConfigState.get(root) ?? { apps: [], defaultAppId: null };
+  const agent = createClientAgent();
+  agent.name = `${card.dataset.llmProviderDisplayId ?? "Provider"} 聊天`;
+  agent.purpose = "聊天模型";
+  agent.provider = card.dataset.llmProviderProvider ?? "openai";
+  agent.accountRef = card.dataset.llmProviderCard ?? "";
+  agent.model = card.dataset.llmProviderModel ?? "";
+  config.apps = [...config.apps, agent];
+  config.defaultAppId = agent.id;
+  renderAgentConfig(root, config);
+  openAgentConfigModal(root, agent.id);
+  setAgentConfigStatus(root, "聊天模型应用已创建，请保存后生效。");
+  rerenderLlmProviderCards(root);
+}
+
+function openLlmProviderChatApp(root: HTMLElement, button: HTMLButtonElement): void {
+  const appId = button.dataset.llmProviderChatApp;
+  if (!appId) return;
+  const config = appConfigState.get(root);
+  if (config) {
+    config.defaultAppId = appId;
+    renderAgentConfig(root, config);
+  }
+  openAgentConfigModal(root, appId);
+}
+
+async function ensureAgentConfigLoaded(root: HTMLElement): Promise<void> {
+  if (appConfigState.has(root)) return;
+  await hydrateAgentConfig(root);
+  await hydrateAgentAccountOptions(root);
+}
+
+function findApiAccountByRef(root: HTMLElement, accountRef: string): LlmApiAccountResponse | undefined {
+  const accountId = accountRef.startsWith("api:") ? accountRef.slice(4) : accountRef;
+  return (llmAccountsState.get(root) ?? []).find((account) => account.id === accountId);
+}
+
+async function deleteLlmProviderApiAccount(accountRef: string): Promise<void> {
+  const response = await fetch("/api/llm/accounts", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: accountRef.slice(4) }),
+  });
+  const payload = await readJsonPayload<{ success?: boolean; error?: string }>(response);
+  if (!response.ok || !payload.success) {
+    throw new Error(payload.error ?? "Provider 删除失败");
+  }
+}
+
+async function startLlmProviderApiAccount(accountRef: string): Promise<void> {
+  const response = await fetch("/api/llm/accounts/start", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: accountRef.slice(4) }),
+  });
+  const payload = await readJsonPayload<{ success?: boolean; error?: string }>(response);
+  if (!response.ok || !payload.success) {
+    throw new Error(payload.error ?? "Provider 启动失败");
+  }
+}
+
+async function deleteLlmProviderOAuthAccount(card: HTMLElement): Promise<void> {
+  const accountName = card.dataset.llmProviderAccountName;
+  if (!accountName) throw new Error("OAuth 账号名称缺失。");
+  const response = await fetch("/api/cliproxy/accounts", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: accountName }),
+  });
+  const payload = await readJsonPayload<{ success?: boolean; error?: string }>(response);
+  if (!response.ok || !payload.success) {
+    throw new Error(payload.error ?? "OAuth 账号删除失败");
+  }
+}
+
+async function setLlmProviderOAuthAccountEnabled(card: HTMLElement, enabled: boolean): Promise<void> {
+  const accountName = card.dataset.llmProviderAccountName;
+  if (!accountName) throw new Error("OAuth 账号名称缺失。");
+  const response = await fetch("/api/cliproxy/accounts/enabled", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: accountName, enabled }),
+  });
+  const payload = await readJsonPayload<{ success?: boolean; error?: string }>(response);
+  if (!response.ok || !payload.success) {
+    throw new Error(payload.error ?? (enabled ? "OAuth 账号启用失败" : "OAuth 账号断开失败"));
+  }
+}
+
+function rerenderLlmProviderCards(root: HTMLElement): void {
+  renderLlmProviderCards(
+    root,
+    llmAccountsState.get(root) ?? [],
+    llmOAuthAccountsState.get(root) ?? [],
+    llmCloudflareProviderState.get(root) ?? null,
+  );
+}
+
+function prefillLlmProviderDraft(root: HTMLElement, account?: LlmApiAccountResponse, force = false): void {
+  const form = root.querySelector<HTMLFormElement>("[data-llm-provider-form]");
+  if (!form || !account || (!force && !isLlmProviderDraftEmpty(form))) return;
+  form.dataset.llmProviderExistingId = account.id;
+  form.dataset.llmProviderExistingName = account.name;
+  form.dataset.llmProviderExistingProvider = account.provider;
+  form.dataset.llmProviderExistingModel = account.model;
+  writeLlmProviderField(form, "id", account.name);
+  writeLlmProviderField(form, "preset", presetFromSavedProvider(account.provider));
+  writeLlmProviderField(form, "apiType", apiTypeFromSavedProvider(account.provider));
+  writeLlmProviderField(form, "baseUrl", account.url);
+  writeLlmProviderField(form, "model", account.model);
+  delete form.querySelector<HTMLInputElement>("[data-llm-provider-field=\"model\"]")?.dataset.llmProviderAutoModel;
+  const suffix = account.keyConfigured ? "，已保存的密钥会继续沿用" : "";
+  setLlmProviderDraftStatus(root, `已载入旧账号：${account.name}${suffix}。`);
+}
+
+function isLlmProviderDraftEmpty(form: HTMLElement): boolean {
+  return !readLlmProviderField(form, "id") && !readLlmProviderField(form, "baseUrl");
+}
+
+async function submitLlmProviderDraft(root: HTMLElement, form: HTMLFormElement): Promise<void> {
+  if (form.dataset.llmProviderSubmitting === "true") return;
+  form.dataset.llmProviderSubmitting = "true";
+  const button = root.querySelector<HTMLButtonElement>("[data-llm-provider-submit]");
+  if (button) button.disabled = true;
+  setLlmProviderDraftStatus(root, "正在处理提供商...");
+  try {
+    if (isLlmProviderOAuthDraft(form)) {
+      await submitLlmProviderOAuthDraft(root, form);
+    } else {
+      await submitLlmProviderApiDraft(root, form);
+    }
+  } catch (error) {
+    setLlmProviderDraftStatus(root, readErrorMessage(error));
+  } finally {
+    delete form.dataset.llmProviderSubmitting;
+    if (button) button.disabled = false;
+  }
+}
+
+async function submitLlmProviderApiDraft(root: HTMLElement, form: HTMLFormElement): Promise<void> {
+  const input = readLlmProviderApiDraft(form);
+  const account = await saveLlmProviderDraftAccount(input);
+  writeLlmProviderDisplayLabel(`api:${account.id}`, input.name);
+  await saveLlmProviderDefaultAccount(`api:${account.id}`);
+  const test = await testLlmProviderDefaultAccount(`api:${account.id}`);
+  await hydrateLlmProviderDraftAccounts(root, false);
+  const prefix = test.ok ? "已保存并验证成功" : "已保存，但验证失败";
+  setLlmProviderDraftStatus(root, `${prefix}：${test.message}`);
+}
+
+async function submitLlmProviderOAuthDraft(root: HTMLElement, form: HTMLFormElement): Promise<void> {
+  const displayId = readRequiredControlValue(
+    form.querySelector<HTMLInputElement>("[data-llm-provider-field=\"id\"]"),
+    "请填写 provider ID。",
+  );
+  const oauthProvider = oauthProviderFromPreset(readLlmProviderField(form, "preset"));
+  if (!oauthProvider) throw new Error("这个 OAuth provider 后端暂未支持。");
+  const flow = await requestLlmProviderOAuth(root, oauthProvider);
+  await waitForLlmProviderOAuth(root, oauthProvider, flow);
+  const account = await findLlmProviderOAuthAccount(oauthProvider);
+  const accountRef = account.accountRef ?? `oauth:${account.provider}:${account.name}`;
+  writeLlmProviderDisplayLabel(accountRef, displayId);
+  await saveLlmProviderDefaultAccount(accountRef);
+  await hydrateLlmProviderDraftAccounts(root, false);
+  const test = await tryTestLlmProviderDefaultAccount(accountRef);
+  const providerName = formatCLIProxyProvider(oauthProvider);
+  const prefix = test.ok ? `${providerName} OAuth 已接入并验证可用` : `${providerName} OAuth 已接入，但连通测试失败`;
+  setLlmProviderDraftStatus(root, `${prefix}：${test.message}`);
+}
+
+function readLlmProviderApiDraft(form: HTMLFormElement): LlmProviderDraftInput {
+  const name = readRequiredControlValue(
+    form.querySelector<HTMLInputElement>("[data-llm-provider-field=\"id\"]"),
+    "请填写 provider ID。",
+  );
+  const provider = resolveLlmProviderDraftProvider(form);
+  const existingId = existingLlmProviderAccountId(form, name);
+  return {
+    ...(existingId ? { id: existingId } : {}),
+    name,
+    provider,
+    url: readLlmProviderField(form, "baseUrl"),
+    key: readLlmProviderField(form, "apiKey"),
+    model: readLlmProviderApiDraftModel(form, provider),
+    enabled: true,
+  };
+}
+
+function readLlmProviderApiDraftModel(form: HTMLFormElement, provider: string): string {
+  const model = form.querySelector<HTMLInputElement>("[data-llm-provider-field=\"model\"]");
+  if (!model) return modelForLlmProviderDraft(form, provider);
+  if (model.dataset.llmProviderAutoModel === "true") {
+    return modelForLlmProviderDraft(form, provider);
+  }
+  return model.value.trim() || modelForLlmProviderDraft(form, provider);
+}
+
+function existingLlmProviderAccountId(form: HTMLFormElement, name: string): string | undefined {
+  return form.dataset.llmProviderExistingName === name ? form.dataset.llmProviderExistingId : undefined;
+}
+
+function isLlmProviderOAuthDraft(form: HTMLElement): boolean {
+  return readLlmProviderField(form, "preset").includes("OAuth");
+}
+
+async function saveLlmProviderDraftAccount(input: LlmProviderDraftInput): Promise<LlmApiAccountResponse> {
+  const response = await fetch("/api/llm/accounts", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  return readSuccessData<LlmApiAccountResponse>(response, "Provider 保存失败");
+}
+
+async function saveLlmProviderDefaultAccount(accountRef: string): Promise<void> {
+  const response = await fetch("/api/llm/config", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ accountRef }),
+  });
+  await readSuccessData<LlmProviderConfigResponse>(response, "默认账号保存失败");
+}
+
+async function testLlmProviderDefaultAccount(accountRef: string): Promise<LlmProviderTestResponse> {
+  const response = await fetch("/api/llm/test", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ accountRef }),
+  });
+  return readSuccessData<LlmProviderTestResponse>(response, "Provider 连通测试失败");
+}
+
+async function tryTestLlmProviderDefaultAccount(accountRef: string): Promise<LlmProviderTestResponse> {
+  try {
+    return await testLlmProviderDefaultAccount(accountRef);
+  } catch (error) {
+    return {
+      ok: false,
+      provider: "oauth",
+      endpoint: accountRef,
+      message: readErrorMessage(error),
+    };
+  }
+}
+
+async function requestLlmProviderOAuth(root: HTMLElement, provider: string): Promise<LlmProviderOAuthFlow> {
+  setLlmProviderDraftStatus(root, "正在创建 OAuth 登录链接...");
+  if (provider === "codex") {
+    return requestAccountLlmProviderOAuth(root);
+  }
+  const response = await fetch("/api/cliproxy/oauth", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ provider }),
+  });
+  const data = await readSuccessData<{ url: string; state: string }>(response, "OAuth 登录链接创建失败");
+  await openLlmProviderOAuthUrl(data.url);
+  setLlmProviderDraftStatus(root, `OAuth 已打开，等待 ${formatCLIProxyProvider(provider)} 登录完成...`);
+  return { state: data.state, pollDelayMs: LLM_PROVIDER_OAUTH_POLL_DELAY_MS };
+}
+
+async function requestAccountLlmProviderOAuth(root: HTMLElement): Promise<LlmProviderOAuthFlow> {
+  const response = await fetch("/api/account-ai/codex-oauth/start", { method: "POST" });
+  const data = await readSuccessData<LlmProviderOAuthStartResponse>(response, "Worker OAuth 登录链接创建失败");
+  await openLlmProviderOAuthUrl(data.url);
+  showLlmProviderOAuthDeviceCode(root, data);
+  const suffix = data.userCode ? "，授权码已同步到上方" : "";
+  setLlmProviderDraftStatus(root, `OAuth 已打开${suffix}，授权完成后会自动接入。`);
+  return {
+    state: data.state,
+    pollDelayMs: resolveLlmProviderOAuthPollDelayMs(data.pollIntervalSeconds),
+  };
+}
+
+async function waitForLlmProviderOAuth(root: HTMLElement, provider: string, flow: LlmProviderOAuthFlow): Promise<void> {
+  for (let attempt = 0; attempt < LLM_PROVIDER_OAUTH_POLL_ATTEMPTS; attempt += 1) {
+    const status = provider === "codex"
+      ? await readAccountLlmProviderOAuthStatus(flow.state)
+      : await readLlmProviderOAuthStatus(flow.state);
+    if (status.status === "ok") return;
+    if (status.status === "error") throw new Error(status.error ?? "OAuth 登录失败");
+    setLlmProviderDraftStatus(root, `等待 ${formatCLIProxyProvider(provider)} 登录完成...`);
+    await delay(flow.pollDelayMs);
+  }
+  throw new Error("OAuth 登录超时，请重新点击添加。");
+}
+
+function resolveLlmProviderOAuthPollDelayMs(intervalSeconds: number | undefined): number {
+  if (!Number.isFinite(intervalSeconds) || !intervalSeconds || intervalSeconds <= 0) {
+    return LLM_PROVIDER_OAUTH_POLL_DELAY_MS;
+  }
+  return Math.max(LLM_PROVIDER_OAUTH_MIN_POLL_DELAY_MS, Math.round(intervalSeconds * 1000));
+}
+
+function showLlmProviderOAuthDeviceCode(root: HTMLElement, data: LlmProviderOAuthStartResponse): void {
+  const panel = root.querySelector<HTMLElement>("[data-llm-provider-oauth-code]");
+  if (!panel || !data.userCode) return;
+  panel.hidden = false;
+  setOptionalText(panel.querySelector("[data-llm-provider-oauth-user-code]"), data.userCode);
+  const link = panel.querySelector<HTMLAnchorElement>("[data-llm-provider-oauth-link]");
+  if (link) link.href = data.url;
+}
+
+function clearLlmProviderOAuthDeviceCode(root: HTMLElement): void {
+  const panel = root.querySelector<HTMLElement>("[data-llm-provider-oauth-code]");
+  if (!panel) return;
+  panel.hidden = true;
+  setOptionalText(panel.querySelector("[data-llm-provider-oauth-user-code]"), "");
+  const link = panel.querySelector<HTMLAnchorElement>("[data-llm-provider-oauth-link]");
+  if (link) link.removeAttribute("href");
+}
+
+async function copyLlmProviderOAuthDeviceCode(root: HTMLElement): Promise<void> {
+  const code = root.querySelector("[data-llm-provider-oauth-user-code]")?.textContent?.trim();
+  if (!code) return;
+  await navigator.clipboard?.writeText(code);
+  setLlmProviderDraftStatus(root, "授权码已复制。");
+}
+
+async function readLlmProviderOAuthStatus(state: string): Promise<LlmProviderOAuthStatusResponse> {
+  const response = await fetch(`/api/cliproxy/oauth/status?state=${encodeURIComponent(state)}`);
+  return readSuccessData<LlmProviderOAuthStatusResponse>(response, "OAuth 状态读取失败");
+}
+
+async function readAccountLlmProviderOAuthStatus(state: string): Promise<LlmProviderOAuthStatusResponse> {
+  const response = await fetch(`/api/account-ai/codex-oauth/status?state=${encodeURIComponent(state)}`);
+  return readSuccessData<LlmProviderOAuthStatusResponse>(response, "Worker OAuth 状态读取失败");
+}
+
+async function findLlmProviderOAuthAccount(provider: string): Promise<LlmProviderOAuthAccountResponse> {
+  if (provider === "codex") {
+    const accounts = await loadOptionalAccountCodexOAuthAccounts();
+    const account = accounts[0];
+    if (!account) throw new Error("OAuth 已完成，但没有读取到 Worker 账号。");
+    return account;
+  }
+  const accounts = await fetchCLIProxyOAuthAccounts(false);
+  const account = accounts.find((item) => item.provider === provider);
+  if (!account) throw new Error("OAuth 已完成，但没有读取到账号。");
+  return account;
+}
+
+async function openLlmProviderOAuthUrl(url: string): Promise<void> {
+  if (window.llmWikiDesktop?.openExternal) {
+    await window.llmWikiDesktop.openExternal(url);
+    return;
+  }
+  window.open(url, "_blank", "noopener");
+}
+
+function resolveLlmProviderDraftProvider(form: HTMLFormElement): string {
+  const preset = readLlmProviderField(form, "preset");
+  const apiType = readLlmProviderField(form, "apiType");
+  const existingProvider = form.dataset.llmProviderExistingProvider;
+  if (existingProvider && preset === presetFromSavedProvider(existingProvider)) {
+    return existingProvider;
+  }
+  if (apiType === "Anthropic API") return "anthropic";
+  if (apiType === "Gemini API") return "gemini";
+  const presetProvider = providerFromLlmPreset(preset);
+  return inferOpenAICompatibleProvider(form, presetProvider);
+}
+
+function inferOpenAICompatibleProvider(form: HTMLFormElement, presetProvider: string): string {
+  if (presetProvider !== "openai" && presetProvider !== "custom") {
+    return presetProvider;
+  }
+  return providerFromLlmBaseUrl(readLlmProviderField(form, "baseUrl")) ?? presetProvider;
+}
+
+// fallow-ignore-next-line complexity
+function providerFromLlmPreset(preset: string): string {
+  return LLM_PROVIDER_PRESET_BY_LABEL[preset]?.provider ?? PRESET_PROVIDER_BY_LABEL[preset] ?? "custom";
+}
+
+// fallow-ignore-next-line complexity
+function providerFromLlmBaseUrl(value: string): string | null {
+  const host = readHost(value)?.toLowerCase() ?? "";
+  return PROVIDER_BY_HOST[host] ?? null;
+}
+
+function oauthProviderFromPreset(preset: string): string | null {
+  if (preset === "ChatGPT OAuth") return "codex";
+  if (preset === "Gemini OAuth") return "gemini-cli";
+  return null;
+}
+
+function oauthPresetFromAccountRef(accountRef: string): string {
+  if (accountRef.startsWith("oauth:gemini-cli:") || accountRef.startsWith("oauth:gemini:")) {
+    return "Gemini OAuth";
+  }
+  return "ChatGPT OAuth";
+}
+
+function oauthTitleFromProvider(provider: string): string {
+  if (provider === "codex") return "ChatGPT OAuth";
+  if (provider === "gemini-cli" || provider === "gemini") return "Gemini OAuth";
+  if (provider === "anthropic") return "Claude OAuth";
+  if (provider === "kimi") return "Kimi OAuth";
+  return `${formatCLIProxyProvider(provider)} OAuth`;
+}
+
+// fallow-ignore-next-line complexity
+function presetFromSavedProvider(provider: string): string {
+  return PRESET_LABEL_BY_PROVIDER[provider] ?? "OpenAI Compatible";
+}
+
+function presetLabelFromApiAccount(account: LlmApiAccountResponse): string {
+  const urlPreset = LLM_PROVIDER_PRESETS.find((preset) => preset.baseUrl && sameProviderUrl(preset.baseUrl, account.url));
+  return urlPreset?.label ?? presetFromSavedProvider(account.provider);
+}
+
+function sameProviderUrl(left: string, right: string): boolean {
+  return left.replace(/\/+$/, "").toLowerCase() === right.replace(/\/+$/, "").toLowerCase();
+}
+
+function readLlmProviderDisplayLabel(accountRef: string, fallback: string): string {
+  return readLlmProviderDisplayLabels()[accountRef] ?? fallback;
+}
+
+function writeLlmProviderDisplayLabel(accountRef: string, label: string): void {
+  const labels = { ...readLlmProviderDisplayLabels(), [accountRef]: label };
+  try {
+    window.localStorage.setItem(LLM_PROVIDER_LABELS_STORAGE_KEY, JSON.stringify(labels));
+  } catch {
+    // Display labels are non-critical metadata.
+  }
+}
+
+function removeLlmProviderDisplayLabel(accountRef: string): void {
+  const labels = { ...readLlmProviderDisplayLabels() };
+  delete labels[accountRef];
+  try {
+    window.localStorage.setItem(LLM_PROVIDER_LABELS_STORAGE_KEY, JSON.stringify(labels));
+  } catch {
+    // Display labels are non-critical metadata.
+  }
+}
+
+function readLlmProviderDisplayLabels(): Record<string, string> {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(LLM_PROVIDER_LABELS_STORAGE_KEY) ?? "{}") as unknown;
+    return isStringRecord(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function isStringRecord(value: unknown): value is Record<string, string> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  return Object.values(value).every((item) => typeof item === "string");
+}
+
+function apiTypeFromSavedProvider(provider: string): string {
+  if (provider === "anthropic") return "Anthropic API";
+  if (provider === "gemini") return "Gemini API";
+  if (provider === "minimax") return "Anthropic API";
+  return "OpenAI Compatible";
+}
+
+function modelForLlmProviderDraft(form: HTMLFormElement, provider: string): string {
+  if (form.dataset.llmProviderExistingProvider === provider && form.dataset.llmProviderExistingModel) {
+    return form.dataset.llmProviderExistingModel;
+  }
+  const preset = LLM_PROVIDER_PRESET_BY_LABEL[readLlmProviderField(form, "preset")];
+  if (preset && preset.label !== "Custom" && preset.provider === provider) return preset.defaultModel;
+  return MODEL_OPTIONS_BY_PROVIDER[provider]?.[0] ?? MODEL_OPTIONS_BY_PROVIDER.custom[0] ?? "gpt-4o";
+}
+
+function readLlmProviderField(root: HTMLElement, field: string): string {
+  return root.querySelector<HTMLInputElement | HTMLSelectElement>(`[data-llm-provider-field="${field}"]`)?.value.trim() ?? "";
+}
+
+function writeLlmProviderField(root: HTMLElement, field: string, value: string): void {
+  const control = root.querySelector<HTMLInputElement | HTMLSelectElement>(`[data-llm-provider-field="${field}"]`);
+  if (control) control.value = value;
+}
+
+function setLlmProviderDraftStatus(root: HTMLElement, text: string): void {
+  setOptionalText(root.querySelector("[data-llm-provider-status]"), text);
+}
+
+function setLlmProviderListStatus(root: HTMLElement, text: string): void {
+  setOptionalText(root.querySelector("[data-llm-provider-list-status]"), text);
 }
 
 function bindSettingsNavigation(root: HTMLElement): void {
@@ -1136,27 +2462,118 @@ function bindSettingsNavigation(root: HTMLElement): void {
       if (!section) {
         return;
       }
-      selectSettingsSection(root, section);
+      selectSettingsSection(root, section, readSettingsRouteState(button));
+    });
+  });
+  root.querySelectorAll<HTMLButtonElement>("[data-plugin-kind-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      syncSettingsNavActive(root, "plugins", {
+        kind: readSettingsPluginKind(button.dataset.pluginKindFilter),
+      });
     });
   });
 }
 
-function selectSettingsSection(root: HTMLElement, section: SettingsSection): void {
-  if (section === "project-log") {
-    window.location.hash = "#/project-log";
-    return;
-  }
-  root.querySelectorAll<HTMLButtonElement>("[data-settings-nav]").forEach((item) => {
-    item.dataset.active = item.dataset.settingsNav === section ? "true" : "false";
-  });
+function selectSettingsSection(
+  root: HTMLElement,
+  section: SettingsSection,
+  routeState: SettingsPageRouteState,
+): void {
+  root.dataset.settingsActiveSection = section;
+  const pluginTarget = section === "plugins" ? readSettingsPluginTarget(root, routeState) : undefined;
+  syncSettingsNavActive(root, section, pluginTarget);
   root.querySelectorAll<HTMLElement>("[data-settings-panel]").forEach((panel) => {
     panel.hidden = panel.dataset.settingsPanel !== section;
   });
+  if (section === "plugins") {
+    selectPluginPanelTarget(root, pluginTarget ?? { kind: "third-party" });
+  }
+  syncSettingsEmbeddedPanels(root, section, routeState);
   if (section === "workspace-sync") {
     void hydrateWorkspaceSyncPanel(root);
   }
   if (section === "app-config") {
     hydrateAppPublishSection(root);
+  }
+}
+
+function syncSettingsNavActive(
+  root: HTMLElement,
+  section: SettingsSection,
+  pluginTarget?: PluginPanelTarget,
+): void {
+  if (section === "plugins") {
+    root.dataset.settingsActivePluginKind = pluginTarget?.kind ?? "third-party";
+    root.dataset.settingsActivePluginId = pluginTarget?.pluginId ?? "";
+  }
+  root.querySelectorAll<HTMLButtonElement>("[data-settings-nav]").forEach((item) => {
+    const sectionMatches = item.dataset.settingsNav === section;
+    const pluginMatches = section !== "plugins" || settingsPluginNavMatches(item, pluginTarget);
+    item.dataset.active = sectionMatches && pluginMatches ? "true" : "false";
+  });
+}
+
+function readSettingsRouteState(button: HTMLButtonElement): SettingsPageRouteState {
+  const pluginId = button.dataset.settingsPluginId;
+  if (!button.dataset.settingsPluginKind && !pluginId) {
+    return {};
+  }
+  return {
+    pluginKind: readSettingsPluginKind(button.dataset.settingsPluginKind),
+    pluginId,
+  };
+}
+
+function readSettingsPluginTarget(
+  root: HTMLElement,
+  routeState: SettingsPageRouteState,
+): PluginPanelTarget {
+  const hasRoutePluginTarget = routeState.pluginKind !== undefined || routeState.pluginId !== undefined;
+  const storedKind = root.dataset.settingsActivePluginKind
+    ? readSettingsPluginKind(root.dataset.settingsActivePluginKind)
+    : "third-party";
+  const storedPluginId = root.dataset.settingsActivePluginId || undefined;
+  return {
+    kind: routeState.pluginKind ?? storedKind,
+    pluginId: hasRoutePluginTarget ? routeState.pluginId : storedPluginId,
+  };
+}
+
+function settingsPluginNavMatches(
+  item: HTMLButtonElement,
+  pluginTarget: PluginPanelTarget | undefined,
+): boolean {
+  const target = pluginTarget ?? { kind: "third-party" };
+  const itemPluginId = item.dataset.settingsPluginId;
+  if (target.pluginId || itemPluginId) {
+    return itemPluginId === target.pluginId;
+  }
+  return readSettingsPluginKind(item.dataset.settingsPluginKind) === target.kind;
+}
+
+function readSettingsPluginKind(value: string | undefined): SettingsPluginKind {
+  return value === "third-party" ? "third-party" : "core";
+}
+
+function syncSettingsEmbeddedPanels(
+  root: HTMLElement,
+  section: SettingsSection,
+  routeState: SettingsPageRouteState,
+): void {
+  if (section === "automation") {
+    mountSettingsAutomationPanel(root, routeState.automationPanel ?? {});
+  } else {
+    disposeSettingsAutomationPanel(root);
+  }
+  if (section === "project-log") {
+    mountSettingsProjectLogPanel(root);
+  } else {
+    disposeSettingsProjectLogPanel(root);
+  }
+  if (section === "user-guide") {
+    mountSettingsUserGuidePanel(root, routeState.anchor);
+  } else {
+    disposeSettingsUserGuidePanel(root);
   }
 }
 
@@ -1517,19 +2934,13 @@ function bindWorkspaceSyncPanel(root: HTMLElement): void {
   workspaceSyncState.set(root, { targetRepoPath: "", sourceRepoPaths: [] });
   xiaohongshuImportState.set(root, { cookie: "", progress: 0, status: "idle", message: "未开始" });
   douyinCookieState.set(root, { cookie: "", status: "idle", message: "未开始", hasCookie: false, path: "" });
+  bindRssImportPanel(root);
+  bindFlashNoteImportPanel(root);
 
   root.querySelectorAll<HTMLButtonElement>("[data-import-source]").forEach((button) => {
     button.addEventListener("click", () => {
-      const source = button.dataset.importSource as ImportSource | undefined;
-      if (source === "xiaohongshu") {
-        openXiaohongshuImportModal(root);
-        return;
-      }
-      if (source === "douyin") {
-        openDouyinCookieModal(root);
-        return;
-      }
-      updateSettingsStatus(root, `${button.textContent?.trim() ?? "该来源"} 暂未接入导入流程。`);
+      const sourceName = button.querySelector("strong")?.textContent?.trim() || "该来源";
+      updateSettingsStatus(root, `${sourceName}：${IMPORT_SOURCE_UNAVAILABLE_MESSAGE}`);
     });
   });
 
@@ -1691,7 +3102,7 @@ async function loadWorkspaceSyncConfig(): Promise<SyncRepoState> {
 
 function finalizeWorkspaceSyncState(root: HTMLElement): SyncRepoState {
   const sourceInput = root.querySelector<HTMLInputElement>("[data-sync-source-input]");
-  if (sourceInput?.value.trim()) {
+  if (sourceInput?.value.trim() && !sourceInput.readOnly) {
     addManualWorkspaceSource(root);
   }
   return normalizeWorkspaceSyncState(readWorkspaceSyncState(root));
@@ -1703,8 +3114,10 @@ function hasWorkspaceSyncConfig(state: SyncRepoState): boolean {
 
 async function persistWorkspaceSyncConfig(state: SyncRepoState): Promise<void> {
   if (window.llmWikiDesktop) {
+    const accountIdentifier = await readDesktopAccountIdentifier();
     await window.llmWikiDesktop.saveDesktopConfig(state.targetRepoPath);
     await window.llmWikiDesktop.saveAppConfig({
+      accountIdentifier,
       targetRepoPath: state.targetRepoPath,
       sourceFolders: state.sourceRepoPaths,
     });
@@ -1719,6 +3132,15 @@ async function persistWorkspaceSyncConfig(state: SyncRepoState): Promise<void> {
   if (!response.ok || !payload.success) {
     throw new Error(payload.error ?? "同步配置保存失败");
   }
+}
+
+async function readDesktopAccountIdentifier(): Promise<string> {
+  const bootstrap = await window.llmWikiDesktop?.getAppBootstrap();
+  const accountIdentifier = bootstrap?.appConfig?.accountIdentifier?.trim() ?? "";
+  if (!accountIdentifier) {
+    throw new Error("需要先配置账号标识。");
+  }
+  return accountIdentifier;
 }
 
 async function saveWorkspaceSyncConfig(root: HTMLElement): Promise<void> {
@@ -1792,9 +3214,11 @@ function normalizeWorkspaceSyncState(state: SyncRepoState): SyncRepoState {
 function renderWorkspaceSyncState(root: HTMLElement): void {
   const state = readWorkspaceSyncState(root);
   const targetInput = root.querySelector<HTMLInputElement>("[data-sync-target-input]");
+  const sourceInput = root.querySelector<HTMLInputElement>("[data-sync-source-input]");
   const sourcePaths = root.querySelector<HTMLElement>("[data-sync-source-paths]");
   const clearButton = root.querySelector<HTMLButtonElement>("[data-sync-target-clear]");
   if (targetInput) targetInput.value = state.targetRepoPath;
+  if (sourceInput?.readOnly) sourceInput.value = formatWorkspaceSourceInputValue(state.sourceRepoPaths);
   if (clearButton) clearButton.hidden = !state.targetRepoPath;
   if (!sourcePaths) return;
   if (state.sourceRepoPaths.length === 0) {
@@ -1807,6 +3231,10 @@ function renderWorkspaceSyncState(root: HTMLElement): void {
       <button type="button" class="settings-source-path__delete" data-sync-remove-source="${escapeHtml(sourcePath)}">删除</button>
     </div>
   `).join("");
+}
+
+function formatWorkspaceSourceInputValue(sourceRepoPaths: string[]): string {
+  return sourceRepoPaths.join("; ");
 }
 
 function openXiaohongshuImportModal(root: HTMLElement): void {
@@ -2369,12 +3797,11 @@ function updateSettingsStatus(root: HTMLElement, message: string): void {
 }
 
 function bindLegacySettingsControls(root: HTMLElement): void {
+  bindShortcutSettingsControls(root);
   const targetInput = root.querySelector<HTMLInputElement>("[data-settings-target]");
   const sourceList = root.querySelector<HTMLUListElement>("[data-settings-sources]");
   const status = root.querySelector<HTMLElement>("[data-settings-status]");
-  const shortcutInput = root.querySelector<HTMLInputElement>("[data-shortcut-id=\"flashDiaryCapture\"]");
-  const shortcutStatus = root.querySelector<HTMLElement>("[data-shortcut-status]");
-  if (!targetInput || !sourceList || !status || !shortcutInput || !shortcutStatus) return;
+  if (!targetInput || !sourceList || !status) return;
 
   root.querySelector<HTMLButtonElement>("[data-settings-choose-target]")?.addEventListener("click", async () => {
     const selected = await window.llmWikiDesktop?.chooseTargetVault();
@@ -2395,34 +3822,91 @@ function bindLegacySettingsControls(root: HTMLElement): void {
       return;
     }
     try {
+      const accountIdentifier = await readDesktopAccountIdentifier();
       await window.llmWikiDesktop?.saveDesktopConfig(target);
-      await window.llmWikiDesktop?.saveAppConfig({ targetRepoPath: target, sourceFolders: sources });
+      await window.llmWikiDesktop?.saveAppConfig({ accountIdentifier, targetRepoPath: target, sourceFolders: sources });
       status.textContent = "\u5df2\u4fdd\u5b58\u3002";
     } catch (error) {
       status.textContent = error instanceof Error ? error.message : String(error);
     }
   });
 
-  root.querySelector<HTMLButtonElement>("[data-shortcut-save=\"flashDiaryCapture\"]")?.addEventListener("click", async () => {
-    if (!window.llmWikiDesktop) {
-      shortcutStatus.textContent = "\u5feb\u6377\u952e\u53ea\u80fd\u5728 Electron \u684c\u9762\u7aef\u4fee\u6539\u3002";
-      return;
-    }
-    try {
-      const result = await window.llmWikiDesktop.saveShortcut({
-        id: "flashDiaryCapture",
-        accelerator: shortcutInput.value.trim(),
-      });
-      shortcutInput.value = result.shortcuts.flashDiaryCapture;
-      shortcutStatus.textContent = result.registered
-        ? "\u5feb\u6377\u952e\u5df2\u4fdd\u5b58\u5e76\u6ce8\u518c\u3002"
-        : `\u5df2\u4fdd\u5b58\uff0c\u4f46\u6ce8\u518c\u5931\u8d25\uff1a${result.error ?? shortcutInput.value}`;
-    } catch (error) {
-      shortcutStatus.textContent = error instanceof Error ? error.message : String(error);
-    }
-  });
+  void hydrateSettings(targetInput, sourceList, status);
+}
 
-  void hydrateSettings(targetInput, sourceList, status, shortcutInput, shortcutStatus);
+function bindShortcutSettingsControls(root: HTMLElement): void {
+  const shortcutInputs = [...root.querySelectorAll<HTMLInputElement>("[data-shortcut-id]")];
+  const shortcutStatus = root.querySelector<HTMLElement>("[data-shortcut-status]");
+  if (shortcutInputs.length === 0 || !shortcutStatus) return;
+  shortcutInputs.forEach((input) => bindShortcutCaptureInput(input, shortcutStatus));
+  root.querySelectorAll<HTMLButtonElement>("[data-shortcut-save]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const shortcutId = readShortcutId(button.dataset.shortcutSave);
+      const shortcutInput = shortcutInputs.find((input) => input.dataset.shortcutId === shortcutId);
+      if (!shortcutId || !shortcutInput) return;
+      void saveShortcutValue(shortcutId, shortcutInput, shortcutInputs, shortcutStatus);
+    });
+  });
+  void hydrateShortcutSettings(shortcutInputs, shortcutStatus);
+}
+
+function bindShortcutCaptureInput(input: HTMLInputElement, status: HTMLElement): void {
+  input.addEventListener("keydown", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const accelerator = acceleratorFromKeyboardEvent(event);
+    if (!accelerator) return;
+    input.value = accelerator;
+    status.textContent = "\u5df2\u6355\u83b7\u5feb\u6377\u952e\uff0c\u70b9\u51fb\u4fdd\u5b58\u751f\u6548\u3002";
+  });
+  input.addEventListener("focus", () => input.select());
+}
+
+function readShortcutId(value: string | undefined): ShortcutId | null {
+  return SETTINGS_SHORTCUTS.some((shortcut) => shortcut.id === value) ? value as ShortcutId : null;
+}
+
+async function saveShortcutValue(
+  shortcutId: ShortcutId,
+  shortcutInput: HTMLInputElement,
+  shortcutInputs: readonly HTMLInputElement[],
+  shortcutStatus: HTMLElement,
+): Promise<void> {
+  if (!window.llmWikiDesktop || typeof window.llmWikiDesktop.saveShortcut !== "function") {
+    shortcutStatus.textContent = "\u5feb\u6377\u952e\u53ea\u80fd\u5728 Electron \u684c\u9762\u7aef\u4fee\u6539\u3002";
+    return;
+  }
+  try {
+    const result = await window.llmWikiDesktop.saveShortcut({
+      id: shortcutId,
+      accelerator: shortcutInput.value.trim(),
+    });
+    applyShortcutInputValues(shortcutInputs, result.shortcuts);
+    setClientKeyboardShortcuts(result.shortcuts);
+    shortcutStatus.textContent = describeShortcutSaveResult(shortcutId, result, shortcutInput.value);
+  } catch (error) {
+    shortcutStatus.textContent = error instanceof Error ? error.message : String(error);
+  }
+}
+
+function describeShortcutSaveResult(
+  shortcutId: ShortcutId,
+  result: { readonly registered: boolean; readonly error?: string },
+  fallback: string,
+): string {
+  if (shortcutId === "pageTextSearch" || shortcutId === "workspaceSave") {
+    return "\u5feb\u6377\u952e\u5df2\u4fdd\u5b58\u5e76\u751f\u6548\u3002";
+  }
+  return result.registered
+    ? "\u5feb\u6377\u952e\u5df2\u4fdd\u5b58\u5e76\u6ce8\u518c\u3002"
+    : `\u5df2\u4fdd\u5b58\uff0c\u4f46\u6ce8\u518c\u5931\u8d25\uff1a${result.error ?? fallback}`;
+}
+
+function applyShortcutInputValues(inputs: readonly HTMLInputElement[], shortcuts: AppShortcuts): void {
+  inputs.forEach((input) => {
+    const shortcutId = readShortcutId(input.dataset.shortcutId);
+    if (shortcutId) input.value = shortcuts[shortcutId];
+  });
 }
 
 interface SyncRunPanelElements {
@@ -2710,14 +4194,14 @@ const SYNC_PROGRESS_STEPS: readonly ProgressStep[] = [
   { percent: 12, chip: "\u5f00\u59cb\u626b\u63cf", keywords: ["starting sync"] },
   { percent: 28, chip: "\u540c\u6b65\u6e90\u6599", keywords: ["sources_full", "synced markdown", "markdown", "assets"] },
   { percent: 56, chip: "Phase 1", keywords: ["phase 1", "claims"] },
-  { percent: 78, chip: "Phase 2", keywords: ["phase 2", "episodes", "procedures"] },
+  { percent: 78, chip: "Phase 2", keywords: ["phase 2", "procedures"] },
   { percent: 95, chip: "\u6574\u7406\u6700\u7ec8\u7ed3\u679c", keywords: ["final result:"] },
 ];
 
 const COMPILE_PROGRESS_STEPS: readonly ProgressStep[] = [
   { percent: 12, chip: "\u542f\u52a8 compile", keywords: ["compile"] },
   { percent: 36, chip: "\u6982\u5ff5\u62bd\u53d6", keywords: ["phase 1", "claims"] },
-  { percent: 56, chip: "\u5408\u5e76\u6e90\u6599", keywords: ["late affected", "episode"] },
+  { percent: 56, chip: "\u5408\u5e76\u6e90\u6599", keywords: ["late affected", "claim"] },
   { percent: 76, chip: "\u751f\u6210 wiki", keywords: ["phase 2", "procedure", "concept"] },
   { percent: 92, chip: "\u91cd\u5efa\u5bfc\u822a", keywords: ["interlink", "index", "moc", "final result"] },
 ];
@@ -2727,7 +4211,6 @@ const COMPILE_LINE_KEYWORDS = [
   "phase 1",
   "phase 2",
   "claim",
-  "episode",
   "procedure",
   "interlink",
   "index",
@@ -2900,6 +4383,10 @@ function formatTime(value: string): string {
 }
 
 function bindLlmProviderConfig(root: HTMLElement): void {
+  const panel = root.querySelector<HTMLElement>("[data-settings-panel=\"llm\"]");
+  if (!panel?.querySelector("[data-llm-default-account], [data-llm-account], [data-settings-save]")) {
+    return;
+  }
   root.querySelector<HTMLButtonElement>("[data-settings-save]")?.addEventListener("click", () => {
     void saveLlmProviderConfigFromPage(root);
   });
@@ -3083,10 +4570,13 @@ function renderLlmApiAccounts(root: HTMLElement, accounts: readonly LlmApiAccoun
 
 async function hydrateLlmDefaultAccountOptions(
   root: HTMLElement,
-  oauthAccounts?: readonly CLIProxyOAuthAccountResponse[],
+  oauthAccounts?: readonly LlmProviderOAuthAccountResponse[],
 ): Promise<void> {
   const apiAccounts = llmAccountsState.get(root) ?? [];
-  const resolvedOAuthAccounts = oauthAccounts ?? await loadOptionalCliProxyOAuthAccounts();
+  const resolvedOAuthAccounts = oauthAccounts ?? [
+    ...await loadOptionalAccountCodexOAuthAccounts(),
+    ...await loadOptionalCliProxyOAuthAccounts(),
+  ];
   llmDefaultAccountOptionsState.set(root, dedupeAgentAccountOptions(buildLlmDefaultAccountOptions({
     apiAccounts,
     oauthAccounts: resolvedOAuthAccounts,
@@ -3196,20 +4686,28 @@ async function deleteLlmAccountRow(root: HTMLElement, button: HTMLButtonElement)
 }
 
 function bindAgentConfigControls(root: HTMLElement): void {
-  root.querySelector<HTMLButtonElement>("[data-agent-config-add]")?.addEventListener("click", () => {
+  root.querySelectorAll<HTMLButtonElement>("[data-agent-config-add]").forEach((button) => {
+    button.addEventListener("click", () => {
     syncAgentFormToState(root);
     const config = appConfigState.get(root) ?? { apps: [], defaultAppId: null };
     const agent = createClientAgent();
     config.apps = [...config.apps, agent];
     config.defaultAppId = agent.id;
     renderAgentConfig(root, config);
+    openAgentConfigModal(root, agent.id);
     setAgentConfigStatus(root, "\u65b0\u5e94\u7528\u5df2\u6dfb\u52a0\uff0c\u8bf7\u8865\u5145\u540e\u4fdd\u5b58\u3002");
+    });
   });
   root.querySelector<HTMLButtonElement>("[data-agent-config-save]")?.addEventListener("click", () => {
     void saveAgentConfigFromPage(root);
   });
   root.querySelector<HTMLButtonElement>("[data-agent-config-delete]")?.addEventListener("click", () => {
     deleteSelectedAgent(root);
+  });
+  root.querySelectorAll<HTMLButtonElement>("[data-agent-config-close]").forEach((button) => {
+    button.addEventListener("click", () => {
+      closeAgentConfigModal(root, { restore: true });
+    });
   });
   root.querySelector<HTMLElement>("[data-agent-config-editor]")?.addEventListener("input", () => {
     syncAgentFormToState(root);
@@ -3238,12 +4736,12 @@ async function hydrateAgentConfig(root: HTMLElement): Promise<void> {
     }
     renderAgentConfig(root, payload.data);
     setAgentConfigStatus(root, payload.data.path ? `\u5e94\u7528\u914d\u7f6e\u5df2\u8bfb\u53d6\uff1a${payload.data.path}` : "\u5e94\u7528\u914d\u7f6e\u5df2\u8bfb\u53d6\u3002");
-    syncAutomationAppOptions(root);
   } catch (error) {
     setAgentConfigStatus(root, error instanceof Error ? error.message : String(error));
   }
 }
 
+// fallow-ignore-next-line complexity
 async function hydrateAgentAccountOptions(root: HTMLElement): Promise<void> {
   const options: AgentAccountOption[] = [{ value: "", label: "跟随应用资源默认配置", provider: "openai" }];
   try {
@@ -3265,10 +4763,14 @@ async function hydrateAgentAccountOptions(root: HTMLElement): Promise<void> {
     // API accounts are optional for agent configuration.
   }
   try {
-    const accounts = await fetchCLIProxyOAuthAccounts(false);
+    const accounts = [
+      ...await loadOptionalAccountCodexOAuthAccounts(),
+      ...await fetchCLIProxyOAuthAccounts(false),
+    ];
     for (const account of accounts) {
+      const value = account.accountRef ?? `oauth:${account.provider}:${account.name}`;
       options.push({
-        value: `oauth:${account.provider}:${account.name}`,
+        value,
         label: `OAuth · ${formatCLIProxyProvider(account.provider)} · ${account.email ?? account.name}`,
         provider: providerFromOAuthAccount(account.provider),
         source: "oauth",
@@ -3277,6 +4779,21 @@ async function hydrateAgentAccountOptions(root: HTMLElement): Promise<void> {
     }
   } catch {
     // OAuth accounts are optional for agent configuration.
+  }
+  try {
+    const cloudflareProvider = await loadOptionalCloudflareProvider();
+    if (cloudflareProvider?.configured) {
+      options.push({
+        value: cloudflareProvider.accountRef,
+        label: "Cloudflare · Workers AI",
+        provider: "cloudflare",
+        model: cloudflareProvider.aiModel ?? undefined,
+        source: "api",
+        accountName: "cloudflare-workers-ai",
+      });
+    }
+  } catch {
+    // Cloudflare Workers AI is optional for agent configuration.
   }
   agentAccountOptionsState.set(root, dedupeAgentAccountOptions(options));
   syncAgentAccountSelection(root);
@@ -3428,8 +4945,8 @@ async function saveAgentConfigFromPage(root: HTMLElement): Promise<void> {
       throw new Error(payload.error ?? "App config save failed");
     }
     renderAgentConfig(root, payload.data);
+    closeAgentConfigModal(root, { restore: false });
     setAgentConfigStatus(root, payload.data.path ? `\u5df2\u4fdd\u5b58\uff1a${payload.data.path}` : "\u5df2\u4fdd\u5b58\u5e94\u7528\u914d\u7f6e\u3002");
-    syncAutomationAppOptions(root);
   } catch (error) {
     setAgentConfigStatus(root, error instanceof Error ? error.message : String(error));
   }
@@ -3448,12 +4965,54 @@ function renderAgentConfig(root: HTMLElement, config: AppConfigResponse): void {
         syncAgentFormToState(root);
         const state = appConfigState.get(root);
         if (!state) return;
-        state.defaultAppId = button.dataset.agentConfigSelect ?? null;
+        const selectedId = button.dataset.agentConfigSelect ?? null;
+        state.defaultAppId = selectedId;
         renderAgentConfig(root, state);
+        if (selectedId) {
+          openAgentConfigModal(root, selectedId);
+        }
       });
     });
   }
   renderAgentEditor(root, normalized.apps.find((agent) => agent.id === normalized.defaultAppId) ?? null);
+  rerenderLlmProviderCards(root);
+}
+
+function openAgentConfigModal(root: HTMLElement, agentId: string): void {
+  const config = appConfigState.get(root);
+  const agent = config?.apps.find((item) => item.id === agentId) ?? null;
+  if (!agent) return;
+  agentEditSnapshotState.set(root, cloneAgent(agent));
+  const modal = root.querySelector<HTMLElement>("[data-agent-config-modal]");
+  if (!modal) return;
+  modal.hidden = false;
+  root.querySelector<HTMLInputElement>("[data-agent-config-field=\"name\"]")?.focus();
+}
+
+function closeAgentConfigModal(root: HTMLElement, options: { restore: boolean }): void {
+  if (options.restore) {
+    restoreAgentEditSnapshot(root);
+  }
+  agentEditSnapshotState.delete(root);
+  const modal = root.querySelector<HTMLElement>("[data-agent-config-modal]");
+  if (modal) {
+    modal.hidden = true;
+  }
+}
+
+function restoreAgentEditSnapshot(root: HTMLElement): void {
+  const snapshot = agentEditSnapshotState.get(root);
+  const config = appConfigState.get(root);
+  if (!snapshot || !config) return;
+  const index = config.apps.findIndex((agent) => agent.id === snapshot.id);
+  if (index < 0) return;
+  config.apps[index] = cloneAgent(snapshot);
+  config.defaultAppId = snapshot.id;
+  renderAgentConfig(root, config);
+}
+
+function cloneAgent(agent: AppDefinitionResponse): AppDefinitionResponse {
+  return { ...agent };
 }
 
 function renderAgentListItem(agent: AppDefinitionResponse, active: boolean): string {
@@ -3489,10 +5048,13 @@ function readAgentEditorFields(agent: AppDefinitionResponse | null): Array<[stri
   ];
 }
 
+// fallow-ignore-next-line complexity
 function renderAgentEditor(root: HTMLElement, agent: AppDefinitionResponse | null): void {
   for (const [key, value] of readAgentEditorFields(agent)) {
     setAgentField(root, key, value);
   }
+  const title = root.querySelector<HTMLElement>("[data-agent-config-modal-title]");
+  if (title) title.textContent = agent?.name || "Agent";
   renderAgentAccountOptions(root, agent?.accountRef ?? "");
   void hydrateAgentModelOptions(root, agent?.model ?? "");
   const enabled = root.querySelector<HTMLInputElement>("[data-agent-config-field=\"enabled\"]");
@@ -3529,6 +5091,7 @@ function deleteSelectedAgent(root: HTMLElement): void {
   config.apps = config.apps.filter((agent) => agent.id !== config.defaultAppId);
   config.defaultAppId = config.apps.find((agent) => agent.enabled)?.id ?? config.apps[0]?.id ?? null;
   renderAgentConfig(root, config);
+  closeAgentConfigModal(root, { restore: false });
   setAgentConfigStatus(root, "\u5df2\u79fb\u9664\u5e94\u7528\uff0c\u8bf7\u4fdd\u5b58\u540e\u751f\u6548\u3002");
 }
 
@@ -3591,304 +5154,6 @@ function setAgentConfigStatus(root: HTMLElement, text: string): void {
   if (status) status.textContent = text;
 }
 
-function bindAutomationConfigControls(root: HTMLElement): void {
-  root.querySelector<HTMLButtonElement>("[data-automation-config-add]")?.addEventListener("click", () => {
-    syncAutomationFormToState(root);
-    const config = automationConfigState.get(root) ?? { automations: [] };
-    const automation = createClientAutomation(root);
-    config.automations = [...config.automations, automation];
-    renderAutomationConfig(root, config);
-    setAutomationConfigStatus(root, "新自动化已添加，请补充后保存。");
-  });
-  root.querySelector<HTMLButtonElement>("[data-automation-config-save]")?.addEventListener("click", () => {
-    void saveAutomationConfigFromPage(root);
-  });
-  root.querySelector<HTMLButtonElement>("[data-automation-config-delete]")?.addEventListener("click", () => {
-    deleteSelectedAutomation(root);
-  });
-  root.querySelector<HTMLElement>("[data-automation-config-editor]")?.addEventListener("input", () => {
-    syncAutomationFormToState(root);
-  });
-  root.querySelector<HTMLElement>("[data-automation-config-editor]")?.addEventListener("change", () => {
-    syncAutomationFormToState(root);
-  });
-  void hydrateAutomationConfig(root);
-}
-
-async function hydrateAutomationConfig(root: HTMLElement): Promise<void> {
-  try {
-    const response = await fetch("/api/automations");
-    const payload = (await response.json()) as { success?: boolean; data?: AutomationConfigResponse; error?: string };
-    if (!response.ok || !payload.success || !payload.data) {
-      throw new Error(payload.error ?? "Automation config load failed");
-    }
-    renderAutomationConfig(root, payload.data);
-    setAutomationConfigStatus(root, payload.data.path ? `自动化已读取：${payload.data.path}` : "自动化已读取。");
-  } catch (error) {
-    setAutomationConfigStatus(root, error instanceof Error ? error.message : String(error));
-  }
-}
-
-async function saveAutomationConfigFromPage(root: HTMLElement): Promise<void> {
-  setAutomationConfigStatus(root, "正在保存自动化...");
-  try {
-    syncAutomationFormToState(root, { strictFlow: true });
-    const config = automationConfigState.get(root) ?? { automations: [] };
-    const response = await fetch("/api/automations", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(config),
-    });
-    const payload = (await response.json()) as { success?: boolean; data?: AutomationConfigResponse; error?: string };
-    if (!response.ok || !payload.success || !payload.data) {
-      throw new Error(payload.error ?? "Automation config save failed");
-    }
-    renderAutomationConfig(root, payload.data);
-    setAutomationConfigStatus(root, payload.data.path ? `已保存：${payload.data.path}` : "已保存自动化。");
-  } catch (error) {
-    setAutomationConfigStatus(root, error instanceof Error ? error.message : String(error));
-  }
-}
-
-function renderAutomationConfig(root: HTMLElement, config: AutomationConfigResponse): void {
-  const normalized = normalizeAutomationConfig(config);
-  automationConfigState.set(root, normalized);
-  const list = root.querySelector<HTMLElement>("[data-automation-config-list]");
-  if (list) {
-    const selectedId = normalized.automations[0]?.id ?? null;
-    list.innerHTML = normalized.automations.length > 0
-      ? normalized.automations.map((automation) => `
-        <button type="button" class="settings-agent-config__item" data-automation-config-select="${escapeHtml(automation.id)}" data-active="${automation.id === selectedId ? "true" : "false"}">
-          <span>${automation.enabled ? "●" : "○"}</span>
-          <strong>${escapeHtml(automation.name)}</strong>
-          <small>${escapeHtml(`${formatAutomationTriggerLabel(automation.trigger)} · ${automation.appId}`)}</small>
-        </button>
-      `).join("")
-      : `<div class="settings-source-empty">暂无自动化，点击“新增自动化”创建。</div>`;
-    list.querySelectorAll<HTMLButtonElement>("[data-automation-config-select]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const state = automationConfigState.get(root);
-        if (!state) return;
-        const selected = state.automations.find((item) => item.id === button.dataset.automationConfigSelect) ?? null;
-        renderAutomationEditor(root, selected);
-        list.querySelectorAll<HTMLButtonElement>("[data-automation-config-select]").forEach((item) => {
-          item.dataset.active = item === button ? "true" : "false";
-        });
-      });
-    });
-  }
-  renderAutomationEditor(root, normalized.automations[0] ?? null);
-}
-
-function renderAutomationEditor(root: HTMLElement, automation: AutomationDefinitionResponse | null): void {
-  const fields = automation ? [
-    ["id", automation.id],
-    ["name", automation.name],
-    ["summary", automation.summary],
-    ["icon", automation.icon],
-    ["trigger", automation.trigger],
-    ["appId", automation.appId],
-    ["schedule", automation.schedule],
-    ["webhookPath", automation.webhookPath],
-    ["flow", formatAutomationFlow(automation.flow)],
-  ] : [
-    ["id", ""],
-    ["name", ""],
-    ["summary", ""],
-    ["icon", ""],
-    ["trigger", "schedule"],
-    ["appId", ""],
-    ["schedule", ""],
-    ["webhookPath", ""],
-    ["flow", ""],
-  ];
-  for (const [key, value] of fields) {
-    setAutomationField(root, key, value);
-  }
-  syncAutomationAppOptions(root);
-  const enabled = root.querySelector<HTMLInputElement>("[data-automation-config-field=\"enabled\"]");
-  if (enabled) enabled.checked = automation?.enabled ?? true;
-}
-
-function syncAutomationFormToState(root: HTMLElement, options: { strictFlow?: boolean } = {}): void {
-  const config = automationConfigState.get(root);
-  if (!config) return;
-  const id = readAutomationField(root, "id");
-  if (!id) return;
-  const index = config.automations.findIndex((automation) => automation.id === id);
-  if (index < 0) return;
-  config.automations[index] = {
-    ...config.automations[index]!,
-    name: readAutomationField(root, "name") || config.automations[index]!.name,
-    summary: readAutomationField(root, "summary") || config.automations[index]!.summary,
-    icon: readAutomationField(root, "icon") || config.automations[index]!.icon,
-    trigger: normalizeAutomationTrigger(readAutomationField(root, "trigger")),
-    appId: readAutomationField(root, "appId"),
-    schedule: readAutomationField(root, "schedule"),
-    webhookPath: readAutomationField(root, "webhookPath"),
-    enabled: root.querySelector<HTMLInputElement>("[data-automation-config-field=\"enabled\"]")?.checked ?? true,
-    updatedAt: new Date().toISOString(),
-    flow: readAutomationFlowField(root, config.automations[index]!, options.strictFlow === true),
-  };
-}
-
-function deleteSelectedAutomation(root: HTMLElement): void {
-  const config = automationConfigState.get(root);
-  const id = readAutomationField(root, "id");
-  if (!config || !id) return;
-  config.automations = config.automations.filter((automation) => automation.id !== id);
-  renderAutomationConfig(root, config);
-  setAutomationConfigStatus(root, "已移除自动化，请保存后生效。");
-}
-
-function createClientAutomation(root: HTMLElement): AutomationDefinitionResponse {
-  const firstAppId = appConfigState.get(root)?.defaultAppId ?? "";
-  const now = new Date().toISOString();
-  const id = `automation-${Date.now()}`;
-  return {
-    id,
-    name: "新自动化",
-    summary: "填写这条自动化的目的和触发后要做什么。",
-    icon: "calendar",
-    trigger: "schedule",
-    appId: firstAppId,
-    enabled: true,
-    schedule: "",
-    webhookPath: "",
-    updatedAt: now,
-    flow: createDefaultAutomationFlow({
-      id,
-      name: "新自动化",
-      summary: "填写这条自动化的目的和触发后要做什么。",
-      trigger: "schedule",
-      appId: firstAppId,
-    }),
-  };
-}
-
-function normalizeAutomationConfig(config: AutomationConfigResponse): AutomationConfigResponse {
-  return {
-    ...config,
-    automations: config.automations.map((automation) => ({
-      ...automation,
-      summary: automation.summary ?? "",
-      icon: automation.icon ?? "calendar",
-      trigger: normalizeAutomationTrigger(automation.trigger),
-      schedule: automation.schedule ?? "",
-      webhookPath: automation.webhookPath ?? "",
-      flow: automation.flow ?? createDefaultAutomationFlow(automation),
-    })),
-  };
-}
-
-function syncAutomationAppOptions(root: HTMLElement): void {
-  const select = root.querySelector<HTMLSelectElement>("[data-automation-config-field=\"appId\"]");
-  if (!select) return;
-  const current = select.value;
-  const apps = appConfigState.get(root)?.apps ?? [];
-  const options = ['<option value="">请先选择应用</option>'];
-  for (const app of apps) {
-    options.push(`<option value="${escapeHtml(app.id)}">${escapeHtml(app.name)}</option>`);
-  }
-  select.innerHTML = options.join("");
-  if ([...select.options].some((option) => option.value === current)) {
-    select.value = current;
-  } else if ([...select.options].some((option) => option.value === (appConfigState.get(root)?.defaultAppId ?? ""))) {
-    select.value = appConfigState.get(root)?.defaultAppId ?? "";
-  }
-}
-
-function setAutomationField(root: HTMLElement, key: string, value: string): void {
-  const field = root.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(`[data-automation-config-field="${cssEscape(key)}"]`);
-  if (field) field.value = value;
-}
-
-function readAutomationField(root: HTMLElement, key: string): string {
-  return root.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(`[data-automation-config-field="${cssEscape(key)}"]`)?.value.trim() ?? "";
-}
-
-function setAutomationConfigStatus(root: HTMLElement, text: string): void {
-  const status = root.querySelector<HTMLElement>("[data-automation-config-status]");
-  if (status) status.textContent = text;
-}
-
-function formatAutomationFlow(flow: AutomationDefinitionResponse["flow"]): string {
-  return JSON.stringify(flow, null, 2);
-}
-
-function readAutomationFlowField(
-  root: HTMLElement,
-  fallback: AutomationDefinitionResponse,
-  strict: boolean,
-): AutomationDefinitionResponse["flow"] {
-  const raw = readAutomationField(root, "flow");
-  if (!raw) {
-    if (strict) {
-      throw new Error("Flow JSON 不能为空。");
-    }
-    return fallback.flow;
-  }
-  try {
-    const parsed = JSON.parse(raw) as AutomationDefinitionResponse["flow"];
-    if (!parsed || !Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges) || !Array.isArray(parsed.branches)) {
-      throw new Error("invalid");
-    }
-    return parsed;
-  } catch {
-    if (strict) {
-      throw new Error("Flow JSON 不是合法的自动化流程结构。");
-    }
-    return fallback.flow;
-  }
-}
-
-function createDefaultAutomationFlow(
-  automation: Pick<AutomationDefinitionResponse, "id" | "name" | "summary" | "trigger" | "appId">,
-): AutomationDefinitionResponse["flow"] {
-  return {
-    nodes: [
-      {
-        id: `trigger-${automation.id}`,
-        type: "trigger",
-        title: formatAutomationTriggerLabel(automation.trigger),
-        description: automation.summary,
-        modelMode: "default",
-      },
-      {
-        id: `action-${automation.id}`,
-        type: "action",
-        title: `执行 ${automation.name}`,
-        description: `调用 ${automation.appId || "应用"} 执行后续处理。`,
-        ...(automation.appId ? { appId: automation.appId } : {}),
-        modelMode: "default",
-      },
-    ],
-    edges: [
-      {
-        id: `edge-${automation.id}`,
-        source: `trigger-${automation.id}`,
-        target: `action-${automation.id}`,
-      },
-    ],
-    branches: [],
-  };
-}
-
-function normalizeAutomationTrigger(value: string): AutomationDefinitionResponse["trigger"] {
-  return value === "schedule" || value === "webhook" ? value : "message";
-}
-
-function formatAutomationTriggerLabel(trigger: AutomationDefinitionResponse["trigger"]): string {
-  switch (trigger) {
-    case "schedule":
-      return "定时";
-    case "webhook":
-      return "Webhook";
-    default:
-      return "消息触发";
-  }
-}
-
 function readHost(value: string): string | null {
   if (!value) return null;
   try {
@@ -3902,20 +5167,28 @@ async function hydrateSettings(
   targetInput: HTMLInputElement,
   sourceList: HTMLUListElement,
   status: HTMLElement,
-  shortcutInput: HTMLInputElement,
-  shortcutStatus: HTMLElement,
 ): Promise<void> {
   if (!window.llmWikiDesktop) {
     status.textContent = "\u5f53\u524d\u662f\u6d4f\u89c8\u5668\u9884\u89c8\u6a21\u5f0f\uff0c\u672c\u5730\u6587\u4ef6\u9009\u62e9\u53ea\u5728 Electron \u5e94\u7528\u4e2d\u53ef\u7528\u3002";
-    shortcutStatus.textContent = "\u5f53\u524d\u662f\u6d4f\u89c8\u5668\u9884\u89c8\u6a21\u5f0f\uff0c\u5feb\u6377\u952e\u4fee\u6539\u53ea\u5728 Electron \u5e94\u7528\u4e2d\u751f\u6548\u3002";
     renderSources(sourceList, []);
     return;
   }
   const bootstrap = await window.llmWikiDesktop.getAppBootstrap();
   targetInput.value = bootstrap.appConfig?.targetRepoPath ?? bootstrap.desktopConfig.targetVault ?? "";
   renderSources(sourceList, bootstrap.appConfig?.sourceFolders ?? []);
+}
+
+async function hydrateShortcutSettings(
+  shortcutInputs: readonly HTMLInputElement[],
+  shortcutStatus: HTMLElement,
+): Promise<void> {
+  if (!window.llmWikiDesktop || typeof window.llmWikiDesktop.getShortcuts !== "function") {
+    shortcutStatus.textContent = "\u5f53\u524d\u662f\u6d4f\u89c8\u5668\u9884\u89c8\u6a21\u5f0f\uff0c\u5feb\u6377\u952e\u4fee\u6539\u53ea\u5728 Electron \u5e94\u7528\u4e2d\u751f\u6548\u3002";
+    return;
+  }
   const shortcuts = await window.llmWikiDesktop.getShortcuts();
-  shortcutInput.value = shortcuts.shortcuts.flashDiaryCapture;
+  applyShortcutInputValues(shortcutInputs, shortcuts.shortcuts);
+  setClientKeyboardShortcuts(shortcuts.shortcuts);
   shortcutStatus.textContent = shortcuts.registered
     ? "\u5f53\u524d\u5feb\u6377\u952e\u5df2\u6ce8\u518c\u3002"
     : `\u5f53\u524d\u5feb\u6377\u952e\u672a\u6ce8\u518c\uff1a${shortcuts.error ?? shortcuts.shortcuts.flashDiaryCapture}`;
@@ -3957,6 +5230,10 @@ async function readJsonPayload<T>(response: Response): Promise<T> {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+async function delay(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function cssEscape(value: string): string {

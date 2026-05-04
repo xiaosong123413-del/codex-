@@ -7,6 +7,7 @@ import {
   listFlashDiaryFiles,
   readFlashDiaryFailures,
   recordFlashDiaryFailure,
+  saveFlashDiaryPage,
 } from "../web/server/services/flash-diary.js";
 
 const tempRoots: string[] = [];
@@ -93,9 +94,13 @@ describe("flash diary service", () => {
 
   it("lists diary files in reverse chronological order with entry counts", async () => {
     const root = makeRoot();
+    const mediaDir = path.join(root, "fixtures");
+    fs.mkdirSync(mediaDir, { recursive: true });
+    const imagePath = path.join(mediaDir, "today.png");
+    fs.writeFileSync(imagePath, "image", "utf8");
     await appendFlashDiaryEntry(root, {
       text: "\u4eca\u5929",
-      mediaPaths: [],
+      mediaPaths: [imagePath],
       now: new Date("2026-04-19T09:00:00.000Z"),
     });
     await appendFlashDiaryEntry(root, {
@@ -110,6 +115,64 @@ describe("flash diary service", () => {
       "raw/\u95ea\u5ff5\u65e5\u8bb0/2026-04-18.md",
     ]);
     expect(items[0]?.entryCount).toBe(1);
+    expect(items[0]?.thumbnailUrl).toContain("/api/flash-diary/media?path=");
+    expect(items[1]?.thumbnailUrl).toBeNull();
+  });
+
+  it("deletes an orphaned diary image file when the saved markdown no longer references it", async () => {
+    const root = makeRoot();
+    const diaryPath = path.join(root, "raw", "闪念日记", "2026-04-27.md");
+    const assetPath = path.join(root, "raw", "闪念日记", "assets", "2026-04-27", "pasted.png");
+    fs.mkdirSync(path.dirname(assetPath), { recursive: true });
+    fs.writeFileSync(assetPath, "image", "utf8");
+    fs.mkdirSync(path.dirname(diaryPath), { recursive: true });
+    fs.writeFileSync(
+      diaryPath,
+      [
+        "# 2026-04-27 闪念日记",
+        "",
+        "![图片 1](./assets/2026-04-27/pasted.png)",
+        "",
+        "今天只留下文字。",
+      ].join("\n"),
+      "utf8",
+    );
+
+    await saveFlashDiaryPage(root, "raw/闪念日记/2026-04-27.md", "# 2026-04-27 闪念日记\n\n今天只留下文字。\n");
+
+    expect(fs.existsSync(assetPath)).toBe(false);
+  });
+
+  it("keeps a diary image file when the saved markdown still references the same path elsewhere", async () => {
+    const root = makeRoot();
+    const diaryPath = path.join(root, "raw", "闪念日记", "2026-04-27.md");
+    const assetPath = path.join(root, "raw", "闪念日记", "assets", "2026-04-27", "shared.png");
+    fs.mkdirSync(path.dirname(assetPath), { recursive: true });
+    fs.writeFileSync(assetPath, "image", "utf8");
+    fs.mkdirSync(path.dirname(diaryPath), { recursive: true });
+    fs.writeFileSync(
+      diaryPath,
+      [
+        "# 2026-04-27 闪念日记",
+        "",
+        "![图片 1](./assets/2026-04-27/shared.png)",
+        "",
+        "![图片 2](./assets/2026-04-27/shared.png)",
+      ].join("\n"),
+      "utf8",
+    );
+
+    await saveFlashDiaryPage(
+      root,
+      "raw/闪念日记/2026-04-27.md",
+      [
+        "# 2026-04-27 闪念日记",
+        "",
+        "![图片 2](./assets/2026-04-27/shared.png)",
+      ].join("\n"),
+    );
+
+    expect(fs.existsSync(assetPath)).toBe(true);
   });
 });
 

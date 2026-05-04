@@ -271,15 +271,23 @@ export function createDouyinCollector(projectRoot: string, options: DouyinRunOpt
         }
       }
       if (failures.some((message) => isDouyinCookieFailure(message))) {
-        throw new Error([
-          "抖音需要新的 cookies，请先刷新浏览器里的抖音登录状态；如果仍然失败，请保存项目级抖音 cookies。",
-          `cookies 文件位置：${resolveDouyinCookiesPath(input.projectRoot, options)}`,
-          `原始错误：${failures[failures.length - 1]}`,
-        ].join(" "));
+        throw new Error(formatDouyinCookieFailure(input.projectRoot, options, failures));
       }
       throw new Error(failures[failures.length - 1] ?? "抖音视频采集失败");
     },
   };
+}
+
+function formatDouyinCookieFailure(
+  projectRoot: string,
+  options: DouyinRunOptions,
+  failures: readonly string[],
+): string {
+  return [
+    "抖音需要新的 cookies，请先刷新浏览器里的抖音登录状态；如果仍然失败，请保存项目级抖音 cookies。",
+    `cookies 文件位置：${resolveDouyinCookiesPath(projectRoot, options)}`,
+    `尝试记录：${failures.join(" | ")}`,
+  ].join(" ");
 }
 
 async function downloadDouyinVideo(
@@ -768,6 +776,7 @@ function parseCookiePairs(rawCookie: string): Array<{ name: string; value: strin
   return pairs;
 }
 
+// fallow-ignore-next-line complexity
 function normalizeDouyinPost(raw: DouyinRawMetadata, sourceUrl: string): DouyinPost {
   return {
     id: stringField(raw.id) || readDouyinPostId(sourceUrl) || crypto.createHash("sha1").update(sourceUrl).digest("hex").slice(0, 16),

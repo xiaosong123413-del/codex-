@@ -35,6 +35,7 @@ interface MobileTaskReviewSettingPayload {
 
 interface MobileTaskAiDonePayload {
   text?: string;
+  ownerUid?: string;
   aiProvider?: MobileAiProviderRequest;
 }
 
@@ -83,7 +84,7 @@ export async function handleMobileTaskAiDone(request: Request, env: MobileChatEn
   const payload = await safeJson<MobileTaskAiDonePayload>(request);
   const text = String(payload.text ?? "").trim();
   if (!text) return json({ ok: false, error: "missing_text" }, 400);
-  const titles = await parseDoneTitlesWithAi(env, text, payload.aiProvider);
+  const titles = await parseDoneTitlesWithAi(env, text, payload.aiProvider, payload.ownerUid);
   return json({ ok: true, titles });
 }
 
@@ -182,6 +183,7 @@ function parseTaskItems(value: unknown, ownerUid: string): MobileTaskItem[] {
   return value.map((item) => normalizeTaskItem(item, now, ownerUid)).filter((item): item is MobileTaskItem => item !== null).slice(0, 100);
 }
 
+// fallow-ignore-next-line complexity
 function normalizeTaskItem(value: unknown, fallbackUpdatedAt: string, ownerUid: string): MobileTaskItem | null {
   if (!value || typeof value !== "object") return null;
   const input = value as Partial<MobileTaskItem>;
@@ -191,7 +193,7 @@ function normalizeTaskItem(value: unknown, fallbackUpdatedAt: string, ownerUid: 
   const kind = normalizeKind(input.kind, input.done);
   return {
     id: String(input.id || crypto.randomUUID()),
-    ownerUid: String(input.ownerUid || ownerUid || "").trim(),
+    ownerUid: String(ownerUid || input.ownerUid || "").trim(),
     title,
     kind,
     startTime,
@@ -204,6 +206,7 @@ function normalizeTaskItem(value: unknown, fallbackUpdatedAt: string, ownerUid: 
   };
 }
 
+// fallow-ignore-next-line complexity
 function taskItemFromRow(row: Record<string, unknown>): MobileTaskItem {
   const done = row.done === 1 || row.done === true;
   const kind = normalizeKind(row.kind, done);
@@ -226,13 +229,14 @@ async function parseDoneTitlesWithAi(
   env: MobileChatEnv,
   text: string,
   aiProvider?: MobileAiProviderRequest,
+  ownerUid?: string,
 ): Promise<string[]> {
   if (!isExternalMobileAiProvider(aiProvider) && (!env.AI || !env.LLM_MODEL)) return splitDoneTitles(text);
   try {
     const result = await runMobileAiText(env, aiProvider, [
       { role: "system", content: "把用户输入拆成今日已完成事项。只返回 JSON 字符串数组，不要解释。" },
       { role: "user", content: text },
-    ]);
+    ], { ownerUid });
     const parsed = JSON.parse(result.trim()) as unknown;
     if (Array.isArray(parsed)) {
       const titles = parsed.map(String).map((item) => item.trim()).filter(Boolean).slice(0, 8);

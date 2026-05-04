@@ -10,6 +10,7 @@ import path from "node:path";
 import { aliasBackfillRepairer } from "./autofix/alias-backfill.js";
 import { bridgePageRepairer } from "./autofix/bridge-pages.js";
 import { exampleEscapingRepairer } from "./autofix/example-escaping.js";
+import { queryConceptSeedRepairer } from "./autofix/query-concept-seeds.js";
 import {
   EMPTY_AUTOFIX_SUMMARY,
   summarizeAutofix,
@@ -36,7 +37,8 @@ async function runAutofixPipeline(
   const details: LintAutofixDetail[] = [];
   diagnostics = await runExampleRepairer(root, diagnostics, rerunRules, details);
   diagnostics = await runAliasRepairer(root, diagnostics, rerunRules, details);
-  await runBridgeRepairer(root, diagnostics, rerunRules, details);
+  diagnostics = await runBridgeRepairer(root, diagnostics, rerunRules, details);
+  await runQueryConceptSeedRepairer(root, diagnostics, rerunRules, details);
   return details;
 }
 
@@ -76,11 +78,26 @@ async function runBridgeRepairer(
   diagnostics: LintResult[],
   rerunRules: () => Promise<LintResult[]>,
   details: LintAutofixDetail[],
-): Promise<void> {
+): Promise<LintResult[]> {
   const bridgeDiagnostics = diagnostics.filter((diagnostic) => diagnostic.rule === "broken-wikilink");
   const nextDetails = await bridgePageRepairer.run({ root, diagnostics: bridgeDiagnostics });
   const afterDiagnostics = await rerunAfterApplied(nextDetails, diagnostics, rerunRules);
   details.push(...verifyBrokenWikilinkRepairDetails(nextDetails, bridgeDiagnostics, afterDiagnostics));
+  return afterDiagnostics;
+}
+
+async function runQueryConceptSeedRepairer(
+  root: string,
+  diagnostics: LintResult[],
+  rerunRules: () => Promise<LintResult[]>,
+  details: LintAutofixDetail[],
+): Promise<void> {
+  const seedDiagnostics = diagnostics.filter((diagnostic) => diagnostic.rule === "broken-wikilink");
+  const nextDetails = await queryConceptSeedRepairer.run({ root, diagnostics: seedDiagnostics });
+  const afterDiagnostics = await rerunAfterApplied(nextDetails, diagnostics, rerunRules);
+  details.push(...filterVisibleQueryConceptSeedDetails(
+    verifyBrokenWikilinkRepairDetails(nextDetails, seedDiagnostics, afterDiagnostics),
+  ));
 }
 
 async function rerunAfterApplied(
@@ -97,6 +114,10 @@ function filterVisibleExampleDetails(details: readonly LintAutofixDetail[]): Lin
 
 function filterVisibleAliasDetails(details: readonly LintAutofixDetail[]): LintAutofixDetail[] {
   return details.filter((detail) => detail.status !== "skipped" || detail.reason !== "missing-target");
+}
+
+function filterVisibleQueryConceptSeedDetails(details: readonly LintAutofixDetail[]): LintAutofixDetail[] {
+  return details.filter((detail) => detail.status !== "skipped" || detail.reason !== "not-query-draft");
 }
 
 function verifyExampleRepairDetails(

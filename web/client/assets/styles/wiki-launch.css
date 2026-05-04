@@ -82,6 +82,33 @@
   font-size: 13px;
 }
 
+.wiki-page__sidebar-toolbar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.wiki-page__sidebar-toolbar button,
+.wiki-page__path-delete {
+  border: 1px solid #a2a9b1;
+  border-radius: 4px;
+  background: #f8f9fa;
+  color: #202122;
+  font: inherit;
+  cursor: pointer;
+}
+
+.wiki-page__sidebar-toolbar button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.wiki-page__sidebar-status {
+  margin: 0 0 8px;
+  color: #54595d;
+  font-size: 12px;
+}
+
 .wiki-page__sidebar-links a,
 .wiki-page__sidebar-links span {
   display: block;
@@ -107,7 +134,9 @@
 }
 
 .wiki-page__path-page {
-  display: block;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 6px;
   align-items: center;
   cursor: context-menu;
 }
@@ -116,6 +145,21 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.wiki-page__path-select-spacer {
+  width: 13px;
+}
+
+.wiki-page__path-delete {
+  padding: 1px 5px;
+  color: #b32424;
+  opacity: 0;
+}
+
+.wiki-page__path-page:hover .wiki-page__path-delete,
+.wiki-page__path-delete:focus-visible {
+  opacity: 1;
 }
 
 [data-wiki-path-item] {

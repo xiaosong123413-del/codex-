@@ -332,6 +332,7 @@ function inferContentType(media: ClipDownloadedMedia[]): ClipContentType {
   return "article";
 }
 
+// fallow-ignore-next-line complexity
 function normalizeTask(value: Partial<ClipTask>): ClipTask | undefined {
   const id = readClipTaskString(value?.id);
   const url = readClipTaskString(value?.url);

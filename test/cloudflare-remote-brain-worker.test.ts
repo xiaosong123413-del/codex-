@@ -56,9 +56,11 @@ describe("Cloudflare Remote Brain Worker template", () => {
   it("exposes publish storage and the minimal Remote MCP tools", () => {
     const indexSource = fs.readFileSync(path.join(workerRoot, "src", "index.ts"), "utf8");
     const entrySource = fs.readFileSync(path.join(workerRoot, "src", "mobile-entry-api.ts"), "utf8");
-    const source = `${indexSource}\n${entrySource}`;
+    const eventsSource = fs.readFileSync(path.join(workerRoot, "src", "wiki-publish-events.ts"), "utf8");
+    const source = `${indexSource}\n${entrySource}\n${eventsSource}`;
 
     expect(indexSource).toContain('createExactRoute("POST", "/mcp"');
+    expect(indexSource).toContain('createExactRoute("GET", "/wiki/events"');
     expect(indexSource).toContain('rpc.method === "tools/list"');
     expect(indexSource).toContain('"get_page"');
     expect(indexSource).toContain('"search_wiki"');
@@ -70,6 +72,9 @@ describe("Cloudflare Remote Brain Worker template", () => {
     expect(source).not.toContain("MAX(content_hash) AS currentWikiVersion");
     expect(source).toContain("status = 'published'");
     expect(source).toContain("publish_version AS currentWikiVersion");
+    expect(source).toContain("notifyWikiPublished");
+    expect(source).toContain("WIKI_PUBLISH_EVENTS");
+    expect(source).toContain("acceptWebSocket");
   });
 
   it("exposes real Cloudflare adapter endpoints without runtime tests", () => {
@@ -104,6 +109,13 @@ describe("Cloudflare Remote Brain Worker template", () => {
     expect(source).toContain('crypto.subtle.digest("SHA-256"');
   });
 
+  it("prompts image OCR as verbatim text extraction instead of image description", () => {
+    const indexSource = fs.readFileSync(path.join(workerRoot, "src", "index.ts"), "utf8");
+
+    expect(indexSource).toContain("Return only the verbatim OCR text");
+    expect(indexSource).toContain("Do not describe the image");
+  });
+
   it("documents required Cloudflare bindings and local env", () => {
     const wrangler = fs.readFileSync(path.join(workerRoot, "wrangler.jsonc.example"), "utf8");
     const readme = fs.readFileSync(path.join(workerRoot, "README.md"), "utf8");
@@ -113,6 +125,8 @@ describe("Cloudflare Remote Brain Worker template", () => {
     expect(wrangler).toContain('"binding": "AI"');
     expect(wrangler).toContain('"binding": "MEDIA_BUCKET"');
     expect(wrangler).toContain('"binding": "VECTORIZE"');
+    expect(wrangler).toContain('"name": "WIKI_PUBLISH_EVENTS"');
+    expect(wrangler).toContain('"class_name": "WikiPublishEvents"');
     expect(wrangler).toContain("LLM_MODEL");
     expect(wrangler).toContain("OCR_MODEL");
     expect(wrangler).toContain("TRANSCRIBE_MODEL");
@@ -135,5 +149,7 @@ describe("Cloudflare Remote Brain Worker template", () => {
     expect(readme).toContain("R2");
     expect(readme).toContain("Vectorize");
     expect(readme).toContain("Workers AI");
+    expect(readme).toContain("GET /wiki/events");
+    expect(readme).toContain("WIKI_PUBLISH_EVENTS");
   });
 });

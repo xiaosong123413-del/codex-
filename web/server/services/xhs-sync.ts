@@ -464,6 +464,7 @@ function parseInitialState(html: string): unknown {
   return JSON.parse(raw) as unknown;
 }
 
+// fallow-ignore-next-line complexity
 function extractPost(state: unknown, preferredId: string | null): XhsPost {
   const root = isRecord(state) ? state : {};
   const note = isRecord(root.note) ? root.note : {};
@@ -494,6 +495,7 @@ function extractPost(state: unknown, preferredId: string | null): XhsPost {
   };
 }
 
+// fallow-ignore-next-line complexity
 async function writeXhsPostMarkdown(
   wikiRoot: string,
   markdownPath: string,
@@ -570,6 +572,7 @@ async function writeXhsPostMarkdown(
   return markdownPath;
 }
 
+// fallow-ignore-next-line complexity
 async function syncXhsSourceArtifacts(
   wikiRoot: string,
   markdownPath: string,
@@ -612,7 +615,7 @@ async function syncXhsSourceArtifacts(
   const localImage = resolveLocalArtifactPath(wikiRoot, markdownFile, artifacts.images[0]?.storedPath);
   if (localImage) {
     const ocrResult = await runCloudflareOcr({
-      wikiRoot,
+      runtimeRoot,
       sourceId,
       filePath: localImage,
     });
@@ -745,6 +748,7 @@ function taskProgress(task: XhsSyncTask): XhsProgress {
   };
 }
 
+// fallow-ignore-next-line complexity
 async function collectPostArtifacts(
   wikiRoot: string,
   outputDir: string,
@@ -1393,6 +1397,7 @@ export function buildExecutableEnv(
   return nextEnv;
 }
 
+// fallow-ignore-next-line complexity
 export function resolveExecutablePath(command: string, options: ResolveExecutablePathOptions = {}): string {
   const trimmed = command.trim();
   if (!trimmed || path.isAbsolute(trimmed) || /[\\/]/.test(trimmed)) {

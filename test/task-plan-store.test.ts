@@ -16,6 +16,31 @@ afterEach(() => {
   }
 });
 
+function withPendingStageIds<T extends { domain?: string; project?: string }>(items: readonly T[]): Array<T & { stageId: string }> {
+  return items.map((item) => ({ ...item, stageId: pendingStageId(item) }));
+}
+
+function pendingStagesFor(items: readonly { domain?: string; project?: string }[]): Array<{
+  id: string;
+  title: string;
+  domain: string;
+  project: string;
+  order: number;
+}> {
+  const stages = new Map<string, { id: string; title: string; domain: string; project: string; order: number }>();
+  for (const item of items) {
+    const domain = item.domain ?? "待分组领域";
+    const project = item.project ?? "未归类项目";
+    const id = pendingStageId(item);
+    stages.set(id, { id, title: "待推进", domain, project, order: 0 });
+  }
+  return Array.from(stages.values());
+}
+
+function pendingStageId(item: { domain?: string; project?: string }): string {
+  return `stage:${item.domain ?? "待分组领域"}:${item.project ?? "未归类项目"}:待推进`;
+}
+
 describe("task plan store", () => {
   it("bootstraps state.json under an injected storage root", async () => {
     const root = makeTempRoot();
@@ -36,6 +61,19 @@ describe("task plan store", () => {
 
     await bootstrapTaskPlanStore({ storageRoot: root });
     const state = await readTaskPlanState({ storageRoot: root });
+    const seedItems = [
+      { id: "pool-1", title: "完成需求文档初稿", priority: "high", source: "文字输入", domain: "产品设计", project: "工作台改版" },
+      { id: "pool-2", title: "与开发确认功能逻辑", priority: "high", source: "文字输入", domain: "产品设计", project: "任务同步" },
+      { id: "pool-3", title: "整理用户反馈并归类", priority: "mid", source: "近日状态", domain: "用户研究", project: "反馈归类" },
+      { id: "pool-4", title: "操写项目复盘", priority: "cool", source: "AI 生成", domain: "个人成长", project: "效率系统" },
+      { id: "pool-5", title: "复盘今日完成情况", priority: "low", source: "近日状态", domain: "个人成长", project: "日常复盘" },
+      { id: "pool-6", title: "整理需求变更记录文档", priority: "low", source: "工作日志", domain: "产品设计", project: "任务同步" },
+      { id: "pool-7", title: "准备用户访谈提纲", priority: "low", source: "闪念日记", domain: "用户研究", project: "访谈计划" },
+      { id: "pool-8", title: "学习用户研究方法", priority: "low", source: "闪念日记", domain: "用户研究", project: "方法沉淀" },
+      { id: "pool-9", title: "优化效率模型逻辑", priority: "cool", source: "AI 生成", domain: "个人成长", project: "效率系统" },
+      { id: "pool-10", title: "准备需求汇报材料", priority: "cool", source: "手动新增", domain: "产品设计", project: "视觉梳理" },
+      { id: "pool-11", title: "处理邮件与消息", priority: "neutral", source: "工作日志", domain: "个人成长", project: "日常维护" },
+    ];
 
     expect(state).toEqual({
       voice: {
@@ -44,19 +82,9 @@ describe("task plan store", () => {
         updatedAt: "2026-04-24T00:00:00.000Z",
       },
       pool: {
-        items: [
-          { id: "pool-1", title: "完成需求文档初稿", priority: "high", source: "文字输入", domain: "产品设计", project: "工作台改版" },
-          { id: "pool-2", title: "与开发确认功能逻辑", priority: "high", source: "文字输入", domain: "产品设计", project: "任务同步" },
-          { id: "pool-3", title: "整理用户反馈并归类", priority: "mid", source: "近日状态", domain: "用户研究", project: "反馈归类" },
-          { id: "pool-4", title: "操写项目复盘", priority: "cool", source: "AI 生成", domain: "个人成长", project: "效率系统" },
-          { id: "pool-5", title: "复盘今日完成情况", priority: "low", source: "近日状态", domain: "个人成长", project: "日常复盘" },
-          { id: "pool-6", title: "整理需求变更记录文档", priority: "low", source: "工作日志", domain: "产品设计", project: "任务同步" },
-          { id: "pool-7", title: "准备用户访谈提纲", priority: "low", source: "闪念日记", domain: "用户研究", project: "访谈计划" },
-          { id: "pool-8", title: "学习用户研究方法", priority: "low", source: "闪念日记", domain: "用户研究", project: "方法沉淀" },
-          { id: "pool-9", title: "优化效率模型逻辑", priority: "cool", source: "AI 生成", domain: "个人成长", project: "效率系统" },
-          { id: "pool-10", title: "准备需求汇报材料", priority: "cool", source: "手动新增", domain: "产品设计", project: "视觉梳理" },
-          { id: "pool-11", title: "处理邮件与消息", priority: "neutral", source: "工作日志", domain: "个人成长", project: "日常维护" },
-        ],
+        items: withPendingStageIds(seedItems),
+        stages: pendingStagesFor(seedItems),
+        generationRecords: [],
       },
       schedule: {
         generationId: null,
@@ -206,6 +234,7 @@ describe("task plan store", () => {
       title: "完成需求文档初稿",
       priority: "high",
       source: "文字输入",
+      stageId: "stage:待分组领域:未归类项目:待推进",
     });
     expect(state.schedule).toEqual({
       generationId: null,

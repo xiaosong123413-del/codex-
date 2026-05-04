@@ -153,8 +153,23 @@ describe("task plan routes", () => {
       },
     });
     expect(state.pool.items).toEqual([
-      { id: "pool-manual-1", title: "手动新增任务", priority: "mid", source: "手动新增" },
-      { id: "pool-manual-2", title: "来自工作日志的任务", priority: "low", source: "工作日志" },
+      {
+        id: "pool-manual-1",
+        title: "手动新增任务",
+        priority: "mid",
+        source: "手动新增",
+        stageId: "stage:待分组领域:未归类项目:待推进",
+      },
+      {
+        id: "pool-manual-2",
+        title: "来自工作日志的任务",
+        priority: "low",
+        source: "工作日志",
+        stageId: "stage:待分组领域:未归类项目:待推进",
+      },
+    ]);
+    expect(state.pool.stages).toEqual([
+      { id: "stage:待分组领域:未归类项目:待推进", title: "待推进", domain: "待分组领域", project: "未归类项目", order: 0 },
     ]);
   });
 

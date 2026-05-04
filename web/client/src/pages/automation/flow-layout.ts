@@ -190,6 +190,7 @@ function computeLevelCenters(
   return centers;
 }
 
+// fallow-ignore-next-line complexity
 function computeDepths(detail: AutomationFlowDetail): Map<string, number> {
   const indegree = new Map<string, number>();
   const adjacency = new Map<string, string[]>();

@@ -15,21 +15,20 @@ describe("staging publish", () => {
     const sourceVaultRoot = path.join(root, "source-vault");
     const runtimeRoot = path.join(root, "runtime");
     await mkdir(path.join(sourceVaultRoot, "wiki"), { recursive: true });
+    await mkdir(path.join(sourceVaultRoot, "wiki", "episodes"), { recursive: true });
     await mkdir(path.join(runtimeRoot, "wiki"), { recursive: true });
     await mkdir(path.join(runtimeRoot, ".llmwiki"), { recursive: true });
     await writeFile(path.join(sourceVaultRoot, "wiki", "index.md"), "# source\n", "utf8");
+    await writeFile(path.join(sourceVaultRoot, "wiki", "episodes", "old.md"), "# old episode\n", "utf8");
     await writeFile(path.join(runtimeRoot, "wiki", "index.md"), "# live\n", "utf8");
     await writeFile(path.join(runtimeRoot, ".llmwiki", "state.json"), "{\"version\":2,\"indexHash\":\"\",\"sources\":{}}\n", "utf8");
-    await writeFile(path.join(runtimeRoot, ".llmwiki", "episodes.json"), "[\"runtime-state\"]\n", "utf8");
 
     const staging = await createStagingRun(sourceVaultRoot, runtimeRoot);
 
     await expect(readFile(path.join(staging.root, "wiki", "index.md"), "utf8")).resolves.toBe("# source\n");
+    await expect(readFile(path.join(staging.root, "wiki", "episodes", "old.md"), "utf8")).rejects.toThrow();
     await expect(readFile(path.join(staging.root, ".llmwiki", "state.json"), "utf8")).resolves.toBe(
       "{\"version\":2,\"indexHash\":\"\",\"sources\":{}}\n",
-    );
-    await expect(readFile(path.join(staging.root, ".llmwiki", "episodes.json"), "utf8")).resolves.toBe(
-      "[\"runtime-state\"]\n",
     );
 
     await writeFile(path.join(staging.root, "wiki", "index.md"), "# staging\n", "utf8");
@@ -41,10 +40,8 @@ describe("staging publish", () => {
     await publishStagingRun(sourceVaultRoot, runtimeRoot, staging);
 
     await expect(readFile(path.join(runtimeRoot, "wiki", "index.md"), "utf8")).resolves.toBe("# staging\n");
+    await expect(readFile(path.join(runtimeRoot, "wiki", "episodes", "old.md"), "utf8")).rejects.toThrow();
     await expect(readFile(path.join(runtimeRoot, ".llmwiki", "claims.json"), "utf8")).resolves.toBe("[]\n");
-    await expect(readFile(path.join(runtimeRoot, ".llmwiki", "episodes.json"), "utf8")).resolves.toBe(
-      "[\"runtime-state\"]\n",
-    );
     await expect(readFile(path.join(sourceVaultRoot, "wiki", "index.md"), "utf8")).resolves.toBe("# source\n");
     await expect(readFile(path.join(sourceVaultRoot, ".llmwiki", "state.json"), "utf8")).rejects.toThrow();
   });
@@ -60,7 +57,6 @@ describe("staging publish", () => {
       internalBatchCount: 2,
       batchLimit: 20,
       claimsUpdated: 4,
-      episodesUpdated: 3,
       proceduresUpdated: 1,
       wikiOutputDir: path.join(root, "wiki"),
       publishedAt: "2026-04-19T00:00:00.000Z",

@@ -11,6 +11,7 @@ import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { postJson } from "../../../src/utils/cloudflare-http.js";
 import { readCloudflareRemoteBrainConfig } from "./cloudflare-remote-brain-config.js";
+import { cleanupRemovedFlashDiaryMedia, findFirstFlashDiaryImageUrl } from "./flash-diary-media.js";
 
 const DIARY_ROOT_SEGMENTS = ["raw", "\u95ea\u5ff5\u65e5\u8bb0"];
 const FAILURE_FILE_NAME = "flash-diary-failures.json";
@@ -24,6 +25,7 @@ interface FlashDiaryFileSummary {
   date: string;
   entryCount: number;
   modifiedAt: string;
+  thumbnailUrl: string | null;
 }
 
 interface FlashDiaryDocumentSummary {
@@ -72,6 +74,7 @@ export async function listFlashDiaryFiles(wikiRoot: string): Promise<FlashDiaryF
         date: entry.name.replace(/\.md$/i, ""),
         entryCount: countEntries(raw),
         modifiedAt: stat.mtime.toISOString(),
+        thumbnailUrl: findFirstFlashDiaryImageUrl(toRelativeDiaryPath(entry.name), raw),
       };
     })
     .sort((left, right) => right.date.localeCompare(left.date));
@@ -161,8 +164,12 @@ export async function saveFlashDiaryPage(wikiRoot: string, relativePath: string,
     throw new Error("twelve questions document is read-only");
   }
   const full = resolveDiaryPath(wikiRoot, relativePath);
+  const previousRaw = fs.existsSync(full)
+    ? await readFile(full, "utf8")
+    : "";
   await mkdir(path.dirname(full), { recursive: true });
   await writeFile(full, raw, "utf8");
+  cleanupRemovedFlashDiaryMedia(wikiRoot, normalizeRelativeDiaryPath(relativePath), previousRaw, raw);
 }
 
 export async function saveTwelveQuestionsPage(wikiRoot: string, raw: string): Promise<void> {
@@ -182,7 +189,7 @@ interface CloudDocumentResponse {
   };
 }
 
-export async function readCloudDocument(documentPath: string): Promise<{ raw: string; updatedAt: string } | null> {
+async function readCloudDocument(documentPath: string): Promise<{ raw: string; updatedAt: string } | null> {
   const cfg = readCloudflareRemoteBrainConfig();
   if (!cfg.enabled || !cfg.workerUrl || !cfg.remoteToken) return null;
   const result = await postJson<CloudDocumentResponse>(

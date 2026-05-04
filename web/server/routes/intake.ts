@@ -4,6 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import type { ServerConfig } from "../config.js";
 import { buildIntakePlan, scanIntakeForReview } from "../services/intake-summary.js";
+import { readSyncRepoConfig } from "../services/sync-config.js";
 
 type MobilePullResult = {
   pulledCount: number;
@@ -20,13 +21,16 @@ let proxyBootstrapped = false;
 export function handleIntakeScan(cfg: ServerConfig, pullMobileEntries: MobilePuller = pullMobileEntriesBeforeScan) {
   return async (_req: Request, res: Response) => {
     const mobilePull = await pullMobileEntries(cfg);
-    const items = scanIntakeForReview(cfg.sourceVaultRoot, cfg.runtimeRoot);
+    const sourceRoots = readSyncRepoConfig(cfg.projectRoot).sourceRepoPaths;
+    const now = new Date();
+    const scanOptions = { sourceRoots };
+    const items = scanIntakeForReview(cfg.sourceVaultRoot, cfg.runtimeRoot, now, scanOptions);
     res.json({
       success: true,
       data: {
         mobilePull,
         items,
-        plan: buildIntakePlan(cfg.sourceVaultRoot, cfg.runtimeRoot),
+        plan: buildIntakePlan(cfg.sourceVaultRoot, cfg.runtimeRoot, now, scanOptions),
       },
     });
   };

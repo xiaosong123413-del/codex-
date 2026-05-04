@@ -5,15 +5,27 @@ import fs from "node:fs";
 import { config as loadDotenv } from "dotenv";
 import { parseArgs } from "./config.js";
 import { registerCLIProxyRoutes } from "./routes/cliproxy.js";
+import { registerAccountAuthRoutes } from "./routes/account-auth.js";
+import { registerAccountAiRoutes } from "./routes/account-ai.js";
 import { registerAgentConfigRoutes } from "./routes/agent-config.js";
 import { registerAppConfigRoutes } from "./routes/app-config.js";
 import { registerAutomationConfigRoutes } from "./routes/automation-config.js";
 import { registerAutomationWorkspaceRoutes } from "./routes/automation-workspace.js";
 import { registerHealthDomainRoutes } from "./routes/health-domain.js";
 import { handleTaskPlanJsonParseError, registerTaskPlanRoutes } from "./routes/task-plan.js";
+import { registerTaskPoolRoutes } from "./routes/task-pool.js";
 import { registerLlmRoutes } from "./routes/llm.js";
 import { registerSearchRoutes } from "./routes/search.js";
+import { buildAndSaveSearchIndex } from "./services/search-index-builder.js";
 import { handleTree } from "./routes/tree.js";
+import { handleWikiGraph } from "./routes/wiki-graph.js";
+import { handleWorkspaceGraph } from "./routes/workspace-graph.js";
+import {
+  handleWorkspaceRelationCreate,
+  handleWorkspaceRelationDelete,
+  handleWorkspaceRelations,
+} from "./routes/workspace-relations.js";
+import { handleGraphResearchPrepare, handleGraphResearchRun, handleGraphResearchStream } from "./routes/graph-research.js";
 import {
   handleActivityLog,
   handlePage,
@@ -22,10 +34,28 @@ import {
   handleProjectWorkspaceDelete,
   handleRaw,
   handleWorkspaceDocs,
+  handleWorkspaceDocsDelete,
   handleWorkspaceDocsSave,
+  handleWorkspaceDocsStatusMove,
 } from "./routes/pages.js";
-import { handlePageSave } from "./routes/page-save.js";
+import { handlePageDelete, handlePageSave } from "./routes/page-save.js";
 import { handlePageSideImageMedia, handlePageSideImageUpload } from "./routes/page-side-image.js";
+import {
+  handleIdentityDashboardGet,
+  handleIdentityDashboardSave,
+  handleIdentityDashboardWidgetGenerate,
+} from "./routes/identity-dashboard.js";
+import {
+  handleCaseLibraryCaseAction,
+  handleCaseLibrarySourceRefresh,
+} from "./routes/case-library.js";
+import { handlePendingTimelineFactMutation, handlePersonalTimelineSourceRefresh } from "./routes/personal-timeline.js";
+import {
+  handleWorkflowRecorderArchive,
+  handleWorkflowRecorderInbox,
+  handleWorkflowRecorderRecord,
+} from "./routes/workflow-recorder.js";
+import { handleWorkflowArtifacts } from "./routes/workflow-artifacts.js";
 import {
   handleWikiCommentAiDraftConfirm,
   handleWikiCommentAiDraftCreate,
@@ -38,13 +68,15 @@ import {
 import {
   handleFlashDiaryAppend,
   handleFlashDiaryList,
+  handleFlashDiaryMedia,
+  handleFlashDiaryMediaUpload,
   handleFlashDiaryMemory,
   handleFlashDiaryPage,
   handleFlashDiaryRetry,
   handleFlashDiarySave,
 } from "./routes/flash-diary.js";
-import { handleGraph } from "./routes/graph.js";
 import { handleIntakeScan } from "./routes/intake.js";
+import { handleSourceImageOcr } from "./routes/ocr.js";
 import { registerProviderStatusRoutes } from "./routes/provider-status.js";
 import {
   handleDeepResearchAction,
@@ -81,6 +113,8 @@ import {
   handleChatGet,
   handleChatList,
   handleChatPatch,
+  handleChatRegenerate,
+  handleChatSaveMessageToWiki,
   handleChatStreamMessage,
 } from "./routes/chat.js";
 import { handleClipCreate, handleYtDlpInstall, handleYtDlpStatus } from "./routes/clips.js";
@@ -102,6 +136,8 @@ import { handleXhsBatch, handleXhsExtract, handleXhsFailureDelete, handleXhsFavo
 import { handleSyncConfigGet, handleSyncConfigSave } from "./routes/sync-config.js";
 import { handleToolboxCreate, handleToolboxDelete, handleToolboxList, handleToolboxSave } from "./routes/toolbox.js";
 import { handleRunCurrent, handleRunEvents, handleRunStart, handleRunStop } from "./routes/runs.js";
+import { handleCodexQuotaReaderRead } from "./routes/codex-quota-reader.js";
+import { startFlashDiaryImageScheduler } from "./services/flash-diary-image-scheduler.js";
 import { startFlashDiaryMemoryScheduler } from "./services/flash-diary-memory-scheduler.js";
 import { createRunManager } from "./services/run-manager.js";
 
@@ -109,6 +145,7 @@ const cfg = parseArgs(process.argv);
 loadProjectEnv(cfg.projectRoot);
 const runManager = createRunManager();
 const memoryScheduler = startFlashDiaryMemoryScheduler({ cfg });
+const diaryImageScheduler = startFlashDiaryImageScheduler({ cfg });
 const unavailableHealthSyncRunner = async () => {
   throw new Error("健康域同步运行器尚未接入。");
 };
@@ -119,38 +156,65 @@ app.use(handleTaskPlanJsonParseError);
 
 // ── API ────────────────────────────────────────────────────────────────────
 app.get("/api/tree", handleTree(cfg));
+app.get("/api/wiki/graph", handleWikiGraph(cfg));
+app.post("/api/wiki/graph/research/prepare", handleGraphResearchPrepare(cfg));
+app.post("/api/wiki/graph/research", handleGraphResearchRun(cfg, runManager));
+app.post("/api/wiki/graph/research/stream", handleGraphResearchStream(cfg, runManager));
 registerCLIProxyRoutes(app, cfg);
+registerAccountAuthRoutes(app);
+registerAccountAiRoutes(app, cfg);
 registerAgentConfigRoutes(app, cfg);
 registerAppConfigRoutes(app, cfg);
 registerAutomationConfigRoutes(app, cfg);
 registerAutomationWorkspaceRoutes(app, cfg);
 registerHealthDomainRoutes(app, cfg);
 registerTaskPlanRoutes(app, cfg);
+registerTaskPoolRoutes(app, cfg);
 registerLlmRoutes(app, cfg);
 registerSearchRoutes(app, cfg);
 registerProviderStatusRoutes(app);
-app.get("/api/graph", handleGraph(cfg));
 app.get("/api/remote-brain/status", handleRemoteBrainStatus(cfg));
 app.post("/api/remote-brain/push", handleRemoteBrainPush(cfg));
 app.post("/api/remote-brain/pull", handleRemoteBrainPull(cfg));
 app.post("/api/remote-brain/publish", handleRemoteBrainPublish(cfg));
 app.get("/api/page", handlePage(cfg));
 app.put("/api/page", handlePageSave(cfg));
+app.delete("/api/page", handlePageDelete(cfg));
 app.get("/api/page-side-image", handlePageSideImageMedia(cfg));
 app.post("/api/page-side-image", handlePageSideImageUpload(cfg));
+app.get("/api/wiki/identity-dashboard", handleIdentityDashboardGet(cfg));
+app.put("/api/wiki/identity-dashboard", handleIdentityDashboardSave(cfg));
+app.post("/api/wiki/identity-dashboard/widget-generate", handleIdentityDashboardWidgetGenerate(cfg));
+app.post("/api/wiki/personal-timeline/source-refresh", handlePersonalTimelineSourceRefresh(cfg));
+app.post("/api/wiki/personal-timeline/pending-fact", handlePendingTimelineFactMutation(cfg));
+app.post("/api/wiki/case-library/source-refresh", handleCaseLibrarySourceRefresh(cfg));
+app.post("/api/wiki/case-library/case-action", handleCaseLibraryCaseAction(cfg));
+app.get("/api/workflow-recorder/inbox", handleWorkflowRecorderInbox(cfg));
+app.post("/api/workflow-recorder/record", handleWorkflowRecorderRecord(cfg));
+app.post("/api/workflow-recorder/archive", handleWorkflowRecorderArchive(cfg));
+app.get("/api/workflow-artifacts", handleWorkflowArtifacts(cfg));
 app.get("/api/raw", handleRaw(cfg));
 app.get("/api/log", handleActivityLog(cfg));
 app.get("/api/project-log", handleProjectLog(cfg));
 app.get("/api/project-log/workspace", handleProjectWorkspace(cfg));
 app.delete("/api/project-log/workspace", handleProjectWorkspaceDelete(cfg));
 app.get("/api/workspace/docs", handleWorkspaceDocs(cfg));
+app.get("/api/workspace/graph", handleWorkspaceGraph(cfg));
+app.get("/api/workspace/relations", handleWorkspaceRelations(cfg));
+app.post("/api/workspace/relations", handleWorkspaceRelationCreate(cfg));
+app.delete("/api/workspace/relations/:id", handleWorkspaceRelationDelete(cfg));
 app.put("/api/workspace/docs", handleWorkspaceDocsSave(cfg));
+app.post("/api/workspace/docs/status", handleWorkspaceDocsStatusMove(cfg));
+app.delete("/api/workspace/docs", handleWorkspaceDocsDelete(cfg));
 app.get("/api/flash-diary", handleFlashDiaryList(cfg));
 app.get("/api/flash-diary/memory", handleFlashDiaryMemory(cfg));
 app.get("/api/flash-diary/page", handleFlashDiaryPage(cfg));
+app.get("/api/flash-diary/media", handleFlashDiaryMedia(cfg));
 app.put("/api/flash-diary/page", handleFlashDiarySave(cfg));
+app.post("/api/flash-diary/media", handleFlashDiaryMediaUpload(cfg));
 app.post("/api/flash-diary/entry", handleFlashDiaryAppend(cfg));
 app.post("/api/flash-diary/failures/:id/retry", handleFlashDiaryRetry(cfg));
+app.post("/api/ocr/source-image", handleSourceImageOcr(cfg));
 app.get("/api/source-gallery", handleSourceGalleryList(cfg));
 app.get("/api/source-gallery/media", handleSourceGalleryMedia(cfg));
 app.get("/api/source-gallery/:id", handleSourceGalleryDetail(cfg));
@@ -193,6 +257,8 @@ app.post("/api/chat", handleChatCreate(cfg));
 app.get("/api/chat/:id", handleChatGet(cfg));
 app.patch("/api/chat/:id", handleChatPatch(cfg));
 app.delete("/api/chat/:id", handleChatDelete(cfg));
+app.post("/api/chat/:id/regenerate", handleChatRegenerate(cfg));
+app.post("/api/chat/:id/messages/:messageId/save-to-wiki", handleChatSaveMessageToWiki(cfg));
 app.post("/api/chat/:id/messages/stream", handleChatStreamMessage(cfg));
 app.post("/api/chat/:id/messages", handleChatAddMessage(cfg));
 app.get("/api/runs/current", handleRunCurrent(runManager));
@@ -200,6 +266,7 @@ app.post("/api/runs/check", handleRunStart(cfg, runManager, "check"));
 app.post("/api/runs/sync", handleRunStart(cfg, runManager, "sync"));
 app.post("/api/runs/:id/stop", handleRunStop(runManager));
 app.get("/api/runs/:id/events", handleRunEvents(runManager));
+app.post("/api/codex-quota-reader/read", handleCodexQuotaReaderRead());
 app.get("/api/review", handleReviewSummary(cfg, runManager));
 app.post("/api/review/inbox/batch-ingest", handleReviewInboxBatchIngest(cfg));
 app.post("/api/review/deep-research/bulk-advance", handleDeepResearchBulkAdvance(cfg));
@@ -242,6 +309,14 @@ app.get("/", (_req, res) => {
   }
 });
 
+// ── Build search index on startup ───────────────────────────────────────────
+try {
+  buildAndSaveSearchIndex(cfg);
+  console.log("search index built.");
+} catch (error) {
+  console.warn("search index build failed:", error instanceof Error ? error.message : String(error));
+}
+
 // ── Start ───────────────────────────────────────────────────────────────────
 app.listen(cfg.port, cfg.host, () => {
   console.log(`llm-wiki web server listening on http://${cfg.host}:${cfg.port}`);
@@ -252,6 +327,7 @@ app.listen(cfg.port, cfg.host, () => {
 
 process.on("exit", () => {
   memoryScheduler.dispose();
+  diaryImageScheduler.dispose();
 });
 
 function loadProjectEnv(projectRoot: string): void {

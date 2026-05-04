@@ -37,6 +37,11 @@ describe("review failed run summary", () => {
       expect.objectContaining({
         kind: "run",
         title: "系统检查失败",
+        run: {
+          kind: "check",
+          status: "failed",
+          exitCode: 1,
+        },
         detail: [
           "x error wiki/concepts/example.md:22 Broken wikilink [[Missing Page]] - no matching page found",
           "* 1 error(s), 0 warning(s), 0 info",

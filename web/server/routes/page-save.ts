@@ -1,8 +1,8 @@
 /**
- * Save route for editable wiki markdown pages.
+ * Save route for editable source-backed markdown pages.
  *
- * Only source-backed wiki markdown files are writable. Runtime-generated pages
- * such as wiki/index.md remain read-only.
+ * Source-backed wiki files and workspace record pages are writable through the
+ * same API. Runtime-generated pages such as wiki/index.md remain read-only.
  */
 
 import fs from "node:fs";
@@ -11,6 +11,7 @@ import type { Request, Response } from "express";
 import type { ServerConfig } from "../config.js";
 import { clearPageRenderCacheForPath } from "./pages.js";
 import { resolveEditableSourceMarkdownPath } from "../runtime-paths.js";
+import { clearTreeCache } from "./tree.js";
 
 export function handlePageSave(cfg: ServerConfig) {
   return (req: Request, res: Response) => {
@@ -39,6 +40,48 @@ export function handlePageSave(cfg: ServerConfig) {
       },
     });
   };
+}
+
+export function handlePageDelete(cfg: ServerConfig) {
+  return (req: Request, res: Response) => {
+    const logicalPaths = normalizeDeletePaths(req.body);
+    if (logicalPaths.length === 0) {
+      res.status(400).json({ success: false, error: "invalid page path" });
+      return;
+    }
+
+    const editablePaths = logicalPaths.map((logicalPath) => ({
+      logicalPath,
+      fullPath: resolveEditableSourceMarkdownPath(cfg, logicalPath),
+    }));
+    const blockedPath = editablePaths.find((item) => !item.fullPath)?.logicalPath;
+    if (blockedPath) {
+      res.status(400).json({ success: false, error: "page is not editable", path: blockedPath });
+      return;
+    }
+
+    for (const item of editablePaths) {
+      fs.unlinkSync(item.fullPath!);
+      clearPageRenderCacheForPath(item.fullPath!);
+    }
+    clearTreeCache();
+
+    res.json({
+      success: true,
+      data: {
+        paths: editablePaths.map((item) => item.logicalPath),
+      },
+    });
+  };
+}
+
+function normalizeDeletePaths(body: unknown): string[] {
+  const record = body && typeof body === "object" ? body as Record<string, unknown> : {};
+  const rawPaths = Array.isArray(record.paths) ? record.paths : [record.path];
+  const paths = rawPaths
+    .map(normalizeLogicalPath)
+    .filter((path): path is string => Boolean(path));
+  return Array.from(new Set(paths));
 }
 
 function normalizeLogicalPath(input: unknown): string | null {

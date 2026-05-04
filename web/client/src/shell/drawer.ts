@@ -1,5 +1,6 @@
 import { renderIcon } from "../components/icon.js";
 import { createWikiCommentSurface } from "../components/wiki-comments.js";
+import { handleKnowledgePreviewClick, withKnowledgePreviewLinks } from "./knowledge-preview-links.js";
 
 interface DrawerContent {
   path: string;
@@ -53,13 +54,7 @@ export function createDrawer(options: DrawerOptions): DrawerHandle {
       return;
     }
 
-    const link = target.closest("a.wikilink") as HTMLAnchorElement | null;
-    if (!link) return;
-    const url = new URL(link.href, window.location.origin);
-    const page = url.searchParams.get("page");
-    if (!page) return;
-    event.preventDefault();
-    onNavigate(page);
+    handleKnowledgePreviewClick(event, onNavigate);
   });
 
   document.addEventListener("keydown", (event) => {
@@ -95,7 +90,7 @@ export function createDrawer(options: DrawerOptions): DrawerHandle {
             <button type="button" class="btn btn-secondary btn-inline" data-wiki-comments-add>评论</button>
             <span class="shell-drawer__toolbar-status" data-wiki-comments-status>选中文本后点击评论。</span>
           </div>
-          <div class="shell-drawer__body">${content.html}</div>
+          <div class="shell-drawer__body">${withKnowledgePreviewLinks(content.html)}</div>
         </div>
         <aside class="wiki-comments-panel shell-drawer__comments">
           <div class="wiki-comments-panel__header">

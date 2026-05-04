@@ -149,6 +149,46 @@ describe("cloudflare mobile sync", () => {
     vi.unstubAllEnvs();
   });
 
+  test("uses account session auth and user routes for public sync", async () => {
+    const projectRoot = tempDir();
+    const vaultRoot = tempDir();
+    fs.mkdirSync(path.join(vaultRoot, "wiki"), { recursive: true });
+    fs.writeFileSync(path.join(vaultRoot, "wiki", "index.md"), "# Index\n\nAccount scoped.\n", "utf8");
+
+    vi.stubEnv("CLOUDFLARE_WORKER_URL", "https://worker.example.com");
+    vi.stubEnv("CLOUDFLARE_ACCOUNT_SESSION_TOKEN", "session-token");
+    vi.stubEnv("CLOUDFLARE_WORKSPACE_ID", "workspace-one");
+
+    const calls: Array<{ url: string; authorization: string; body: Record<string, unknown> }> = [];
+    vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
+      calls.push({
+        url,
+        authorization: String((init.headers as Record<string, string>).Authorization ?? ""),
+        body: JSON.parse(String(init.body ?? "{}")),
+      });
+      return new Response(JSON.stringify({ ok: true, pageCount: 1 }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+
+    const result = await publishWikiToCloudflare({
+      projectRoot,
+      vaultRoot,
+      version: "2026-04-29T12:00:00.000Z",
+    });
+
+    expect(result).toEqual(expect.objectContaining({ publishedCount: 1, skipped: false }));
+    expect(calls[0]).toEqual(expect.objectContaining({
+      url: "https://worker.example.com/user/publish",
+      authorization: "Bearer session-token",
+      body: expect.objectContaining({ workspaceId: "workspace-one" }),
+    }));
+
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
   test("skips Cloudflare publish when the local wiki manifest has not changed", async () => {
     const projectRoot = tempDir();
     const vaultRoot = tempDir();
@@ -387,6 +427,13 @@ describe("cloudflare mobile sync", () => {
       },
     ]);
 
+    vi.stubGlobal("fetch", async () =>
+      new Response(new Uint8Array([1, 2, 3]), {
+        status: 200,
+        headers: { "content-type": "image/png" },
+      })
+    );
+
     const result = await syncMobileEntriesToRaw({ vaultRoot, db, now: "2026-04-19T12:10:00.000Z" });
 
     expect(result).toEqual({ pulledCount: 3, failedCount: 0 });
@@ -398,6 +445,7 @@ describe("cloudflare mobile sync", () => {
       .toContain("这条先放 inbox。");
     expect(db.updates).toHaveLength(3);
     expect(db.updates.every((item) => item.patch.status === "synced")).toBe(true);
+    vi.unstubAllGlobals();
   });
 
   test("pulls Cloudflare mobile entries and marks them synced", async () => {
@@ -441,6 +489,166 @@ describe("cloudflare mobile sync", () => {
       url: "https://worker.example.com/mobile/entries/status",
       body: expect.objectContaining({ id: "flash-1", status: "synced" }),
     }));
+    vi.unstubAllGlobals();
+  });
+
+  test("upserts duplicate Cloudflare diary entries and keeps the richer media block", async () => {
+    const vaultRoot = tempDir();
+    const calls: Array<{ url: string; body: Record<string, unknown> }> = [];
+    vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body ?? "{}"));
+      calls.push({ url, body });
+      if (url.endsWith("/mobile/entries/pending")) {
+        return new Response(JSON.stringify({
+          ok: true,
+          entries: [
+            {
+              id: "early",
+              type: "flash_diary",
+              title: "早上记录",
+              text: "今天继续推进。",
+              targetDate: "2026-04-28",
+              createdAt: "2026-04-28T06:45:00+08:00",
+              mediaFiles: [],
+            },
+            {
+              id: "plain",
+              type: "flash_diary",
+              title: "开心记录",
+              text: "开心❤️爽，mimo百万亿token轻松拿下",
+              targetDate: "2026-04-28",
+              createdAt: "2026-04-28T14:59:00+08:00",
+              mediaFiles: [],
+            },
+            {
+              id: "with-media",
+              type: "flash_diary",
+              title: "开心记录",
+              text: "开心❤️爽，mimo百万亿token轻松拿下",
+              targetDate: "2026-04-28",
+              createdAt: "2026-04-28T14:59:00+08:00",
+              mediaFiles: ["mobile-image.jpg"],
+            },
+          ],
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "content-type": "application/json" } });
+    });
+
+    const result = await syncMobileEntriesToRawFromCloudflare({
+      vaultRoot,
+      client: {
+        workerUrl: "https://worker.example.com",
+        remoteToken: "test-token",
+      },
+      now: "2026-04-28T15:10:00.000Z",
+    });
+
+    const diary = fs.readFileSync(path.join(vaultRoot, "raw", "闪念日记", "2026-04-28.md"), "utf8");
+    expect(result).toEqual({ pulledCount: 3, failedCount: 0 });
+    expect((diary.match(/开心❤️爽，mimo百万亿token轻松拿下/g) ?? [])).toHaveLength(1);
+    expect(diary).toContain("### 附件\n![图片附件](mobile-image.jpg)");
+    expect(diary).not.toMatch(/\.(?:jpg|png|webp|gif)\)##\s+\d{2}:\d{2}/);
+    expect(calls.filter((call) => call.url.endsWith("/mobile/entries/status"))).toHaveLength(3);
+    vi.unstubAllGlobals();
+  });
+
+  test("sorts mobile and desktop diary blocks together by time", async () => {
+    const vaultRoot = tempDir();
+    fs.mkdirSync(path.join(vaultRoot, "raw", "闪念日记"), { recursive: true });
+    fs.writeFileSync(
+      path.join(vaultRoot, "raw", "闪念日记", "2026-04-28.md"),
+      [
+        "# 2026-04-28 闪念日记",
+        "",
+        "## 23:25:42",
+        "",
+        "电脑端深夜记录。",
+        "",
+        "## [§](#15%3A01%3A14) 15:01:14",
+        "",
+        "电脑端下午记录。",
+        "",
+        "## [§](#02%3A47) 02:47",
+        "",
+        "电脑端凌晨记录。",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    vi.stubGlobal("fetch", async (url: string) => {
+      if (url.endsWith("/mobile/entries/pending")) {
+        return new Response(JSON.stringify({
+          ok: true,
+          entries: [
+            {
+              id: "mobile-1459",
+              type: "flash_diary",
+              title: "手机下午记录",
+              text: "手机端 14:59 记录。",
+              targetDate: "2026-04-28",
+              createdAt: "2026-04-28T14:59:00+08:00",
+              mediaFiles: [],
+            },
+          ],
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "content-type": "application/json" } });
+    });
+
+    await syncMobileEntriesToRawFromCloudflare({
+      vaultRoot,
+      client: {
+        workerUrl: "https://worker.example.com",
+        remoteToken: "test-token",
+      },
+      now: "2026-04-28T15:10:00.000Z",
+    });
+
+    const diary = fs.readFileSync(path.join(vaultRoot, "raw", "闪念日记", "2026-04-28.md"), "utf8");
+    const times = [...diary.matchAll(/^##\s+.*?(\d{2}:\d{2}(?::\d{2})?)/gm)].map((match) => match[1]);
+    expect(times).toEqual(["23:25:42", "15:01:14", "14:59:00", "02:47"]);
+    vi.unstubAllGlobals();
+  });
+
+  test("writes UTC mobile diary entries as separate China-time blocks", async () => {
+    const vaultRoot = tempDir();
+    vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
+      if (url.endsWith("/mobile/entries/pending")) {
+        return new Response(JSON.stringify({
+          ok: true,
+          entries: [
+            {
+              id: "flash-utc-1",
+              type: "flash_diary",
+              title: "今天记录",
+              text: "洗完澡，心情很好。## 08:34\n继续记录第二段。\n## 08:30\n记录第三段。",
+              targetDate: "2026-04-29",
+              createdAt: "2026-04-29T09:10:00.000Z",
+              mediaFiles: [],
+            },
+          ],
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "content-type": "application/json" } });
+    });
+
+    const result = await syncMobileEntriesToRawFromCloudflare({
+      vaultRoot,
+      client: {
+        workerUrl: "https://worker.example.com",
+        remoteToken: "test-token",
+      },
+      now: "2026-04-29T09:21:00.000Z",
+    });
+
+    const diary = fs.readFileSync(path.join(vaultRoot, "raw", "闪念日记", "2026-04-29.md"), "utf8");
+    expect(result).toEqual({ pulledCount: 1, failedCount: 0 });
+    expect(diary).toContain("## 17:10:00\n洗完澡，心情很好。");
+    expect(diary).toContain("## 16:34:00\n继续记录第二段。");
+    expect(diary).toContain("## 16:30:00\n记录第三段。");
+    expect(diary.indexOf("## 17:10:00")).toBeLessThan(diary.indexOf("## 16:34:00"));
+    expect(diary.indexOf("## 16:34:00")).toBeLessThan(diary.indexOf("## 16:30:00"));
     vi.unstubAllGlobals();
   });
 

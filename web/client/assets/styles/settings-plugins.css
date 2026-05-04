@@ -1,0 +1,429 @@
+/**
+ * Settings plugin panel styles.
+ *
+ * This stylesheet keeps the Obsidian-style plugin management surface isolated
+ * from the legacy monolithic settings stylesheet.
+ */
+
+.settings-plugins {
+  align-content: start;
+  background: #ffffff;
+}
+
+.settings-plugins__header {
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.settings-plugin-preferences,
+.settings-plugin-installed {
+  width: min(100%, 940px);
+  box-sizing: border-box;
+  border-radius: 8px;
+  background: #f8f8f8;
+}
+
+.settings-plugin-preferences {
+  padding: 0 30px;
+}
+
+.settings-plugin-preferences__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  min-height: 108px;
+  border-bottom: 1px solid #dddddd;
+}
+
+.settings-plugin-preferences__row:last-child {
+  border-bottom: 0;
+}
+
+.settings-plugin-preferences__row h2,
+.settings-plugin-installed h2,
+.settings-plugin-item h3 {
+  margin: 0;
+  color: #111111;
+  letter-spacing: 0;
+}
+
+.settings-plugin-preferences__row h2 {
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.settings-plugin-preferences__row p,
+.settings-plugin-item p,
+.settings-plugin-status {
+  margin: 6px 0 0;
+  color: #414141;
+  line-height: 1.45;
+}
+
+.settings-plugin-installed {
+  display: grid;
+  gap: 20px;
+  padding: 26px 30px;
+}
+
+.settings-plugin-detail {
+  width: 100%;
+}
+
+.settings-plugin-installed__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.settings-plugin-installed h2 {
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.settings-plugin-installed__tools,
+.settings-plugin-item__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.settings-plugin-installed .icon-btn,
+.settings-plugin-item .icon-btn {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #6d6d6d;
+}
+
+.settings-plugin-installed .icon-btn:hover,
+.settings-plugin-item .icon-btn:hover {
+  background: #eeeeee;
+  color: #1f1f1f;
+}
+
+.settings-plugin-kind-tabs {
+  display: inline-flex;
+  width: fit-content;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #d4d4d4;
+  border-radius: 8px;
+  background: #eeeeee;
+}
+
+.settings-plugin-kind-tabs button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #4c4c4c;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 0 14px;
+}
+
+.settings-plugin-kind-tabs button[data-active="true"] {
+  background: #ffffff;
+  color: #111111;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.settings-plugin-search {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: center;
+  min-height: 52px;
+  box-sizing: border-box;
+  border: 3px solid #bdbdbd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #666666;
+  padding: 0 12px;
+}
+
+.settings-plugin-search:focus-within {
+  border-color: #8f6ff4;
+  box-shadow: 0 0 0 3px rgba(143, 111, 244, 0.18);
+}
+
+.settings-plugin-search input {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: #111111;
+  font: inherit;
+  font-size: 17px;
+  outline: 0;
+}
+
+.settings-plugin-list {
+  display: grid;
+  gap: 0;
+}
+
+.settings-plugin-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  min-height: 150px;
+  border-bottom: 1px solid #dddddd;
+}
+
+.settings-plugin-item:last-child {
+  border-bottom: 0;
+}
+
+.settings-plugin-item h3 {
+  font-size: 25px;
+  font-weight: 500;
+}
+
+.settings-plugin-item__copy {
+  min-width: 0;
+}
+
+.settings-plugin-item__copy p {
+  max-width: 680px;
+  overflow-wrap: anywhere;
+  font-size: 16px;
+}
+
+.settings-plugin-detail__card {
+  display: grid;
+  gap: 18px;
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 8px;
+  background: #f8f8f8;
+  padding: 30px;
+}
+
+.settings-plugin-detail__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 18px;
+}
+
+.settings-plugin-detail__header h2,
+.settings-plugin-detail__card p {
+  margin: 0;
+}
+
+.settings-plugin-detail__kind {
+  color: #8f6ff4;
+  font-weight: 800;
+}
+
+.settings-plugin-detail__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.settings-plugin-smart {
+  gap: 22px;
+}
+
+.settings-plugin-smart__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.settings-plugin-smart__actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-plugin-smart__field {
+  display: grid;
+  gap: 8px;
+  color: #414141;
+  font-weight: 700;
+}
+
+.settings-plugin-smart__field input {
+  min-height: 42px;
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid #dddddd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #414141;
+  font-size: 13px;
+  padding: 0 12px;
+}
+
+.settings-plugin-smart__section {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid #dddddd;
+  padding-top: 18px;
+}
+
+.settings-plugin-smart__section h3 {
+  margin: 0;
+  color: #111111;
+  font-size: 20px;
+  letter-spacing: 0;
+}
+
+.settings-plugin-smart__section ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 20px;
+  color: #414141;
+}
+
+.settings-plugin-switch {
+  position: relative;
+  width: 60px;
+  height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: #c9c9c9;
+  cursor: pointer;
+  padding: 0;
+}
+
+.settings-plugin-switch span,
+.settings-plugin-switch::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.18);
+  transition: transform 160ms ease;
+}
+
+.settings-plugin-switch span {
+  display: block;
+}
+
+.settings-plugin-switch::before {
+  display: none;
+}
+
+.settings-plugin-switch.is-on {
+  background: #8f6ff4;
+}
+
+.settings-plugin-switch.is-on span {
+  transform: translateX(26px);
+}
+
+.settings-plugin-status {
+  min-height: 24px;
+  font-size: 14px;
+}
+
+.settings-plugin-install__card {
+  display: grid;
+  gap: 16px;
+  border: 1px solid #dddddd;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 18px;
+}
+
+.settings-plugin-install__header,
+.settings-plugin-install__command-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.settings-plugin-install__header h3 {
+  margin: 0;
+  color: #111111;
+  font-size: 22px;
+  letter-spacing: 0;
+}
+
+.settings-plugin-install__header p {
+  margin: 6px 0 0;
+  color: #414141;
+  line-height: 1.45;
+}
+
+.settings-plugin-install__targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-plugin-install__targets button {
+  min-height: 34px;
+  border: 1px solid #d4d4d4;
+  border-radius: 8px;
+  background: #f7f7f7;
+  color: #333333;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 0 12px;
+}
+
+.settings-plugin-install__targets button[data-active="true"] {
+  border-color: #8f6ff4;
+  background: #8f6ff4;
+  color: #ffffff;
+}
+
+.settings-plugin-install__command {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-plugin-install__command code {
+  display: block;
+  overflow-x: auto;
+  border-radius: 8px;
+  background: #111111;
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 12px;
+  white-space: pre;
+}
+
+@media (max-width: 820px) {
+  .settings-plugin-preferences,
+  .settings-plugin-installed {
+    width: 100%;
+  }
+
+  .settings-plugin-preferences__row,
+  .settings-plugin-item {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    padding: 20px 0;
+  }
+
+  .settings-plugin-item__actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .settings-plugin-install__header,
+  .settings-plugin-install__command-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

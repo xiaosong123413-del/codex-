@@ -1,20 +1,69 @@
+# Environment and secrets
 .env
+.secrets/
+
+# Dependencies and build output
 node_modules/
+**/node_modules/
 dist/
+.next/
+
+# Runtime and user data
+.runtime/
 .llmwiki/
 .llm-wiki/
 /wiki/
 /sources/
+
+# Temporary files
 *.tmp
+.tmp/
+tmp/
+.tmp-*.html
+tmp-*.html
+.llmwiki-webui.log
+.llmwiki-media-samples/
+progress.json
+gui-panel-state.json
+
+# OS files
 .DS_Store
+
+# Project-specific
 localdocs/
 .fallow/
 .worktrees/
 .sisyphus/
+.sources-workspace/
+.comments/
+.superpowers/
+.chat/
+.wrangler/
+
+# Sub-project build artifacts
 gui/**/bin/
 gui/**/obj/
 dist/gui/
 sources_full/
 raw_import_manifest.csv
 .llmwiki-batch-state.json
-.secrets/
+
+# Large binaries
+tools/yt-dlp.exe
+*.safetensors
+
+# Design and preview assets
+design-previews/
+project-log-assets/
+
+# User-specific config
+sync-compile-config.json
+
+# Chinese-named directories
+领域/
+领域.md
+
+# Cloudflare worker
+云flare/remote-brain-worker/node_modules/
+# Added by code-review-graph
+.code-review-graph/

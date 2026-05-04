@@ -64,6 +64,10 @@ describe("webui desktop integration", () => {
     const browser = await readFile(path.join(root, "web", "client", "src", "shell", "browser.ts"), "utf8");
     const rail = await readFile(path.join(root, "web", "client", "src", "shell", "rail.ts"), "utf8");
     const settingsPage = await readFile(path.join(root, "web", "client", "src", "pages", "settings", "index.ts"), "utf8");
+    const settingsProjectLogPanel = await readFile(
+      path.join(root, "web", "client", "src", "pages", "settings", "project-log-panel.ts"),
+      "utf8",
+    );
     const projectLogPage = await readFile(path.join(root, "web", "client", "src", "pages", "project-log", "index.ts"), "utf8");
     const shellStyles = await readFile(path.join(root, "web", "client", "assets", "styles", "shell.css"), "utf8");
     const styles = await readFile(path.join(root, "web", "client", "styles.css"), "utf8");
@@ -82,7 +86,8 @@ describe("webui desktop integration", () => {
     expect(client).toContain("window.llmWikiDesktop");
     expect(client).toContain("browserRailToggle");
     expect(client).toContain("setChatBrowserCollapsed(false)");
-    expect(settingsPage).toContain("data-settings-project-log");
+    expect(settingsPage).toContain("renderSettingsProjectLogPanel");
+    expect(settingsProjectLogPanel).toContain("data-settings-project-log-page");
     expect(projectLogPage).toContain("/api/project-log");
     expect(shellStyles).toContain(".layer-toggle");
     expect(shellStyles).toContain(".shell-browser__rail-toggle");
@@ -131,8 +136,10 @@ describe("webui desktop integration", () => {
     expect(syncConfigHelper).toContain("runtime_output_root: runtimeOutputRoot");
     expect(desktopMain).toContain("if (!forceRestart && await isServerCompatible(DEFAULT_WEB_PORT))");
     expect(desktopMain).toContain("const liveRestart = forceRestart && Boolean(mainWindow);");
-    expect(desktopMain).toContain("await waitForPortToClose(DEFAULT_WEB_PORT)");
-    expect(desktopMain).toContain("Local LLM Wiki web server port ${DEFAULT_WEB_PORT} is unavailable during live restart.");
+    expect(desktopMain).toContain("const restartPort = activeWebPort;");
+    expect(desktopMain).toContain("await waitForPortToClose(restartPort)");
+    expect(desktopMain).toContain("liveRestart && restartPort === DEFAULT_WEB_PORT");
+    expect(desktopMain).toContain("Local LLM Wiki web server port ${restartPort} is unavailable during live restart.");
   });
 
   it("normalizes desktop sync config so bootstrap always has an explicit runtime root", () => {

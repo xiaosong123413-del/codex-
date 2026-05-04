@@ -1,8 +1,8 @@
-# Wiki Internal Scroll Design
+﻿# Wiki Internal Scroll Design
 
 ## Goal
 
-Make the Farzapedia wiki page scroll inside its own reading surface while keeping the top chrome fixed.
+Make the Peiweipedia wiki page scroll inside its own reading surface while keeping the top chrome fixed.
 
 The fixed area is:
 
@@ -76,7 +76,7 @@ The main wiki column is split into two vertical regions:
 
 ## Styling Direction
 
-- Keep the current Farzapedia visual language.
+- Keep the current Peiweipedia visual language.
 - Do not redesign the header or tabs.
 - Only change layout/overflow behavior needed to create the fixed chrome + internal scroll split.
 - Preserve current spacing and borders as much as possible.

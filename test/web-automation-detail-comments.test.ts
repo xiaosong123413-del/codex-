@@ -13,10 +13,12 @@ const mermaidRuntimeMocks = vi.hoisted(() => ({
       <svg data-mermaid="true" viewBox="0 0 200 120">
         <g class="node" id="trigger">
           <rect x="10" y="20" width="60" height="24"></rect>
+          <text x="40" y="36">每日 09:00 触发</text>
         </g>
         ${showActionNode ? `
           <g class="node" id="action">
             <rect x="110" y="58" width="72" height="24"></rect>
+            <text x="146" y="74">同步内容</text>
           </g>
           <g class="edgePath" id="edge-trigger-action">
             <path d="M70,32 L110,70"></path>
@@ -56,7 +58,7 @@ describe("automation workspace detail mermaid comments", () => {
 
     page.querySelector<HTMLButtonElement>("[data-automation-comment-toggle]")?.click();
     await flushTwice();
-    page.querySelector<SVGGElement>("[data-automation-comment-target='action']")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    clickMermaidNode(page, "action");
     await flush();
 
     const input = page.querySelector<HTMLTextAreaElement>("[data-automation-comment-input]");
@@ -116,6 +118,16 @@ describe("automation workspace detail mermaid comments", () => {
     expect(page.textContent).not.toContain("已有评论");
   });
 
+  it("shows the human-readable node title in the comment sidebar", async () => {
+    installCommentFetchMock();
+    const page = renderAutomationWorkspacePage("daily-sync");
+    document.body.appendChild(page);
+    await flushTwice();
+
+    const titleButton = page.querySelector<HTMLButtonElement>("[data-automation-comment-select='comment-1']");
+    expect(titleButton?.textContent?.trim()).toBe("同步内容");
+  });
+
   it("shows a local error message when saving a comment fails", async () => {
     installCommentFetchMock({ failSave: true });
     const page = renderAutomationWorkspacePage("daily-sync");
@@ -124,7 +136,7 @@ describe("automation workspace detail mermaid comments", () => {
 
     page.querySelector<HTMLButtonElement>("[data-automation-comment-toggle]")?.click();
     await flushTwice();
-    page.querySelector<SVGGElement>("[data-automation-comment-target='action']")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    clickMermaidNode(page, "action");
     await flush();
 
     const input = page.querySelector<HTMLTextAreaElement>("[data-automation-comment-input]");
@@ -166,6 +178,67 @@ describe("automation workspace detail mermaid comments", () => {
 
     expect(page.querySelectorAll("[data-automation-comment-pin]").length).toBe(1);
     expect(page.textContent).toContain("已有评论");
+  });
+
+  it("renders comments in a right sidebar that can be closed and reopened from comment mode", async () => {
+    installCommentFetchMock();
+    const page = renderAutomationWorkspacePage("daily-sync");
+    document.body.appendChild(page);
+    await flushTwice();
+
+    const body = page.querySelector<HTMLElement>(".automation-detail__body");
+    const panel = page.querySelector<HTMLElement>("[data-automation-comment-panel]");
+    const resizeHandle = page.querySelector<HTMLElement>("[data-automation-comment-resize]");
+    if (!body || !panel || !resizeHandle) {
+      throw new Error("comment sidebar not rendered");
+    }
+
+    expect(body.dataset.automationCommentPanelOpen).toBe("false");
+    expect(body.style.getPropertyValue("--automation-comment-panel-width")).toBe("320px");
+    expect(panel.hidden).toBe(true);
+    expect(resizeHandle.hidden).toBe(true);
+
+    page.querySelector<HTMLButtonElement>("[data-automation-comment-toggle]")?.click();
+    await flushTwice();
+
+    expect(body.dataset.automationCommentPanelOpen).toBe("true");
+    expect(panel.hidden).toBe(false);
+    expect(resizeHandle.hidden).toBe(false);
+
+    page.querySelector<HTMLButtonElement>("[data-automation-comment-close]")?.click();
+    await flush();
+
+    expect(body.dataset.automationCommentPanelOpen).toBe("false");
+    expect(panel.hidden).toBe(true);
+    expect(resizeHandle.hidden).toBe(true);
+
+    page.querySelector<HTMLButtonElement>("[data-automation-comment-toggle]")?.click();
+    await flushTwice();
+    clickMermaidNode(page, "action");
+    await flush();
+
+    expect(body.dataset.automationCommentPanelOpen).toBe("true");
+    expect(panel.hidden).toBe(false);
+    expect(page.querySelector("[data-automation-comment-input]")).not.toBeNull();
+  });
+
+  it("supports dragging the right comment sidebar to change its width", async () => {
+    installCommentFetchMock();
+    const page = renderAutomationWorkspacePage("daily-sync");
+    document.body.appendChild(page);
+    await flushTwice();
+
+    const body = page.querySelector<HTMLElement>(".automation-detail__body");
+    const resizeHandle = page.querySelector<HTMLElement>("[data-automation-comment-resize]");
+    if (!body || !resizeHandle) {
+      throw new Error("comment sidebar resize handle not rendered");
+    }
+
+    page.querySelector<HTMLButtonElement>("[data-automation-comment-toggle]")?.click();
+    await flushTwice();
+
+    resizeCommentSidebar(resizeHandle, { startX: 1180, nextX: 1120 });
+    expect(body.style.getPropertyValue("--automation-comment-panel-width")).toBe("380px");
   });
 
   it("sends a PATCH with new coordinates when a pin is dragged", async () => {
@@ -295,6 +368,7 @@ function installCommentFetchMock(options?: {
     requestCount: 0,
     comments: [buildComment("comment-1", "action", "已有评论")],
   };
+  // fallow-ignore-next-line complexity
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     const method = (init?.method ?? "GET").toUpperCase();
@@ -419,6 +493,29 @@ async function flush(): Promise<void> {
 async function flushTwice(): Promise<void> {
   await flush();
   await flush();
+}
+
+function clickMermaidNode(page: HTMLElement, nodeId: string): void {
+  page.querySelector<SVGRectElement>(`g.node#${nodeId} rect`)?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+}
+
+function resizeCommentSidebar(
+  handle: HTMLElement,
+  coordinates: { startX: number; nextX: number },
+): void {
+  handle.dispatchEvent(new MouseEvent("mousedown", {
+    bubbles: true,
+    button: 0,
+    clientX: coordinates.startX,
+  }));
+  document.dispatchEvent(new MouseEvent("mousemove", {
+    bubbles: true,
+    clientX: coordinates.nextX,
+  }));
+  document.dispatchEvent(new MouseEvent("mouseup", {
+    bubbles: true,
+    clientX: coordinates.nextX,
+  }));
 }
 
 function dragCommentPin(

@@ -207,6 +207,45 @@ function normalizeMatch(value: unknown): VectorSearchMatch | null {
   };
 }
 
+/** Send the NDJSON upsert request to the Cloudflare Vectorize API. */
+async function postUpsertRequest(
+  endpoint: string,
+  apiToken: string,
+  body: string,
+): Promise<CloudflareClientResult<Response>> {
+  try {
+    const response = await fetchWithOptionalProxy(endpoint, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        "content-type": "application/x-ndjson",
+      },
+      body,
+    });
+    return { ok: true, data: response };
+  } catch (error) {
+    return fail("cloudflare-network-error", error instanceof Error ? error.message : String(error), endpoint);
+  }
+}
+
+/** Parse the JSON response body from a Vectorize upsert call. */
+function parseUpsertResponseBody(
+  text: string,
+  endpoint: string,
+  status: number,
+): CloudflareClientResult<string | null> {
+  try {
+    const parsed = text ? JSON.parse(text) as Record<string, unknown> : {};
+    const result = parsed.result && typeof parsed.result === "object"
+      ? parsed.result as Record<string, unknown>
+      : {};
+    return { ok: true, data: typeof result.mutationId === "string" ? result.mutationId : null };
+  } catch (error) {
+    return fail("cloudflare-invalid-json", error instanceof Error ? error.message : String(error), endpoint, status);
+  }
+}
+
+/** Upsert a single batch of vector records to the Cloudflare Vectorize index. */
 async function upsertVectorBatch(
   accountId: string,
   apiToken: string,
@@ -215,32 +254,16 @@ async function upsertVectorBatch(
 ): Promise<CloudflareClientResult<string | null>> {
   const endpoint = `https://api.cloudflare.com/client/v4/accounts/${accountId}/vectorize/v2/indexes/${indexName}/upsert?unparsable-behavior=error`;
   const body = `${batch.map((item) => JSON.stringify(item)).join("\n")}\n`;
-  let response: Response;
-  try {
-    response = await fetchWithOptionalProxy(endpoint, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        "content-type": "application/x-ndjson",
-      },
-      body,
-    });
-  } catch (error) {
-    return fail("cloudflare-network-error", error instanceof Error ? error.message : String(error), endpoint);
+
+  const requestResult = await postUpsertRequest(endpoint, apiToken, body);
+  if (!requestResult.ok) return requestResult;
+
+  const text = await requestResult.data.text();
+  if (!requestResult.data.ok) {
+    return fail("cloudflare-http-error", text || requestResult.data.statusText, endpoint, requestResult.data.status);
   }
-  const text = await response.text();
-  if (!response.ok) {
-    return fail("cloudflare-http-error", text || response.statusText, endpoint, response.status);
-  }
-  try {
-    const parsed = text ? JSON.parse(text) as Record<string, unknown> : {};
-    const result = parsed.result && typeof parsed.result === "object"
-      ? parsed.result as Record<string, unknown>
-      : {};
-    return { ok: true, data: typeof result.mutationId === "string" ? result.mutationId : null };
-  } catch (error) {
-    return fail("cloudflare-invalid-json", error instanceof Error ? error.message : String(error), endpoint, response.status);
-  }
+
+  return parseUpsertResponseBody(text, endpoint, requestResult.data.status);
 }
 
 function vectorIdForPath(pagePath: string): string {

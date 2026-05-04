@@ -145,6 +145,12 @@ export function renderWikiPage(initialPath = DEFAULT_INDEX_PATH, initialAnchor =
       </a>
       <section class="wiki-page__sidebar-section">
         <h2>Navigation</h2>
+        <div class="wiki-page__sidebar-toolbar">
+          <button type="button" data-wiki-delete-select>选择</button>
+          <button type="button" data-wiki-delete-selected hidden disabled>删除</button>
+          <button type="button" data-wiki-delete-cancel hidden>取消</button>
+        </div>
+        <p class="wiki-page__sidebar-status" data-wiki-delete-status hidden></p>
         <nav class="wiki-page__sidebar-links" data-wiki-navigation>
           <a href="${wikiHref(DEFAULT_INDEX_PATH)}">Main page</a>
           <a href="${wikiHref(DEFAULT_INDEX_PATH)}">Recent changes</a>
@@ -264,6 +270,9 @@ export function renderWikiPage(initialPath = DEFAULT_INDEX_PATH, initialAnchor =
   const linkPreview = createWikiLinkPreviewController(root);
   const disposeToc = bindWikiToc(root, refs);
   const disposeSearchShortcut = bindPageSearchShortcut(root, () => refs.article);
+  let currentTree: WikiTreeNode | null = null;
+  let deleteSelectMode = false;
+  const selectedDeletePaths = new Set<string>();
   const sideImage = createWikiPageSideImageController({
     refs: { article: refs.article },
     onUploaded: async () => {
@@ -293,9 +302,66 @@ export function renderWikiPage(initialPath = DEFAULT_INDEX_PATH, initialAnchor =
   };
   bindWikiPathCopy(root);
   bindWikiPathOrder(root);
+  const rerenderTree = (): void => {
+    renderWikiTreeData(refs, currentTree, selectedDeletePaths, deleteSelectMode);
+    syncDeleteToolbar(refs, selectedDeletePaths, deleteSelectMode);
+  };
+  const reloadTree = async (): Promise<void> => {
+    currentTree = await fetchWikiTree(controller.signal);
+    if (!controller.signal.aborted) {
+      rerenderTree();
+    }
+  };
+  const deletePaths = async (paths: readonly string[]): Promise<void> => {
+    await deleteWikiPages(root, refs, paths, controller.signal);
+    selectedDeletePaths.clear();
+    deleteSelectMode = false;
+    await reloadTree();
+  };
+
   // fallow-ignore-next-line complexity
   root.addEventListener("click", (event) => {
     const target = event.target as HTMLElement;
+    const deleteButton = target.closest<HTMLButtonElement>("[data-wiki-delete-path]");
+    if (deleteButton) {
+      event.preventDefault();
+      const path = deleteButton.dataset.wikiDeletePath;
+      if (path && confirm(`删除页面 ${path}？`)) {
+        void deletePaths([path]);
+      }
+      return;
+    }
+    const deleteCheckbox = target.closest<HTMLInputElement>("[data-wiki-delete-check]");
+    if (deleteCheckbox) {
+      const path = deleteCheckbox.dataset.wikiDeleteCheck;
+      if (path) {
+        if (deleteCheckbox.checked) {
+          selectedDeletePaths.add(path);
+        } else {
+          selectedDeletePaths.delete(path);
+        }
+        syncDeleteToolbar(refs, selectedDeletePaths, deleteSelectMode);
+      }
+      return;
+    }
+    if (target.closest("[data-wiki-delete-select]")) {
+      deleteSelectMode = true;
+      rerenderTree();
+      return;
+    }
+    if (target.closest("[data-wiki-delete-cancel]")) {
+      deleteSelectMode = false;
+      selectedDeletePaths.clear();
+      rerenderTree();
+      return;
+    }
+    if (target.closest("[data-wiki-delete-selected]")) {
+      const paths = Array.from(selectedDeletePaths);
+      if (paths.length > 0 && confirm(`删除选中的 ${paths.length} 个页面？`)) {
+        void deletePaths(paths);
+      }
+      return;
+    }
     const renderedWikilink = target.closest<HTMLAnchorElement>("a.wikilink");
     if (renderedWikilink) {
       const url = new URL(renderedWikilink.href, window.location.origin);
@@ -355,7 +421,10 @@ export function renderWikiPage(initialPath = DEFAULT_INDEX_PATH, initialAnchor =
       void runWikiSearch(root, refs, query, controller.signal, comments, selectionToolbar, sideImage);
   });
 
-  void loadWikiPage(root, refs, controller.signal, comments, selectionToolbar, sideImage, initialAnchor);
+  void loadWikiPage(root, refs, controller.signal, comments, selectionToolbar, sideImage, initialAnchor, (tree) => {
+    currentTree = tree;
+    rerenderTree();
+  });
   return root;
 }
 
@@ -491,6 +560,7 @@ async function loadWikiPage(
   selectionToolbar: WikiSelectionToolbarController,
   sideImage: ReturnType<typeof createWikiPageSideImageController>,
   initialAnchor = "",
+  onTreeLoaded?: (tree: WikiTreeNode | null) => void,
 ): Promise<void> {
   try {
     const currentPath = root.dataset.wikiCurrentPath ?? DEFAULT_INDEX_PATH;
@@ -514,7 +584,7 @@ async function loadWikiPage(
     const tree = await treeRequest;
     if (signal.aborted) return;
     if (refs.searchInput.value.trim()) return;
-    renderWikiTreeData(refs, tree);
+    onTreeLoaded?.(tree);
   } catch {
     if (signal.aborted) return;
     if (refs.searchInput.value.trim()) return;
@@ -638,6 +708,46 @@ async function fetchWikiTree(signal: AbortSignal): Promise<WikiTreeNode | null> 
   }
 }
 
+async function deleteWikiPages(
+  root: DisposableNode,
+  refs: ReturnType<typeof getRefs>,
+  paths: readonly string[],
+  signal: AbortSignal,
+): Promise<void> {
+  refs.deleteStatus.hidden = false;
+  refs.deleteStatus.textContent = "Deleting...";
+  const response = await fetch("/api/page", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ paths }),
+    signal,
+  });
+  const payload = (await response.json()) as ApiResponse<{ paths: string[] }>;
+  if (!response.ok || !payload.success) {
+    refs.deleteStatus.textContent = payload.error ?? "Delete failed";
+    return;
+  }
+  refs.deleteStatus.textContent = `Deleted ${payload.data?.paths.length ?? paths.length} page(s)`;
+  if (paths.includes(root.dataset.wikiCurrentPath ?? "")) {
+    window.location.hash = wikiHref(DEFAULT_INDEX_PATH);
+  }
+}
+
+function syncDeleteToolbar(
+  refs: ReturnType<typeof getRefs>,
+  selectedDeletePaths: Set<string>,
+  deleteSelectMode: boolean,
+): void {
+  refs.deleteSelect.hidden = deleteSelectMode;
+  refs.deleteSelected.hidden = !deleteSelectMode;
+  refs.deleteCancel.hidden = !deleteSelectMode;
+  refs.deleteSelected.disabled = selectedDeletePaths.size === 0;
+  if (deleteSelectMode) {
+    refs.deleteStatus.hidden = selectedDeletePaths.size === 0;
+    refs.deleteStatus.textContent = selectedDeletePaths.size === 0 ? "" : `Selected ${selectedDeletePaths.size}`;
+  }
+}
+
 function buildRecentPages(paths: WikiPageLink[]): WikiPageCard[] {
   return paths
     .filter((item): item is WikiPageCard => Boolean(item.modifiedAt) && item.path !== DEFAULT_INDEX_PATH)
@@ -723,10 +833,15 @@ async function refreshCurrentWikiPage(
   await applyLoadedWikiArticle(root, refs, page, signal, comments, selectionToolbar, sideImage);
 }
 
-function renderWikiTreeData(refs: ReturnType<typeof getRefs>, tree: WikiTreeNode | null): void {
+function renderWikiTreeData(
+  refs: ReturnType<typeof getRefs>,
+  tree: WikiTreeNode | null,
+  selectedDeletePaths = new Set<string>(),
+  deleteSelectMode = false,
+): void {
   const treePages = flattenTree(tree);
   const categories = buildCategories(tree);
-    refs.navigation.innerHTML = renderPathTree(sortWikiSidebarTree(tree));
+    refs.navigation.innerHTML = renderPathTree(sortWikiSidebarTree(tree), selectedDeletePaths, deleteSelectMode);
   refs.sidebarCategories.innerHTML = renderDirectoryList(categories, "No categories yet");
   refs.categories.innerHTML = renderDirectoryList(categories, "No categories indexed yet");
   refs.recent.innerHTML = renderRecentList(buildRecentPages(treePages));
@@ -782,6 +897,10 @@ function getRefs(root: HTMLElement) {
     recent: root.querySelector<HTMLElement>("[data-wiki-recent]")!,
     about: root.querySelector<HTMLElement>("[data-wiki-about]")!,
     navigation: root.querySelector<HTMLElement>("[data-wiki-navigation]")!,
+    deleteSelect: root.querySelector<HTMLButtonElement>("[data-wiki-delete-select]")!,
+    deleteSelected: root.querySelector<HTMLButtonElement>("[data-wiki-delete-selected]")!,
+    deleteCancel: root.querySelector<HTMLButtonElement>("[data-wiki-delete-cancel]")!,
+    deleteStatus: root.querySelector<HTMLElement>("[data-wiki-delete-status]")!,
     sidebarCategories: root.querySelector<HTMLElement>("[data-wiki-sidebar-categories]")!,
     openCurrent: root.querySelector<HTMLAnchorElement>("[data-wiki-open-current]")!,
     searchForm: root.querySelector<HTMLFormElement>("[data-wiki-search]")!,
@@ -962,15 +1081,24 @@ function renderLinks(items: WikiPageLink[]): string {
     .join("");
 }
 
-function renderPathTree(tree: WikiTreeNode | null): string {
+function renderPathTree(
+  tree: WikiTreeNode | null,
+  selectedDeletePaths = new Set<string>(),
+  deleteSelectMode = false,
+): string {
   const root = findWikiContentRoot(tree);
   if (!root) {
     return `<div class="wiki-page__placeholder">No navigation items yet</div>`;
   }
-  return `<ul class="wiki-page__path-tree">${renderPathNodes(root.children ?? [], root.path)}</ul>`;
+  return `<ul class="wiki-page__path-tree">${renderPathNodes(root.children ?? [], root.path, selectedDeletePaths, deleteSelectMode)}</ul>`;
 }
 
-function renderPathNodes(nodes: readonly WikiTreeNode[], parentPath: string): string {
+function renderPathNodes(
+  nodes: readonly WikiTreeNode[],
+  parentPath: string,
+  selectedDeletePaths: Set<string>,
+  deleteSelectMode: boolean,
+): string {
   return nodes.filter((node) => !isWikiSourceLikePath(node.path)).map((node) => {
     if (node.kind === "dir") {
       return `
@@ -979,14 +1107,20 @@ function renderPathNodes(nodes: readonly WikiTreeNode[], parentPath: string): st
             <summary data-wiki-path-node="${escapeHtml(node.path)}" title="${escapeHtml(node.path)}">
               ${escapeHtml(pageTitleFromPath(node.path, node.name))}
             </summary>
-            <ul>${renderPathNodes(node.children ?? [], node.path)}</ul>
+            <ul>${renderPathNodes(node.children ?? [], node.path, selectedDeletePaths, deleteSelectMode)}</ul>
           </details>
         </li>
       `;
     }
+    const checked = selectedDeletePaths.has(node.path) ? " checked" : "";
+    const checkbox = deleteSelectMode
+      ? `<input type="checkbox" data-wiki-delete-check="${escapeHtml(node.path)}" aria-label="选择 ${escapeHtml(pageTitleFromPath(node.name, node.name))}"${checked} />`
+      : `<span class="wiki-page__path-select-spacer"></span>`;
     return `
       <li class="wiki-page__path-page" data-wiki-path-item="${escapeHtml(node.path)}" data-wiki-parent-path="${escapeHtml(parentPath)}" data-wiki-path-node="${escapeHtml(node.path)}" title="${escapeHtml(node.path)}" draggable="true">
+        ${checkbox}
         <a href="${wikiHref(node.path)}" title="${escapeHtml(node.path)}">${escapeHtml(pageTitleFromPath(node.name, node.name))}</a>
+        <button type="button" class="wiki-page__path-delete" data-wiki-delete-path="${escapeHtml(node.path)}" aria-label="删除 ${escapeHtml(pageTitleFromPath(node.name, node.name))}">删除</button>
       </li>
     `;
   }).join("");

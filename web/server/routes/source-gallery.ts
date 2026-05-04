@@ -2,6 +2,10 @@ import type { Request, Response } from "express";
 import type { ServerConfig } from "../config.js";
 import type { RunManager } from "../services/run-manager.js";
 import {
+  appendLocalClippingMedia,
+  readLocalMediaPaths,
+} from "../services/clipping-local-media.js";
+import {
   createSourceGalleryCompileInput,
   createSourceGalleryEntry,
   deleteSourceGalleryItems,
@@ -69,6 +73,7 @@ export function handleSourceGalleryMedia(cfg: ServerConfig) {
 }
 
 export function handleSourceGalleryCreate(cfg: ServerConfig) {
+  // fallow-ignore-next-line complexity
   return async (req: Request, res: Response) => {
     try {
       const data = await createSourceGalleryEntry(cfg.sourceVaultRoot, {
@@ -78,6 +83,14 @@ export function handleSourceGalleryCreate(cfg: ServerConfig) {
         url: stringBody(req.body?.url),
         now: stringBody(req.body?.now),
       });
+      if (req.body?.type !== "flash-diary") {
+        await appendLocalClippingMedia(
+          cfg.sourceVaultRoot,
+          cfg.runtimeRoot,
+          data.path,
+          readLocalMediaPaths(req.body?.mediaPaths),
+        );
+      }
       res.json({ success: true, data });
     } catch (error) {
       sendError(res, error);

@@ -49,6 +49,47 @@ describe("clip routes", () => {
     expect(response.body.data.path).toMatch(/^raw\/剪藏\//);
   });
 
+  it("appends manually attached clipping media after link parsing succeeds", async () => {
+    const cfg = makeConfig();
+    const imagePath = path.join(cfg.projectRoot, "manual-frame.png");
+    const videoPath = path.join(cfg.projectRoot, "manual-demo.mp4");
+    fs.writeFileSync(imagePath, "image", "utf8");
+    fs.writeFileSync(videoPath, "video", "utf8");
+    const runner: ClipRunner = {
+      async collect(input) {
+        fs.mkdirSync(input.outputDir, { recursive: true });
+        return {
+          metadata: {
+            title: "带附件剪藏",
+            platform: "generic",
+            webpageUrl: input.url,
+            contentType: "article",
+          },
+          media: [],
+        };
+      },
+    };
+    const response = createResponse();
+
+    await handleClipCreate(cfg, { runner })({
+      body: {
+        url: "https://example.com/video",
+        body: "用来补充自己的使用目的",
+        quality: "720",
+        mediaPaths: [imagePath, videoPath],
+      },
+    } as unknown as Request, response as Response);
+
+    expect(response.statusCode).toBe(200);
+    const markdownPath = path.join(cfg.sourceVaultRoot, ...String(response.body.data.path).split("/"));
+    const raw = fs.readFileSync(markdownPath, "utf8");
+    expect(raw).toContain("## 手动附件");
+    expect(raw).toContain("![](./assets/");
+    expect(raw).toContain("[视频：manual-demo.mp4](./assets/");
+    expect(fs.existsSync(path.join(path.dirname(markdownPath), "assets", "带附件剪藏", "manual-frame.png"))).toBe(true);
+    expect(fs.existsSync(path.join(path.dirname(markdownPath), "assets", "带附件剪藏", "manual-demo.mp4"))).toBe(true);
+  });
+
   it("routes douyin links through the dedicated douyin sync service", async () => {
     const cfg = makeConfig();
     const collector: DouyinCollector = {
@@ -95,6 +136,60 @@ describe("clip routes", () => {
     expect(response.statusCode).toBe(200);
     expect(response.body.data.status).toBe("completed");
     expect(response.body.data.path).toMatch(/^raw\/剪藏\/抖音\//);
+  });
+
+  it("routes douyin short share links through the dedicated douyin sync service", async () => {
+    const cfg = makeConfig();
+    let collectedUrl = "";
+    const collector: DouyinCollector = {
+      async collect(input) {
+        collectedUrl = input.url;
+        const videoDir = path.join(input.outputDir, "video");
+        fs.mkdirSync(videoDir, { recursive: true });
+        fs.writeFileSync(path.join(videoDir, "short-link.mp4"), "video", "utf8");
+        return {
+          post: {
+            id: "WN-2CwOCEg0",
+            title: "文化传承演讲",
+            desc: "我没想到居然有评委和观众哭了",
+            date: "2026-03-27",
+            author: "作者A",
+            tags: ["文化传承"],
+            sourceUrl: input.url,
+            videoUrl: input.url,
+          },
+          video: {
+            sourceUrl: input.url,
+            storedPath: "video/short-link.mp4",
+          },
+        };
+      },
+    };
+    const response = createResponse();
+
+    await handleClipCreate(cfg, {
+      douyin: {
+        collector,
+        projectRoot: cfg.projectRoot,
+        videoTranscriber: async () => "第一句。第二句。",
+        postFormatter: async () => ({
+          insightTitle: "把文化传承演讲转成行动",
+          shortTitle: "文化传承演讲",
+          summaryLines: ["短链摘要"],
+          decisionNote: "短链决策笔记",
+        }),
+      },
+    })({
+      body: {
+        url: "https://v.douyin.com/WN-2CwOCEg0/",
+        body: "我没想到居然有评委和观众哭了",
+      },
+    } as unknown as Request, response as Response);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body.data.status).toBe("completed");
+    expect(response.body.data.path).toMatch(/^raw\/剪藏\/抖音\//);
+    expect(collectedUrl).toBe("https://v.douyin.com/WN-2CwOCEg0/");
   });
 
   it("accepts desktop-captured douyin videos and continues the douyin sync pipeline", async () => {

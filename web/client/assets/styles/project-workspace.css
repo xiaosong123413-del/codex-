@@ -1,0 +1,367 @@
+/**
+ * Owns the project workspace execution-room styles for the WebUI.
+ * Keeps the execution graph and workspace windows visually separate from the
+ * default wiki surfaces while preserving the app's restrained control language.
+ */
+
+.project-workspace-page {
+  overflow: hidden;
+  min-height: 100%;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.project-workspace {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 14px;
+  height: 100%;
+  min-height: 0;
+  padding: 18px;
+  background: #ffffff;
+}
+
+.project-workspace-graph,
+.project-workspace-windows {
+  border: 1px solid #d7e0ef;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.project-workspace__metrics {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.project-workspace__metric {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid #d7e0ef;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.project-workspace__layout {
+  display: grid;
+  grid-template-columns: minmax(360px, calc(var(--project-workspace-left-ratio, 0.58) * 100%)) 10px minmax(300px, 1fr);
+  gap: 0;
+  min-height: 0;
+}
+
+.project-workspace__split {
+  position: relative;
+  cursor: col-resize;
+}
+
+.project-workspace__split::before {
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 4px;
+  width: 2px;
+  border-radius: 999px;
+  background: #bfdbfe;
+  content: "";
+}
+
+.project-workspace-graph,
+.project-workspace-windows {
+  min-height: 0;
+  overflow: auto;
+}
+
+.project-workspace-graph {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.project-workspace-graph > header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto minmax(240px, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.project-workspace-graph > header h2,
+.project-workspace-graph > header p {
+  margin: 0;
+}
+
+.project-workspace-graph > header p {
+  margin-top: 4px;
+  color: #64748b;
+}
+
+.project-workspace-graph__viewport {
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+}
+
+.project-workspace-graph__layer {
+  position: relative;
+  width: max-content;
+  min-width: 780px;
+  zoom: var(--project-workspace-graph-scale, 1);
+}
+
+.project-workspace-graph__links {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.project-workspace-graph__domains,
+.project-workspace-projects {
+  display: grid;
+  gap: 12px;
+}
+
+.project-workspace-graph__domains {
+  position: relative;
+  z-index: 1;
+  min-width: 780px;
+}
+
+.project-workspace-domain {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.project-workspace-project {
+  display: grid;
+  grid-template-columns: 42px minmax(190px, 220px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.project-workspace-task {
+  display: block;
+}
+
+.project-workspace-link-slot {
+  display: block;
+  align-self: start;
+  width: 42px;
+  height: 58px;
+}
+
+.project-workspace-link,
+.project-workspace-link-trunk {
+  fill: none;
+  stroke: #cbd5e1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.project-workspace-link {
+  --project-workspace-link-color: #cbd5e1;
+  stroke: var(--project-workspace-link-color);
+  stroke-width: 1.5;
+}
+
+.project-workspace-link-trunk {
+  stroke-width: 1.25;
+}
+
+.project-workspace-link--progress {
+  --project-workspace-link-color: rgba(34, 197, 94, 0.72);
+}
+
+.project-workspace-link--blocked {
+  --project-workspace-link-color: rgba(249, 115, 22, 0.76);
+}
+
+.project-workspace-link--next {
+  --project-workspace-link-color: rgba(37, 99, 235, 0.68);
+}
+
+.project-workspace-node {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 58px;
+  padding: 11px 13px;
+  border: 2px solid #d7e0ef;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  text-align: left;
+  cursor: pointer;
+}
+
+.project-workspace-node:hover,
+.project-workspace-node:focus-visible {
+  border-color: #93c5fd;
+  outline: none;
+}
+
+.project-workspace-node--progress {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.project-workspace-node--blocked {
+  border-color: #fed7aa;
+  background: #fff7ed;
+}
+
+.project-workspace-node--next {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.project-workspace-node.is-highlighted,
+.project-workspace-link.is-highlighted {
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.14);
+}
+
+.project-workspace-link.is-highlighted {
+  --project-workspace-link-color: #1d4ed8;
+  stroke-width: 2.5;
+}
+
+.project-workspace-node__title {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.project-workspace-node__meta {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.project-workspace-windows {
+  padding: 12px;
+}
+
+.project-workspace-window-list {
+  display: grid;
+  gap: 10px;
+}
+
+.project-workspace-window {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  min-height: 86px;
+  padding: 11px 12px;
+  border: 1px solid #d7e0ef;
+  border-left: 4px solid #94a3b8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  text-align: left;
+}
+
+button.project-workspace-window {
+  cursor: pointer;
+}
+
+button.project-workspace-window:hover,
+button.project-workspace-window:focus-visible {
+  border-color: #93c5fd;
+  border-left-color: #2563eb;
+  outline: none;
+}
+
+.project-workspace-window--progress {
+  border-left-color: #22c55e;
+}
+
+.project-workspace-window--blocked {
+  border-left-color: var(--warn);
+}
+
+.project-workspace-window--next {
+  border-left-color: #2563eb;
+}
+
+.project-workspace-window__time {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.project-workspace-window__title {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.project-workspace-window__path {
+  color: #475569;
+  font-family: var(--font-mono, "SFMono-Regular", Consolas, monospace);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.project-workspace-window__summary {
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+@media (max-width: 860px) {
+  .project-workspace {
+    padding: 12px;
+  }
+
+  .project-workspace__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .project-workspace__metrics {
+    justify-content: flex-start;
+  }
+
+  .project-workspace__layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto minmax(260px, 42vh);
+    gap: 10px;
+  }
+
+  .project-workspace__split {
+    height: 10px;
+    cursor: row-resize;
+  }
+
+  .project-workspace__split::before {
+    top: 4px;
+    right: 10px;
+    bottom: auto;
+    left: 10px;
+    width: auto;
+    height: 2px;
+  }
+}

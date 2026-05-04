@@ -12,18 +12,18 @@
     "sources-full-cache-runbook": 1
   },
   "q4": {
-    "wiki-episodes-cache-warmup-retro": 2,
+    "sources-full-cache-warmup-retro": 2,
     "wiki-procedures-cache-warmup": 1
   },
   "q5": {
     "wiki-concepts-redis": 2,
-    "wiki-episodes-redis-outage-brief": 1,
+    "sources-full-redis-outage-brief": 1,
     "sources-full-clip-redis": 1
   },
   "q6": {
     "wiki-procedures-cache-recovery": 2,
     "sources-full-cache-runbook": 2,
-    "wiki-episodes-redis-outage-brief": 1
+    "sources-full-redis-outage-brief": 1
   },
   "q7": {
     "wiki-concepts-incident-playbook": 2,
@@ -36,7 +36,7 @@
     "sources-full-incident-playbook-source": 1
   },
   "q9": {
-    "wiki-episodes-redis-outage-brief": 2,
+    "sources-full-redis-outage-brief": 2,
     "wiki-procedures-cache-recovery": 1,
     "wiki-concepts-incident-playbook": 1
   }

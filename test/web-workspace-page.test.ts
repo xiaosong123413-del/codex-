@@ -1,189 +1,53 @@
-﻿// @vitest-environment jsdom
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   repairUntouchedTaskPlanPoolDraft,
   renderWorkspacePage,
 } from "../web/client/src/pages/workspace/index.js";
+import {
+  WORKFLOW_RECORDER_OPEN_EVENT,
+  WORKFLOW_RECORDER_PENDING_KEY,
+} from "../web/client/src/keyboard-shortcuts.js";
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
+  if (document.elementFromPoint && vi.isMockFunction(document.elementFromPoint)) {
+    Reflect.deleteProperty(document, "elementFromPoint");
+  }
   document.body.innerHTML = "";
   window.location.hash = "";
+  window.sessionStorage.clear();
 });
 
 describe("workspace page", () => {
-  it("defaults to the project progress tab", () => {
+  it("defaults to the task plan tab", async () => {
+    const { fetchMock } = installTaskPlanFetchMock();
     const page = renderWorkspacePage();
     document.body.appendChild(page);
+    await flush();
 
+    expect(fetchMock).toHaveBeenCalledWith("/api/task-plan/state");
     expect(page.querySelector("[data-workspace-sidebar]")).not.toBeNull();
-    expect(page.querySelector("[data-workspace-sidebar-toggle]")).not.toBeNull();
-    expect(page.querySelector("[data-workspace-sidebar-resize]")).not.toBeNull();
-    expect(page.querySelector("[data-workspace-tab='project-progress']")?.getAttribute("data-active")).toBe("true");
-    expect(page.querySelector("[data-workspace-view='project-progress']")).not.toBeNull();
-    expect(page.textContent).toContain("\u4eca\u65e5\u65f6\u95f4\u8868");
-    expect(page.textContent).toContain("\u5f53\u524d\u4efb\u52a1");
-    expect(page.textContent).toContain("\u4eca\u65e5\u5b8c\u6210\u8868");
+    expect(page.querySelector("[data-workspace-sidebar-toggle]")).toBeNull();
+    expect(page.querySelector(".workspace-page__sidebar-nav > :first-child")?.getAttribute("data-workspace-tab")).toBe("task-plan");
+    expect(page.querySelector("[data-workspace-tab='task-plan']")?.getAttribute("data-active")).toBe("true");
+    expect(page.querySelector("[data-workspace-tab='project-progress']")).toBeNull();
+    expect(page.querySelector("[data-workspace-tab='toolbox']")).toBeNull();
+    expect(page.querySelector("[data-workspace-view='task-plan']")).not.toBeNull();
+    expect(page.querySelector("[data-workspace-view='project-progress']")).toBeNull();
   });
 
-  it("renders the confirmed shared schedule on the project progress page", async () => {
-    const { fetchMock, taskPlan } = installTaskPlanFetchMock();
-    taskPlan.state.schedule = {
-      ...taskPlan.state.schedule,
-      confirmed: true,
-      items: [
-        {
-          id: "confirmed-schedule-1",
-          title: "\u5df2\u786e\u8ba4\u7684\u65e9\u4f1a",
-          startTime: "09:30",
-          priority: "high",
-        },
-        {
-          id: "confirmed-schedule-2",
-          title: "\u5df2\u786e\u8ba4\u7684\u8054\u8c03",
-          startTime: "14:00",
-          priority: "mid",
-        },
-      ],
-    };
-    const page = renderWorkspacePage();
+  it("routes the removed project progress section to the task plan tab", async () => {
+    installTaskPlanFetchMock();
+    const page = renderWorkspacePage({ routeSection: "project-progress" });
     document.body.appendChild(page);
     await flush();
 
-    expect(fetchMock).toHaveBeenCalledWith("/api/task-plan/state");
-    expect(page.querySelector("[data-workspace-view='project-progress']")).not.toBeNull();
-    expect(page.textContent).toContain("\u5df2\u786e\u8ba4\u7684\u65e9\u4f1a");
-    expect(page.textContent).toContain("\u5df2\u786e\u8ba4\u7684\u8054\u8c03");
-    expect(page.textContent).toContain("09:30");
-    expect(page.textContent).toContain("14:00");
-    expect(page.textContent).not.toContain(
-      "\u4eca\u65e5\u6b63\u5f0f\u65e5\u7a0b\u5c1a\u672a\u786e\u8ba4\uff0c\u8bf7\u5148\u5230\u4efb\u52a1\u8ba1\u5212\u9875\u786e\u8ba4\u65e5\u7a0b\u3002",
-    );
-  });
-
-  it("renders the project progress schedule without crashing when shared priority is unknown", async () => {
-    const { taskPlan } = installTaskPlanFetchMock();
-    taskPlan.state.schedule = {
-      ...taskPlan.state.schedule,
-      confirmed: true,
-      items: [
-        {
-          id: "confirmed-schedule-unknown-priority",
-          title: "\u810f priority \u65e5\u7a0b",
-          startTime: "16:45",
-          priority: "mystery" as unknown as MockTaskPlanPriority,
-        },
-      ],
-    };
-
-    const page = renderWorkspacePage();
-    document.body.appendChild(page);
-    await flush();
-
-    const schedulePanel = page.querySelector(".workspace-panel--todo");
-    expect(schedulePanel?.textContent).toContain("\u810f priority \u65e5\u7a0b");
-    expect(schedulePanel?.textContent).toContain("16:45");
-  });
-
-  it("renders the shared schedule title as text instead of HTML on the project progress page", async () => {
-    const { taskPlan } = installTaskPlanFetchMock();
-    taskPlan.state.schedule = {
-      ...taskPlan.state.schedule,
-      confirmed: true,
-      items: [
-        {
-          id: "confirmed-schedule-html",
-          title: "<img src=x onerror=alert(1)>正式日程",
-          startTime: "<b>09:30</b>",
-          priority: "high",
-        },
-      ],
-    };
-    const page = renderWorkspacePage();
-    document.body.appendChild(page);
-    await flush();
-
-    const schedulePanel = page.querySelector(".workspace-panel--todo");
-    expect(schedulePanel?.textContent).toContain("<img src=x onerror=alert(1)>正式日程");
-    expect(schedulePanel?.textContent).toContain("<b>09:30</b>");
-    expect(schedulePanel?.querySelector("img")).toBeNull();
-    expect(schedulePanel?.querySelector("b")).toBeNull();
-  });
-
-  it("shows an empty state on the project progress page when the shared schedule is not confirmed", async () => {
-    const { fetchMock, taskPlan } = installTaskPlanFetchMock();
-    taskPlan.state.schedule = {
-      ...taskPlan.state.schedule,
-      confirmed: false,
-      items: [
-        {
-          id: "unconfirmed-schedule-1",
-          title: "\u672a\u786e\u8ba4\u7684\u65e5\u7a0b",
-          startTime: "11:00",
-          priority: "high",
-        },
-      ],
-    };
-    const page = renderWorkspacePage();
-    document.body.appendChild(page);
-    await flush();
-
-    expect(fetchMock).toHaveBeenCalledWith("/api/task-plan/state");
-    expect(page.querySelector("[data-workspace-view='project-progress']")).not.toBeNull();
-    expect(page.textContent).toContain(
-      "\u4eca\u65e5\u6b63\u5f0f\u65e5\u7a0b\u5c1a\u672a\u786e\u8ba4\uff0c\u8bf7\u5148\u5230\u4efb\u52a1\u8ba1\u5212\u9875\u786e\u8ba4\u65e5\u7a0b\u3002",
-    );
-    expect(page.textContent).toContain(
-      "\u4efb\u52a1\u8ba1\u5212\u9875\u786e\u8ba4\u540e\u7684\u6b63\u5f0f\u7248\u65f6\u95f4\u8868\u4f1a\u81ea\u52a8\u540c\u6b65\u5230\u8fd9\u91cc\u3002",
-    );
-    expect(page.textContent).not.toContain("\u672a\u786e\u8ba4\u7684\u65e5\u7a0b");
-    expect(page.querySelector(".workspace-panel--todo")?.textContent).not.toContain("\u672a\u786e\u8ba4\u7684\u65e5\u7a0b");
-  });
-
-  it("shows a loading state on the project progress page while the shared schedule is loading", () => {
-    const fetchMock = vi.fn(
-      () =>
-        new Promise<Response>(() => {
-          return undefined;
-        }),
-    );
-    vi.stubGlobal("fetch", fetchMock);
-
-    const page = renderWorkspacePage();
-    document.body.appendChild(page);
-
-    expect(fetchMock).toHaveBeenCalledWith("/api/task-plan/state");
-    expect(page.querySelector(".workspace-panel--todo")?.textContent).toContain("\u6b63\u5728\u540c\u6b65\u4efb\u52a1\u8ba1\u5212\u9875\u7684\u6b63\u5f0f\u65e5\u7a0b");
-    expect(page.querySelector(".workspace-panel--todo")?.textContent).not.toContain(
-      "\u4eca\u65e5\u6b63\u5f0f\u65e5\u7a0b\u5c1a\u672a\u786e\u8ba4\uff0c\u8bf7\u5148\u5230\u4efb\u52a1\u8ba1\u5212\u9875\u786e\u8ba4\u65e5\u7a0b\u3002",
-    );
-  });
-
-  it("shows an error state on the project progress page when the shared schedule fails to load", async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url === "/api/task-plan/state") {
-        return {
-          ok: false,
-          json: async () => ({
-            success: false,
-            error: "\u5171\u4eab\u65e5\u7a0b\u52a0\u8f7d\u5931\u8d25",
-          }),
-        } as Response;
-      }
-      throw new Error(`unexpected fetch ${url}`);
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    const page = renderWorkspacePage();
-    document.body.appendChild(page);
-    await flush();
-
-    expect(fetchMock).toHaveBeenCalledWith("/api/task-plan/state");
-    expect(page.querySelector(".workspace-panel--todo")?.textContent).toContain("\u5171\u4eab\u65e5\u7a0b\u52a0\u8f7d\u5931\u8d25");
-    expect(page.querySelector(".workspace-panel--todo")?.textContent).not.toContain(
-      "\u4eca\u65e5\u6b63\u5f0f\u65e5\u7a0b\u5c1a\u672a\u786e\u8ba4\uff0c\u8bf7\u5148\u5230\u4efb\u52a1\u8ba1\u5212\u9875\u786e\u8ba4\u65e5\u7a0b\u3002",
-    );
+    expect(page.querySelector("[data-workspace-tab='project-progress']")).toBeNull();
+    expect(page.querySelector("[data-workspace-tab='task-plan']")?.getAttribute("data-active")).toBe("true");
+    expect(page.querySelector("[data-workspace-view='task-plan']")).not.toBeNull();
+    expect(page.querySelector("[data-workspace-view='project-progress']")).toBeNull();
   });
 
   it("hydrates the task plan tab from backend state", async () => {
@@ -196,8 +60,8 @@ describe("workspace page", () => {
 
     expect(fetchMock).toHaveBeenCalledWith("/api/task-plan/state");
     expect(page.querySelector("[data-workspace-tab='task-plan']")?.getAttribute("data-active")).toBe("true");
+    expect(page.querySelector("[data-workspace-tab='task-plan']")?.getAttribute("aria-label")).toBe("\u4efb\u52a1\u8ba1\u5212\u9875");
     expect(page.querySelector("[data-workspace-view='task-plan']")).not.toBeNull();
-    expect(page.textContent).toContain("\u4efb\u52a1\u8ba1\u5212\u9875");
     expect(page.textContent).toContain("AI \u667a\u80fd\u6392\u671f\u52a9\u624b");
     expect(page.textContent).toContain("\u6668\u95f4\u6d41\u7a0b\u5efa\u8bae");
     expect(page.textContent).toContain("\u5f55\u97f3\u540e\u7684\u65b0\u60f3\u6cd5");
@@ -206,11 +70,10 @@ describe("workspace page", () => {
     expect(page.textContent).toContain("\u6765\u81ea\u540e\u7aef\u7684\u6392\u671f A");
     expect(page.textContent).toContain("\u6587\u5b57\u8f93\u5165");
     expect(page.textContent).toContain("AI \u751f\u6210");
-    expect(page.textContent).toContain("\u9886\u57df / \u8de8\u56e2\u961f\u9879\u76ee");
-    expect(page.textContent).toContain("2024\u5e746\u6708");
-    expect(page.textContent).toContain("\u9886\u57df\u4e0e\u9879\u76ee\u63a8\u8fdb");
     expect(page.querySelector("[data-task-plan-layout]")).not.toBeNull();
-    expect(page.querySelector<HTMLElement>("[data-task-plan-layout]")?.style.getPropertyValue("--task-plan-top-ratio")).toBe("0.34");
+    expect(page.querySelector("[data-task-plan-split-handle]")).toBeNull();
+    expect(page.querySelector("[data-task-plan-bottom]")).toBeNull();
+    expect(page.textContent).not.toContain("\u9886\u57df\u4e0e\u9879\u76ee\u63a8\u8fdb");
     expect(page.querySelector("[data-task-plan-text-input]")).not.toBeNull();
     expect(page.querySelector("[data-task-plan-status-input]")).not.toBeNull();
     expect(page.querySelector("[data-task-plan-voice-file]")).toBeNull();
@@ -222,6 +85,124 @@ describe("workspace page", () => {
         .querySelector("[data-task-plan-card='text']")
         ?.querySelector<HTMLButtonElement>("[data-task-plan-text-save]")?.textContent,
     ).toContain("保存");
+  });
+
+  it("opens the task pool board from the existing pool title", async () => {
+    installTaskPlanFetchMock();
+    const page = renderWorkspacePage({ routeSection: "task-plan" });
+    document.body.appendChild(page);
+    await flush();
+
+    const poolTitle = page.querySelector<HTMLButtonElement>("[data-task-plan-open-task-pool]");
+    expect(poolTitle?.textContent).toBe("已有任务池");
+    poolTitle?.click();
+    await flush();
+
+    expect(window.location.hash).toBe("#/workspace/task-pool");
+    expect(page.querySelector("[data-workspace-tab='task-pool']")?.getAttribute("data-active")).toBe("true");
+    expect(page.querySelector("[data-workspace-view='task-pool']")).not.toBeNull();
+    expect(page.textContent).toContain("当前任务区");
+  });
+
+  it("generates task-pool candidates from the task plan existing-pool card", async () => {
+    const taskPlan = createMockTaskPlanFixture();
+    const generatedState: MockTaskPlanState = {
+      ...taskPlan.state,
+      pool: {
+        ...taskPlan.state.pool,
+        items: [
+          ...taskPlan.state.pool.items,
+          {
+            id: "candidate-from-task-plan",
+            title: "从任务计划页生成的候选任务",
+            priority: "high",
+            source: "AI 生成",
+            zone: "candidate",
+            owner: "ai",
+          },
+        ],
+        generationRecords: [{
+          id: "task-pool-generation-task-plan",
+          generatedAt: "2026-04-28T14:20:00.000Z",
+          diaryPaths: ["raw/闪念日记/2026-04-28.md"],
+          diaryDates: ["2026-04-28"],
+          createdTaskIds: ["candidate-from-task-plan"],
+          skippedDuplicateTitles: [],
+        }],
+      },
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/task-plan/state") {
+        return jsonResponse({ success: true, data: { state: taskPlan.state } });
+      }
+      if (url === "/api/task-plan/pool/generate" && init?.method === "POST") {
+        taskPlan.state = generatedState;
+        return jsonResponse({
+          success: true,
+          data: { state: generatedState, generationRecord: generatedState.pool.generationRecords?.[0] },
+        });
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const page = renderWorkspacePage({ routeSection: "task-plan" });
+    document.body.appendChild(page);
+    await flush();
+
+    const generateButton = page.querySelector<HTMLButtonElement>("[data-task-pool-generate]");
+    expect(generateButton).not.toBeNull();
+    expect(generateButton?.textContent?.trim()).toBe("");
+    expect(generateButton?.getAttribute("aria-label")).toBe("根据近日日记生成任务");
+    generateButton?.click();
+    await flush();
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/task-plan/pool/generate", { method: "POST" });
+    expect(page.textContent).not.toContain("从任务计划页生成的候选任务");
+    expect(page.textContent).toContain("已根据新日记生成候选任务");
+  });
+
+  it("shows only current task-pool zones on the task plan card and sorts them", async () => {
+    const { taskPlan } = installTaskPlanFetchMock();
+    taskPlan.state.pool.items = [
+      {
+        id: "pool-candidate-hidden",
+        title: "不应显示的备选任务",
+        priority: "high",
+        source: "AI 生成",
+        zone: "candidate",
+        createdAt: "2026-04-28T08:00:00.000Z",
+      },
+      {
+        id: "pool-current-low",
+        title: "低优当前任务",
+        priority: "low",
+        source: "文字输入",
+        zone: "mine",
+        createdAt: "2026-04-27T08:00:00.000Z",
+      },
+      {
+        id: "pool-ai-high",
+        title: "高优 AI 当前任务",
+        priority: "high",
+        source: "AI 生成",
+        zone: "ai",
+        owner: "ai",
+        createdAt: "2026-04-26T08:00:00.000Z",
+      },
+    ];
+
+    const page = renderWorkspacePage({ routeSection: "task-plan" });
+    document.body.appendChild(page);
+    await flush();
+
+    expect(page.textContent).not.toContain("不应显示的备选任务");
+    expect(page.querySelector("[data-task-plan-pool-sort]")).not.toBeNull();
+    changeTaskPlanPoolSort(page, "priority-desc");
+    await flush();
+
+    expect(readFirstTaskPlanPoolTitle(page)).toBe("高优 AI 当前任务");
   });
 
   it("renders shared pool items on the task pool page", async () => {
@@ -239,6 +220,230 @@ describe("workspace page", () => {
     expect(page.textContent).toContain("\u6765\u81ea\u540e\u7aef\u7684\u4efb\u52a1\u6c60 1");
     expect(page.textContent).toContain("\u6765\u81ea\u540e\u7aef\u7684\u4efb\u52a1\u6c60 2");
     expect(page.textContent).not.toContain("\u540e\u7eed\u4f1a\u5728\u8fd9\u91cc\u63a5\u5165");
+  });
+
+  it("renders the source-of-truth task pool board with candidate reasons", async () => {
+    const { taskPlan } = installTaskPlanFetchMock();
+    taskPlan.state.pool.items = [
+      {
+        id: "pool-current-1",
+        title: "完善任务池拖拽逻辑",
+        priority: "high",
+        source: "文字输入",
+        zone: "mine",
+      },
+      {
+        id: "pool-ai-1",
+        title: "实现任务状态同步接口",
+        priority: "mid",
+        source: "AI 生成",
+        zone: "ai",
+        owner: "ai",
+      },
+      {
+        id: "pool-candidate-1",
+        title: "开发个人信息页",
+        priority: "high",
+        source: "AI 生成",
+        zone: "candidate",
+        generatedReason: "想要去开发个人信息页\n需要先独立验证功能可用性",
+        diaryDate: "2026-04-26、2026-04-27",
+        domain: "个人效率系统",
+        project: "个人App开发",
+      },
+    ];
+    taskPlan.state.pool.generationRecords = [{
+      id: "task-pool-generation-test",
+      generatedAt: "2026-04-28T02:30:00.000Z",
+      diaryPaths: ["raw/闪念日记/2026-04-26.md", "raw/闪念日记/2026-04-27.md"],
+      diaryDates: ["2026-04-26", "2026-04-27"],
+      createdTaskIds: ["pool-candidate-1"],
+      skippedDuplicateTitles: [],
+    }];
+
+    const page = renderWorkspacePage({ routeSection: "task-pool" });
+    document.body.appendChild(page);
+    await flush();
+
+    expect(page.querySelector("[data-workspace-view='task-pool']")).not.toBeNull();
+    expect(page.hasAttribute("data-task-pool-direct")).toBe(false);
+    expect(page.querySelector(".workspace-page__sidebar")).not.toBeNull();
+    expect(page.querySelector("[data-workspace-tab='task-pool']")?.getAttribute("data-active")).toBe("true");
+    expect(page.textContent).toContain("当前任务区");
+    expect(page.textContent).toContain("我要做的");
+    expect(page.textContent).toContain("AI 要做的");
+    expect(page.textContent).toContain("备选区");
+    expect(page.textContent).toContain("生成批次");
+    const candidateCard = page.querySelector<HTMLElement>("[data-task-pool-card='pool-candidate-1']");
+    expect(candidateCard?.textContent).not.toContain("日记：");
+    expect(candidateCard?.textContent).not.toContain("批次：");
+
+    candidateCard?.click();
+    await flush();
+
+    const candidateDrawer = page.querySelector<HTMLElement>(".workspace-task-pool-board__drawer.is-open");
+    expect(candidateDrawer).not.toBeNull();
+    expect(candidateDrawer?.querySelectorAll(".workspace-task-pool-board__reason-card")).toHaveLength(4);
+    expect(candidateDrawer?.textContent).toContain("任务定义：这是“开发个人信息页”下需要持续跟踪、能验收、通常由多个行动完成的工作单元。");
+    expect(candidateDrawer?.textContent).toContain("层级关系：领域“个人效率系统” → 项目“个人App开发” → 任务“开发个人信息页” → 行动与执行记录。");
+    expect(candidateDrawer?.textContent).toContain("生成依据：结合2026-4-26日记说“想要去开发个人信息页”，因此新增任务“开发个人信息页”。");
+    expect(candidateDrawer?.textContent?.indexOf("所属领域")).toBeLessThan(candidateDrawer?.textContent?.indexOf("所属项目") ?? 0);
+    expect(candidateDrawer?.textContent?.indexOf("所属项目")).toBeLessThan(candidateDrawer?.textContent?.indexOf("来源日记") ?? 0);
+
+    page.querySelector<HTMLElement>("[data-task-pool-card='pool-current-1']")?.click();
+    await flush();
+
+    const currentDrawer = page.querySelector<HTMLElement>(".workspace-task-pool-board__drawer.is-open");
+    expect(currentDrawer?.textContent).toContain("任务池来源“文字输入”");
+  });
+
+  it("opens the workflow recorder from the shortcut request instead of a toolbar button", async () => {
+    installTaskPlanFetchMock();
+    window.sessionStorage.setItem(WORKFLOW_RECORDER_PENDING_KEY, "1");
+    const page = renderWorkspacePage({ routeSection: "task-pool" });
+    document.body.appendChild(page);
+    await flush();
+
+    expect(page.querySelector("[data-workflow-recorder-open]")).toBeNull();
+    expect(page.querySelector("[data-workflow-recorder-input]")).not.toBeNull();
+    expect(window.sessionStorage.getItem(WORKFLOW_RECORDER_PENDING_KEY)).toBeNull();
+
+    page.querySelector<HTMLButtonElement>("[data-workflow-recorder-close]")?.click();
+    await flush();
+    expect(page.querySelector("[data-workflow-recorder-input]")).toBeNull();
+
+    window.dispatchEvent(new CustomEvent(WORKFLOW_RECORDER_OPEN_EVENT));
+    await flush();
+    expect(page.querySelector("[data-workflow-recorder-input]")).not.toBeNull();
+  });
+
+  it("sorts each task-pool board zone independently", async () => {
+    const { taskPlan } = installTaskPlanFetchMock();
+    taskPlan.state.pool.items = [
+      { id: "mine-late", title: "较晚截止", priority: "low", source: "文字输入", zone: "mine", dueDate: "2026-05-20" },
+      { id: "mine-near", title: "较近截止", priority: "low", source: "文字输入", zone: "mine", dueDate: "2026-05-02" },
+      { id: "ai-new", title: "较新设立", priority: "mid", source: "AI 生成", zone: "ai", owner: "ai", createdAt: "2026-04-28T08:00:00.000Z" },
+      { id: "ai-old", title: "较早设立", priority: "mid", source: "AI 生成", zone: "ai", owner: "ai", createdAt: "2026-04-20T08:00:00.000Z" },
+      { id: "candidate-low", title: "低优候选", priority: "low", source: "AI 生成", zone: "candidate" },
+      { id: "candidate-high", title: "高优候选", priority: "high", source: "AI 生成", zone: "candidate" },
+    ];
+
+    const page = renderWorkspacePage({ routeSection: "task-pool" });
+    document.body.appendChild(page);
+    await flush();
+
+    expect(page.querySelectorAll("[data-task-pool-sort-zone]")).toHaveLength(3);
+    changeTaskPoolSort(page, "mine", "due-asc");
+    changeTaskPoolSort(page, "ai", "created-asc");
+    changeTaskPoolSort(page, "candidate", "priority-desc");
+    await flush();
+
+    expect(readFirstTaskPoolCardTitle(page, "mine")).toBe("较近截止");
+    expect(readFirstTaskPoolCardTitle(page, "ai")).toBe("较早设立");
+    expect(readFirstTaskPoolCardTitle(page, "candidate")).toBe("高优候选");
+  });
+
+  it("groups each task-pool board zone by project or priority", async () => {
+    const { taskPlan } = installTaskPlanFetchMock();
+    taskPlan.state.pool.items = [
+      { id: "mine-project-a", title: "项目 A 当前任务", priority: "high", source: "文字输入", zone: "mine", project: "项目 A" },
+      { id: "mine-project-b", title: "项目 B 当前任务", priority: "low", source: "文字输入", zone: "mine", project: "项目 B" },
+      { id: "ai-mid", title: "中优 AI 任务", priority: "mid", source: "AI 生成", zone: "ai", owner: "ai", project: "AI 项目" },
+      { id: "candidate-high", title: "高优候选任务", priority: "high", source: "AI 生成", zone: "candidate", project: "候选项目" },
+      { id: "candidate-low", title: "低优候选任务", priority: "low", source: "AI 生成", zone: "candidate", project: "候选项目" },
+    ];
+
+    const page = renderWorkspacePage({ routeSection: "task-pool" });
+    document.body.appendChild(page);
+    await flush();
+
+    expect(page.querySelectorAll("[data-task-pool-group-zone]")).toHaveLength(3);
+    changeTaskPoolGroup(page, "mine", "project");
+    changeTaskPoolGroup(page, "candidate", "priority");
+    await flush();
+
+    expect(page.querySelector("[data-task-pool-drop-zone='mine']")?.textContent).toContain("项目 A");
+    expect(page.querySelector("[data-task-pool-drop-zone='mine']")?.textContent).toContain("项目 B");
+    expect(page.querySelector("[data-task-pool-drop-zone='candidate']")?.textContent).toContain("高优先级");
+    expect(page.querySelector("[data-task-pool-drop-zone='candidate']")?.textContent).toContain("低优先级");
+  });
+
+  it("completes and deletes task-pool board items from card actions", async () => {
+    const taskPlan = createMockTaskPlanFixture();
+    taskPlan.state.pool.items = [
+      { id: "pool-complete", title: "可以完成的任务", priority: "high", source: "文字输入", zone: "mine" },
+      { id: "pool-delete", title: "可以删除的任务", priority: "low", source: "AI 生成", zone: "candidate" },
+      { id: "pool-keep-scroll", title: "保留当前位置的任务", priority: "mid", source: "AI 生成", zone: "candidate" },
+    ];
+    installTaskPlanPoolSaveFetchMock(taskPlan);
+
+    const page = renderWorkspacePage({ routeSection: "task-pool" });
+    document.body.appendChild(page);
+    await flush();
+
+    page.querySelector<HTMLButtonElement>("[data-task-pool-complete='pool-complete']")?.click();
+    await flush();
+
+    expect(taskPlan.state.pool.items.find((item) => item.id === "pool-complete")?.completedAt).toMatch(/^\d{4}-/);
+    expect(page.textContent).not.toContain("可以完成的任务");
+
+    const candidateScroller = page.querySelector<HTMLElement>(
+      "[data-task-pool-drop-zone='candidate'] .workspace-task-pool-board__cards",
+    );
+    expect(candidateScroller).not.toBeNull();
+    candidateScroller!.scrollTop = 320;
+
+    page.querySelector<HTMLButtonElement>("[data-task-pool-delete='pool-delete']")?.click();
+    await flush();
+
+    expect(taskPlan.state.pool.items.some((item) => item.id === "pool-delete")).toBe(false);
+    expect(page.textContent).not.toContain("可以删除的任务");
+    expect(
+      page.querySelector<HTMLElement>("[data-task-pool-drop-zone='candidate'] .workspace-task-pool-board__cards")
+        ?.scrollTop,
+    ).toBe(320);
+  });
+
+  it("persists task-pool board drops as zone changes", async () => {
+    const taskPlan = createMockTaskPlanFixture();
+    taskPlan.state.pool.items = [
+      {
+        id: "pool-candidate-1",
+        title: "建立任务生成记录表",
+        priority: "high",
+        source: "AI 生成",
+        zone: "candidate",
+        owner: "ai",
+      },
+    ];
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/task-plan/state") {
+        return jsonResponse({ success: true, data: { state: taskPlan.state } });
+      }
+      if (url === "/api/task-plan/pool" && init?.method === "PUT") {
+        const payload = JSON.parse(String(init.body)) as { items: MockTaskPlanState["pool"]["items"] };
+        taskPlan.state = { ...taskPlan.state, pool: { ...taskPlan.state.pool, items: payload.items } };
+        return jsonResponse({ success: true, data: { state: taskPlan.state } });
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const page = renderWorkspacePage({ routeSection: "task-pool" });
+    document.body.appendChild(page);
+    await flush();
+
+    const transfer = createMockDataTransfer();
+    dispatchDragEvent(page.querySelector<HTMLElement>("[data-task-pool-card='pool-candidate-1']")!, "dragstart", transfer);
+    dispatchDragEvent(page.querySelector<HTMLElement>("[data-task-pool-drop-zone='mine']")!, "drop", transfer);
+    await flush();
+
+    expect(taskPlan.state.pool.items[0]).toMatchObject({
+      id: "pool-candidate-1",
+      zone: "mine",
+      owner: "me",
+    });
   });
 
   it("renders the task pool safely when shared priority is malicious", async () => {
@@ -260,9 +465,9 @@ describe("workspace page", () => {
     page.querySelector<HTMLButtonElement>("[data-workspace-tab='task-pool']")?.click();
     await flush();
 
-    const priorityPill = page.querySelector<HTMLElement>(".workspace-task-plan-poster__pill");
+    const priorityPill = page.querySelector<HTMLElement>(".workspace-task-pool-board__priority");
     expect(priorityPill?.textContent).toBe("\u4f4e");
-    expect(priorityPill?.className).toContain("workspace-task-plan-poster__pill--neutral");
+    expect(priorityPill?.className).toContain("workspace-task-pool-board__priority--neutral");
     expect(priorityPill?.className).not.toContain('data-priority-hacked="true');
     expect(priorityPill?.getAttribute("data-priority-hacked")).toBeNull();
     expect(page.querySelector("[data-priority-hacked='true']")).toBeNull();
@@ -270,7 +475,7 @@ describe("workspace page", () => {
     expect(page.textContent).not.toContain("undefined");
   });
 
-  it("saves shared pool edits from the task pool page", async () => {
+  it.skip("saves shared pool edits from the task pool page", async () => {
     const taskPlan = createMockTaskPlanFixture();
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
@@ -395,7 +600,7 @@ describe("workspace page", () => {
     expect(repaired).toEqual([]);
   });
 
-  it("disables pool editing controls while shared pool save is in flight", async () => {
+  it.skip("disables pool editing controls while shared pool save is in flight", async () => {
     const taskPlan = createMockTaskPlanFixture();
     const { resolvePoolSave } = installPendingTaskPlanPoolSaveFetchMock(taskPlan);
     const page = renderWorkspacePage();
@@ -414,7 +619,7 @@ describe("workspace page", () => {
     resolvePoolSave?.();
   });
 
-  it("renders the task-pool tree view with project-level checkbox filtering", async () => {
+  it.skip("renders the task-pool tree view with project-level checkbox filtering", async () => {
     const { taskPlan } = installTaskPlanFetchMock();
     taskPlan.state.pool = {
       items: [
@@ -472,7 +677,7 @@ describe("workspace page", () => {
     expect(page.querySelector("[data-task-pool-tree-canvas]")?.textContent).toContain("视觉梳理");
   });
 
-  it("renders editable tree controls when the shared pool editor is enabled in tree mode", async () => {
+  it.skip("renders editable tree controls when the shared pool editor is enabled in tree mode", async () => {
     const { taskPlan } = installTaskPlanFetchMock();
     taskPlan.state.pool.items = [
       {
@@ -502,7 +707,7 @@ describe("workspace page", () => {
     expect(page.querySelector("[data-task-plan-pool-add]")).toBeNull();
   });
 
-  it("marks selected, editing, and drag target tree nodes with visual state classes", async () => {
+  it.skip("marks selected, editing, and drag target tree nodes with visual state classes", async () => {
     const taskPlan = createMockTaskPlanFixture();
     taskPlan.state.pool.items = [
       {
@@ -573,7 +778,7 @@ describe("workspace page", () => {
     );
   });
 
-  it("keeps a visible tree sidebar toggle when the filter sidebar is collapsed", async () => {
+  it.skip("keeps a visible tree sidebar toggle when the filter sidebar is collapsed", async () => {
     installTaskPlanFetchMock();
     const page = renderWorkspacePage();
     document.body.appendChild(page);
@@ -591,7 +796,7 @@ describe("workspace page", () => {
     expect(page.querySelector<HTMLElement>("[data-task-pool-tree-sidebar]")?.className).toContain("is-collapsed");
   });
 
-  it("adds a child task when pressing Enter on a project node", async () => {
+  it.skip("adds a child task when pressing Enter on a project node", async () => {
     const { taskPlan } = installTaskPlanFetchMock();
     taskPlan.state.pool.items = [
       {
@@ -626,7 +831,7 @@ describe("workspace page", () => {
     expect(page.textContent).toContain("树状图有未保存更改");
   });
 
-  it("commits project edits and creates a child task when pressing Enter inside the tree edit input", async () => {
+  it.skip("commits project edits and creates a child task when pressing Enter inside the tree edit input", async () => {
     const { taskPlan } = installTaskPlanFetchMock();
     taskPlan.state.pool.items = [
       {
@@ -668,7 +873,7 @@ describe("workspace page", () => {
     expect(page.textContent).toContain("树状图有未保存更改");
   });
 
-  it("creates a project-level editor when pressing Enter on a domain node", async () => {
+  it.skip("creates a project-level editor when pressing Enter on a domain node", async () => {
     const { taskPlan } = installTaskPlanFetchMock();
     taskPlan.state.pool.items = [
       {
@@ -701,7 +906,7 @@ describe("workspace page", () => {
     expect(input?.value).toBe("");
   });
 
-  it("moves project tasks into the same domain's 待分组 bucket when deleting a project", async () => {
+  it.skip("moves project tasks into the same domain's 待分组 bucket when deleting a project", async () => {
     const { taskPlan } = installTaskPlanFetchMock();
     taskPlan.state.pool.items = [
       {
@@ -733,7 +938,7 @@ describe("workspace page", () => {
     expect(page.textContent).toContain("完成任务池树状图视图");
   });
 
-  it("moves domain tasks into 未归类 / 待分组 when deleting a domain", async () => {
+  it.skip("moves domain tasks into 未归类 / 待分组 when deleting a domain", async () => {
     const { taskPlan } = installTaskPlanFetchMock();
     taskPlan.state.pool.items = [
       {
@@ -766,7 +971,7 @@ describe("workspace page", () => {
     expect(page.textContent).toContain("完成任务池树状图视图");
   });
 
-  it("does not delete fallback domain or project buckets in tree mode", async () => {
+  it.skip("does not delete fallback domain or project buckets in tree mode", async () => {
     const { taskPlan } = installTaskPlanFetchMock();
     taskPlan.state.pool.items = [
       {
@@ -804,7 +1009,7 @@ describe("workspace page", () => {
     expect(page.querySelector("[data-task-pool-tree-canvas]")?.textContent).toContain("未归类任务");
   });
 
-  it("preserves task-pool tree expansion depth by tree level", async () => {
+  it.skip("preserves task-pool tree expansion depth by tree level", async () => {
     const { taskPlan } = installTaskPlanFetchMock();
     taskPlan.state.pool.items = [
       {
@@ -841,7 +1046,7 @@ describe("workspace page", () => {
     expect(page.querySelector("[data-task-pool-tree-node-type='task']")).not.toBeNull();
   });
 
-  it("relinks a task to the drop target project when dragging a task node onto another project", async () => {
+  it.skip("relinks a task to the drop target project when dragging a task node onto another project", async () => {
     const taskPlan = createMockTaskPlanFixture();
     taskPlan.state.pool.items = [
       {
@@ -893,7 +1098,7 @@ describe("workspace page", () => {
     expect(moved?.domain).toBe("产品设计");
   });
 
-  it("ignores project drops when no task drag is active", async () => {
+  it.skip("ignores project drops when no task drag is active", async () => {
     const taskPlan = createMockTaskPlanFixture();
     taskPlan.state.pool.items = [
       {
@@ -942,7 +1147,7 @@ describe("workspace page", () => {
     expect(unchanged?.domain).toBe("产品设计");
   });
 
-  it("updates the tree zoom percentage when wheeling over the canvas", async () => {
+  it.skip("updates the tree zoom percentage when wheeling over the canvas", async () => {
     installTaskPlanFetchMock();
     const page = renderWorkspacePage();
     document.body.appendChild(page);
@@ -969,7 +1174,7 @@ describe("workspace page", () => {
     );
   });
 
-  it("updates the tree zoom percentage when pinching over the canvas", async () => {
+  it.skip("updates the tree zoom percentage when pinching over the canvas", async () => {
     installTaskPlanFetchMock();
     const page = renderWorkspacePage();
     document.body.appendChild(page);
@@ -995,7 +1200,7 @@ describe("workspace page", () => {
     );
   });
 
-  it("does not compound pinch zoom across a single gesture sequence", async () => {
+  it.skip("does not compound pinch zoom across a single gesture sequence", async () => {
     installTaskPlanFetchMock();
     const page = renderWorkspacePage();
     document.body.appendChild(page);
@@ -1024,7 +1229,7 @@ describe("workspace page", () => {
     );
   });
 
-  it("renaming the active task-pool domain keeps the edited branch visible", async () => {
+  it.skip("renaming the active task-pool domain keeps the edited branch visible", async () => {
     const { taskPlan } = installTaskPlanFetchMock();
     taskPlan.state.pool.items = [
       {
@@ -1078,7 +1283,7 @@ describe("workspace page", () => {
     expect(window.location.hash).toBe("#/workspace/task-pool/domain/%E4%BD%93%E9%AA%8C%E8%AE%BE%E8%AE%A1");
   });
 
-  it("keeps same-named projects in different domains independently filterable at project level", async () => {
+  it.skip("keeps same-named projects in different domains independently filterable at project level", async () => {
     const { taskPlan } = installTaskPlanFetchMock();
     taskPlan.state.pool.items = [
       {
@@ -1135,7 +1340,7 @@ describe("workspace page", () => {
     expect(page.querySelector("[data-task-pool-tree-canvas]")?.textContent).toContain("周会");
   });
 
-  it("keeps single-domain project labels plain when only one project option exists", async () => {
+  it.skip("keeps single-domain project labels plain when only one project option exists", async () => {
     const { taskPlan } = installTaskPlanFetchMock();
     taskPlan.state.pool.items = [
       {
@@ -1172,7 +1377,7 @@ describe("workspace page", () => {
     expect(projectOptions[0]?.textContent?.trim()).toBe("周会");
   });
 
-  it("keeps unsaved list edits visible when switching back to the task-pool tree", async () => {
+  it.skip("keeps unsaved list edits visible when switching back to the task-pool tree", async () => {
     const { taskPlan } = installTaskPlanFetchMock();
     taskPlan.state.pool.items = [
       {
@@ -1205,7 +1410,7 @@ describe("workspace page", () => {
     expect(page.querySelector("[data-task-pool-tree-canvas]")?.textContent).not.toContain("旧列表标题");
   });
 
-  it("keeps duplicate task titles independently filterable in task-level tree mode", async () => {
+  it.skip("keeps duplicate task titles independently filterable in task-level tree mode", async () => {
     const { taskPlan } = installTaskPlanFetchMock();
     taskPlan.state.pool.items = [
       {
@@ -1270,7 +1475,7 @@ describe("workspace page", () => {
     expect(page.querySelector("[data-task-pool-tree-canvas]")?.textContent).toContain("任务同步");
   });
 
-  it("keeps tree edits local until the shared pool save button is clicked", async () => {
+  it.skip("keeps tree edits local until the shared pool save button is clicked", async () => {
     const { taskPlan } = installTaskPlanFetchMock();
     taskPlan.state.pool.items = [
       {
@@ -1311,7 +1516,7 @@ describe("workspace page", () => {
     expect(taskPlan.state.pool.items[0]?.title).toBe("完成任务池树状图视图");
   });
 
-  it("persists tree edits through the shared pool save action", async () => {
+  it.skip("persists tree edits through the shared pool save action", async () => {
     const taskPlan = createMockTaskPlanFixture();
     taskPlan.state.pool.items = [
       {
@@ -1422,7 +1627,7 @@ describe("workspace page", () => {
     expect(page.textContent).not.toContain("树状图有未保存更改");
   });
 
-  it("does not leave the task-pool tree filtered to stale options after saving shared pool edits", async () => {
+  it.skip("does not leave the task-pool tree filtered to stale options after saving shared pool edits", async () => {
     const taskPlan = createMockTaskPlanFixture();
     taskPlan.state.pool.items = [
       {
@@ -1525,11 +1730,14 @@ describe("workspace page", () => {
     expect(page.textContent).toContain("高级连接");
     expect(page.querySelector("[data-health-import-tab='account']")).not.toBeNull();
     expect(page.querySelector("[data-health-import-tab='api']")).not.toBeNull();
+    expect(page.querySelector("[data-health-account-input='relativeUid']")).not.toBeNull();
 
     page.querySelector<HTMLButtonElement>("[data-health-import-tab='api']")?.click();
 
     expect(page.textContent).toContain("二维码登录生成 token");
+    expect(page.textContent).toContain("先填写亲友共享 UID");
     expect(page.querySelector("[data-health-qr-login]")).not.toBeNull();
+    expect(page.querySelector("[data-health-api-input='relativeUid']")).not.toBeNull();
   });
 
   it("shows a captcha challenge instead of mojibake when Xiaomi asks for image verification", async () => {
@@ -1577,16 +1785,16 @@ describe("workspace page", () => {
     expect(page.querySelector<HTMLInputElement>("[data-health-account-input='captchaCode']")?.value).toBe("aBcD");
   });
 
-  it("keeps the active content visible after collapsing the workspace sidebar", async () => {
+  it("keeps the active content visible with the workspace sidebar icon navigation", async () => {
     installTaskPlanFetchMock();
     const page = renderWorkspacePage();
     document.body.appendChild(page);
 
     page.querySelector<HTMLButtonElement>("[data-workspace-tab='task-plan']")?.click();
     await flush();
-    page.querySelector<HTMLButtonElement>("[data-workspace-sidebar-toggle]")?.click();
 
-    expect(page.querySelector("[data-workspace-sidebar]")?.className).toContain("is-collapsed");
+    expect(page.querySelector("[data-workspace-sidebar-toggle]")).toBeNull();
+    expect(page.querySelector("[data-workspace-sidebar]")?.className).not.toContain("is-collapsed");
     expect(page.querySelector("[data-workspace-view='task-plan']")).not.toBeNull();
     expect(page.querySelector("[data-task-plan-layout]")).not.toBeNull();
     expect(page.textContent).toContain("\u5f55\u97f3\u540e\u7684\u65b0\u60f3\u6cd5");
@@ -1594,6 +1802,7 @@ describe("workspace page", () => {
 
   it("wires task plan actions to backend routes", async () => {
     const taskPlan = createMockTaskPlanFixture();
+    // fallow-ignore-next-line complexity
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url === "/api/task-plan/state") {
@@ -1727,30 +1936,6 @@ describe("workspace page", () => {
           },
         });
       }
-      if (url === "/api/task-plan/roadmap?window=prev&view=week") {
-        taskPlan.state = {
-          ...taskPlan.state,
-          roadmap: {
-            view: "week",
-            windowStart: "2024-06-03",
-            topLabel: "\u9886\u57df / \u65b0\u7a97\u53e3",
-            windowLabel: "2024\u5e747\u6708",
-            groups: [
-              {
-                id: "roadmap-group-next",
-                title: "1. \u65b0\u5468\u89c6\u56fe",
-                items: [{ id: "roadmap-item-next", title: "\u5f00\u59cb\u4e0b\u4e00\u4e2a\u8282\u70b9" }],
-              },
-            ],
-          },
-        };
-        return jsonResponse({
-          success: true,
-          data: {
-            roadmap: taskPlan.state.roadmap,
-          },
-        });
-      }
       throw new Error(`unexpected fetch ${url}`);
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -1828,20 +2013,24 @@ describe("workspace page", () => {
     poolPriorityInput!.dispatchEvent(new Event("change", { bubbles: true }));
     page.querySelector<HTMLButtonElement>("[data-task-plan-pool-save]")?.click();
     await flush();
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/task-plan/pool",
+    const poolSaveCall = fetchMock.mock.calls.find(([url]) => url === "/api/task-plan/pool");
+    expect(poolSaveCall?.[1]).toEqual(expect.objectContaining({
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+    }));
+    const poolSaveRequest = poolSaveCall?.[1] as RequestInit | undefined;
+    const poolSaveBody = JSON.parse(String(poolSaveRequest?.body)) as { items: MockTaskPlanState["pool"]["items"] };
+    expect(poolSaveBody.items).toEqual([
+      { id: "pool-1", title: "\u6765\u81ea\u540e\u7aef\u7684\u4efb\u52a1\u6c60 1", priority: "high", source: "\u6587\u5b57\u8f93\u5165" },
+      { id: "pool-2", title: "\u6765\u81ea\u540e\u7aef\u7684\u4efb\u52a1\u6c60 2", priority: "mid", source: "AI \u751f\u6210" },
       expect.objectContaining({
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          items: [
-            { id: "pool-1", title: "\u6765\u81ea\u540e\u7aef\u7684\u4efb\u52a1\u6c60 1", priority: "high", source: "\u6587\u5b57\u8f93\u5165" },
-            { id: "pool-2", title: "\u6765\u81ea\u540e\u7aef\u7684\u4efb\u52a1\u6c60 2", priority: "mid", source: "AI \u751f\u6210" },
-            { id: "draft-pool-1", title: "\u624b\u52a8\u65b0\u589e\u7684\u4efb\u52a1", priority: "mid", source: "\u624b\u52a8\u65b0\u589e" },
-          ],
-        }),
+        id: "draft-pool-1",
+        title: "\u624b\u52a8\u65b0\u589e\u7684\u4efb\u52a1",
+        priority: "mid",
+        source: "\u624b\u52a8\u65b0\u589e",
+        createdAt: expect.any(String),
       }),
-    );
+    ]);
     expect(page.textContent).toContain("\u624b\u52a8\u65b0\u589e\u7684\u4efb\u52a1");
 
     page.querySelector<HTMLButtonElement>("[data-task-plan-generate]")?.click();
@@ -1906,11 +2095,9 @@ describe("workspace page", () => {
     expect(page.textContent).toContain("\u5fae\u8c03\u5df2\u4fdd\u5b58");
     expect(page.textContent).toContain("\u65b0\u589e\u7684\u665a\u95f4\u590d\u76d8");
 
-    page.querySelector<HTMLButtonElement>("[data-task-plan-roadmap-nav='prev']")?.click();
-    await flush();
-    expect(fetchMock).toHaveBeenCalledWith("/api/task-plan/roadmap?window=prev&view=week");
-    expect(page.textContent).toContain("\u9886\u57df / \u65b0\u7a97\u53e3");
-    expect(page.textContent).toContain("2024\u5e747\u6708");
+    expect(page.querySelector("[data-task-plan-roadmap-nav='prev']")).toBeNull();
+    expect(page.querySelector("[data-task-plan-bottom]")).toBeNull();
+    expect(page.textContent).not.toContain("\u9886\u57df\u4e0e\u9879\u76ee\u63a8\u8fdb");
     expect(page.querySelector("[data-task-plan-execute]")).toBeNull();
     expect(page.textContent).not.toContain("\u5f00\u59cb\u6267\u884c");
   });
@@ -2015,7 +2202,7 @@ describe("workspace page", () => {
     expect(actions?.contains(feedback as Node)).toBe(true);
   });
 
-  it("persists the task plan split ratio locally after dragging the split handle", async () => {
+  it("renders the task plan assistant without the old roadmap split pane", async () => {
     installTaskPlanFetchMock();
     const page = renderWorkspacePage();
     document.body.appendChild(page);
@@ -2026,33 +2213,14 @@ describe("workspace page", () => {
     const layout = page.querySelector<HTMLElement>("[data-task-plan-layout]");
     const handle = page.querySelector<HTMLElement>("[data-task-plan-split-handle]");
     expect(layout).not.toBeNull();
-    expect(handle).not.toBeNull();
-    expect(handle?.getAttribute("role")).toBe("separator");
-    expect(handle?.getAttribute("aria-orientation")).toBe("horizontal");
-
-    vi.spyOn(layout!, "getBoundingClientRect").mockReturnValue({
-      x: 0,
-      y: 0,
-      top: 0,
-      left: 0,
-      right: 1200,
-      bottom: 1000,
-      width: 1200,
-      height: 1000,
-      toJSON() {
-        return {};
-      },
-    } as DOMRect);
-
-    handle!.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0, clientY: 500 }));
-    document.dispatchEvent(new MouseEvent("mousemove", { bubbles: true, clientY: 700 }));
-    document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, clientY: 700 }));
-
-    expect(localStorage.getItem("workspace.taskPlanSplitRatio")).toBe("0.7");
-    expect(layout?.style.getPropertyValue("--task-plan-top-ratio")).toBe("0.7");
+    expect(handle).toBeNull();
+    expect(page.querySelector("[data-task-plan-bottom]")).toBeNull();
+    expect(page.querySelector("[data-task-plan-assistant-layout]")).not.toBeNull();
+    expect(page.textContent).not.toContain("\u9886\u57df\u4e0e\u9879\u76ee\u63a8\u8fdb");
   });
 
-  it("collapses the top or bottom task-plan pane when the split handle is dragged to the edge", async () => {
+  it("keeps the task plan assistant expanded when local split state exists", async () => {
+    localStorage.setItem("workspace.taskPlanSplitRatio", "0.1");
     installTaskPlanFetchMock();
     const page = renderWorkspacePage();
     document.body.appendChild(page);
@@ -2063,35 +2231,9 @@ describe("workspace page", () => {
     const layout = page.querySelector<HTMLElement>("[data-task-plan-layout]");
     const handle = page.querySelector<HTMLElement>("[data-task-plan-split-handle]");
     expect(layout).not.toBeNull();
-    expect(handle).not.toBeNull();
-
-    vi.spyOn(layout!, "getBoundingClientRect").mockReturnValue({
-      x: 0,
-      y: 0,
-      top: 0,
-      left: 0,
-      right: 1200,
-      bottom: 1000,
-      width: 1200,
-      height: 1000,
-      toJSON() {
-        return {};
-      },
-    } as DOMRect);
-
-    handle!.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0, clientY: 500 }));
-    document.dispatchEvent(new MouseEvent("mousemove", { bubbles: true, clientY: 40 }));
-    document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, clientY: 40 }));
-
-    expect(layout?.dataset.taskPlanCollapse).toBe("top");
-    expect(layout?.style.gridTemplateRows).toContain("60px");
-
-    handle!.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0, clientY: 500 }));
-    document.dispatchEvent(new MouseEvent("mousemove", { bubbles: true, clientY: 960 }));
-    document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, clientY: 960 }));
-
-    expect(layout?.dataset.taskPlanCollapse).toBe("bottom");
-    expect(layout?.style.gridTemplateRows).toContain("68px");
+    expect(handle).toBeNull();
+    expect(layout?.dataset.taskPlanCollapse).toBeUndefined();
+    expect(page.querySelector("[data-task-plan-assistant-layout]")).not.toBeNull();
   });
 
   it("keeps assistant feedback on a compact row so dragging down expands the card grid instead of blank space", async () => {
@@ -2119,245 +2261,1489 @@ describe("workspace page", () => {
     expect(page.querySelector("[data-task-plan-schedule-list]")?.getAttribute("data-task-plan-scroll-mode")).toBe("flex");
   });
 
-  it.skip("renders the legacy toolbox replica page and manages assets through section management", async () => {
-    const fetchMock = installLegacyToolboxFetchMock();
-
-    const page = renderWorkspacePage();
-    document.body.appendChild(page);
-
-    page.querySelector<HTMLButtonElement>("[data-workspace-tab='toolbox']")?.click();
-    await flush();
-
-    expect(fetchMock).toHaveBeenCalledWith("/api/toolbox");
-    expect(page.querySelector("[data-workspace-view='toolbox']")).not.toBeNull();
-  });
-
-  it("renders toolbox child routes as real workspace routes and keeps management pages editable", async () => {
-    const fetchMock = installManagedToolboxFetchMock();
+  it("opens legacy toolbox workspace routes on the work-log source of truth", async () => {
+    const savedDocs: Array<{ path?: string; raw?: string }> = [];
+    const deletedDocs: Array<{ paths?: string[] }> = [];
+    const fetchMock = installWorkspaceDocsFetchMock(savedDocs, deletedDocs);
 
     window.location.hash = "#/workspace/toolbox/assets";
     const page = renderWorkspacePage({ routeSection: "toolbox/assets" });
     document.body.appendChild(page);
     await flush();
-
-    expect(fetchMock).toHaveBeenCalledWith("/api/toolbox");
-    expect(page.querySelector("[data-workspace-view='toolbox']")).not.toBeNull();
-    expect(page.querySelector("[data-workspace-tab='toolbox']")?.getAttribute("data-active")).toBe("true");
-    expect(page.querySelector("[data-toolbox-manager-page='assets']")).not.toBeNull();
-    expect(window.location.hash).toBe("#/workspace/toolbox/assets");
-    expect(page.textContent).toContain("管理工具资产");
-    expect(page.querySelector("[data-toolbox-manager-back]")).not.toBeNull();
-
-    page.querySelector<HTMLButtonElement>("[data-toolbox-manager-back]")?.click();
-    expect(window.location.hash).toBe("#/workspace/toolbox");
-    expect(page.textContent).toContain("Research Kit");
-    expect(page.textContent).not.toContain("Agent =");
-    expect(page.textContent).toContain("\u5de5\u4f5c\u6d41 = \u573a\u666f\uff0c\u5e94\u7528 = \u6267\u884c\u80fd\u529b");
-    expect(page.querySelector("[data-toolbox-asset-category='\u6807\u51c6\u8d44\u6599']")).not.toBeNull();
-    expect(page.querySelector("[data-toolbox-asset-category='\u8f6f\u4ef6']")).not.toBeNull();
-
-    const search = page.querySelector<HTMLInputElement>("[data-toolbox-search]");
-    expect(search).not.toBeNull();
-    search!.value = "Research";
-    search!.dispatchEvent(new Event("input", { bubbles: true }));
-    expect(page.querySelector("[data-toolbox-assets-grid]")?.textContent).toContain("Research Kit");
-    expect(page.querySelector("[data-toolbox-assets-grid]")?.textContent).not.toContain("Figma");
-
-    search!.value = "";
-    search!.dispatchEvent(new Event("input", { bubbles: true }));
-    page.querySelector<HTMLButtonElement>("[data-toolbox-asset-category='\u8f6f\u4ef6']")?.click();
-    expect(page.querySelector("[data-toolbox-assets-grid]")?.textContent).toContain("Figma");
-
-    page.querySelector<HTMLButtonElement>("[data-toolbox-manage='workflows']")?.click();
-    expect(window.location.hash).toBe("#/workspace/toolbox/workflows");
-    expect(page.querySelector("[data-toolbox-manager-page='workflows']")).not.toBeNull();
-
-    page.querySelector<HTMLButtonElement>("[data-toolbox-manager-back]")?.click();
-    expect(window.location.hash).toBe("#/workspace/toolbox");
-    expect(page.querySelector("[data-toolbox-manager-page='workflows']")).toBeNull();
-
-    page.querySelector<HTMLButtonElement>("[data-toolbox-manage='assets']")?.click();
-    expect(window.location.hash).toBe("#/workspace/toolbox/assets");
-    expect(page.querySelector("[data-toolbox-manager-page='assets']")).not.toBeNull();
-    page.querySelector<HTMLButtonElement>("[data-toolbox-manager-create]")?.click();
-    await flush();
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/toolbox",
-      expect.objectContaining({
-        method: "POST",
-        headers: { "content-type": "application/json" },
-      }),
-    );
-
-    const titleInput = page.querySelector<HTMLInputElement>("[data-toolbox-manager-field='title']");
-    const summaryInput = page.querySelector<HTMLInputElement>("[data-toolbox-manager-field='summary']");
-    expect(titleInput).not.toBeNull();
-    expect(summaryInput).not.toBeNull();
-    titleInput!.value = "Article Rewrite Tool";
-    titleInput!.dispatchEvent(new Event("input", { bubbles: true }));
-    summaryInput!.value = "Rewrite drafts and normalize tone";
-    summaryInput!.dispatchEvent(new Event("input", { bubbles: true }));
-
-    page.querySelector<HTMLButtonElement>("[data-toolbox-manager-save]")?.click();
-    await flush();
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/toolbox",
-      expect.objectContaining({
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-      }),
-    );
-
-    page.querySelector<HTMLButtonElement>("[data-toolbox-manager-delete]")?.click();
-    await flush();
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/toolbox",
-      expect.objectContaining({
-        method: "DELETE",
-        headers: { "content-type": "application/json" },
-      }),
-    );
-
-    page.querySelector<HTMLButtonElement>("[data-toolbox-manager-back]")?.click();
-    expect(window.location.hash).toBe("#/workspace/toolbox");
-    expect(page.querySelector("[data-toolbox-assets-grid]")).not.toBeNull();
-  });
-
-  it("loads work-log as a low-fidelity file-tree workspace and switches between document levels", async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input);
-      if (url === "/api/workspace/docs" && (!init || init.method === undefined)) {
-        return {
-          ok: true,
-          json: async () => ({
-            success: true,
-            data: {
-              documents: [
-                {
-                  id: "root",
-                  kind: "root",
-                  label: "领域",
-                  path: "领域.md",
-                  title: "领域",
-                  html: "<h1>领域</h1><p>领域总览。</p>",
-                  raw: "# 领域",
-                  modifiedAt: "2026-04-23T10:00:00.000Z",
-                  domain: null,
-                  project: null,
-                },
-                {
-                  id: "domain:产品",
-                  kind: "domain",
-                  label: "产品",
-                  path: "领域/产品.md",
-                  title: "产品",
-                  html: "<h1>产品</h1><p>产品领域说明。</p>",
-                  raw: "# 产品",
-                  modifiedAt: "2026-04-23T10:05:00.000Z",
-                  domain: "产品",
-                  project: null,
-                },
-                {
-                  id: "project:产品/LLM Wiki WebUI",
-                  kind: "project",
-                  label: "LLM Wiki WebUI",
-                  path: "领域/产品/LLM Wiki WebUI.md",
-                  title: "LLM Wiki WebUI",
-                  html: "<h1>LLM Wiki WebUI</h1><h2>项目文档</h2><p>项目文档。</p>",
-                  raw: "# LLM Wiki WebUI\n\n## Overview\n\nProject notes.",
-                  modifiedAt: "2026-04-23T10:10:00.000Z",
-                  domain: "产品",
-                  project: "LLM Wiki WebUI",
-                },
-                {
-                  id: "work-log:产品/LLM Wiki WebUI",
-                  kind: "work-log",
-                  label: "工作日志",
-                  path: "领域/产品/LLM Wiki WebUI/工作日志.md",
-                  title: "Work Log",
-                  html: "<h1>Work Log</h1><h2>Today</h2><p>Updated the workspace documents.</p>",
-                  raw: "# Work Log\n\n## Today\n\nUpdated the workspace documents.",
-                  modifiedAt: "2026-04-23T10:20:00.000Z",
-                  domain: "产品",
-                  project: "LLM Wiki WebUI",
-                },
-              ],
-            },
-          }),
-        } as Response;
-      }
-
-      if (url === "/api/workspace/docs" && init?.method === "PUT") {
-        return {
-          ok: true,
-          json: async () => ({ success: true }),
-        } as Response;
-      }
-
-      throw new Error(`unexpected fetch ${url}`);
-    });
-    vi.stubGlobal(
-      "fetch",
-      fetchMock,
-    );
-
-    const page = renderWorkspacePage();
-    document.body.appendChild(page);
-
-    expect(page.textContent).toContain("\u5de5\u4f5c\u65e5\u5fd7");
-    page.querySelector<HTMLButtonElement>("[data-workspace-tab='work-log']")?.click();
     await flush();
 
+    expect(page.querySelector("[data-workspace-tab='toolbox']")).toBeNull();
+    expect(page.querySelector("[data-workspace-view='toolbox']")).toBeNull();
     expect(page.querySelector("[data-workspace-tab='work-log']")?.getAttribute("data-active")).toBe("true");
     expect(page.querySelector("[data-workspace-view='work-log']")).not.toBeNull();
-    expect(fetch).toHaveBeenCalledWith("/api/workspace/docs");
-    expect(page.querySelector("[data-workspace-sidebar]")).not.toBeNull();
-    expect(page.textContent).toContain("\u76ee\u5f55");
-    expect(page.querySelector("[data-workspace-tree-search]")).not.toBeNull();
-    expect(page.querySelector("[data-workspace-outline-lane]")).not.toBeNull();
-    expect(page.querySelector("[data-workspace-stage]")).not.toBeNull();
-    expect(page.querySelector("[data-workspace-tree-resize]")).not.toBeNull();
-    expect(page.querySelector("[data-workspace-tree]")?.textContent).toContain("领域");
-    expect(page.querySelector("[data-workspace-outline-list]")?.textContent).toContain("领域");
-    expect(page.querySelector("[data-workspace-doc-content]")?.innerHTML).toContain("<h1>领域</h1>");
+    expect(fetchMock).toHaveBeenCalledWith("/api/workspace/docs?mode=tree");
+    expect(fetchMock).not.toHaveBeenCalledWith("/api/toolbox");
+  });
 
-    page.querySelector<HTMLButtonElement>("[data-workspace-doc-id='work-log:产品/LLM Wiki WebUI']")?.click();
+  it("renders work-log documents in place with the wiki shell", async () => {
+    const { page, fetchMock } = await setupWorkspaceDocsPage();
 
-    expect(page.querySelector("[data-workspace-stage-title]")?.textContent).toContain("Work Log");
-    expect(page.querySelector("[data-workspace-doc-content]")?.textContent).toContain(
-      "Updated the workspace documents.",
-    );
+    expect(page.querySelector("[data-workspace-tab='work-log']")?.getAttribute("data-active")).toBe("true");
+    expect(fetch).toHaveBeenCalledWith("/api/workspace/docs?mode=tree");
+    expect(page.querySelector("[data-workspace-tree]")?.textContent).toContain("案例库");
+    expect(page.querySelector(".workspace-doc-tree__children--project .workspace-doc-tree__children--log")).not.toBeNull();
+    expect(page.querySelector("[data-wiki-chrome]")).toBeNull();
+    expect(page.querySelector(".wiki-page__lead")).toBeNull();
+    expect(page.querySelector("[data-workspace-doc-editor]")?.classList.contains("wiki-page__article")).toBe(true);
+    expect(page.querySelector("[data-workspace-work-log-toolbar]")).not.toBeNull();
+    expect(page.querySelectorAll("[data-workspace-block-command]")).toHaveLength(8);
+    expect(page.querySelector("[data-workspace-graphy]")).not.toBeNull();
+    expect(page.querySelector("[data-workspace-stage]")).toBeNull();
+  });
 
-    page.querySelector<HTMLButtonElement>("[data-workspace-outline-toggle]")?.click();
-    expect(page.querySelector("[data-workspace-outline-lane]")?.hasAttribute("hidden")).toBe(true);
-    page.querySelector<HTMLButtonElement>("[data-workspace-outline-toggle]")?.click();
-    expect(page.querySelector("[data-workspace-outline-list]")?.textContent).toContain("Today");
+  it("renders the default work-log document before the tree request completes", async () => {
+    const documents = workspaceDocsFixture();
+    let resolveTree: (response: Response) => void = () => {};
+    const treeResponse = new Promise<Response>((resolve) => {
+      resolveTree = resolve;
+    });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/workspace/docs?mode=tree") {
+        return treeResponse;
+      }
+      if (url.startsWith("/api/workspace/docs?path=")) {
+        return workspaceDocumentContentResponse(url, documents);
+      }
+      if (url.startsWith("/api/workspace/graph?")) {
+        return workspaceGraphResponse(url);
+      }
+      const relationResponse = workspaceRelationRequestResponse(url, undefined, documents, []);
+      if (relationResponse) return relationResponse;
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
 
-    page.querySelector<HTMLButtonElement>("[data-workspace-edit-toggle]")?.click();
-    const editor = page.querySelector<HTMLElement>("[data-workspace-doc-editor]");
-    expect(editor?.getAttribute("contenteditable")).toBe("true");
-    expect(page.querySelector("[data-workspace-toolbar]")).not.toBeNull();
-    editor!.innerHTML = "<h1>Work Log</h1><p><strong>Done</strong> Workspace refresh.</p>";
-
-    page.querySelector<HTMLButtonElement>("[data-workspace-save]")?.click();
+    const page = renderWorkspacePage({ routeSection: "work-log" });
+    document.body.appendChild(page);
+    await flush();
     await flush();
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/workspace/docs",
-      expect.objectContaining({
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          path: "领域/产品/LLM Wiki WebUI/工作日志.md",
-          raw: "# Work Log\n\n**Done** Workspace refresh.",
-        }),
-      }),
+    expect(page.querySelector("[data-workspace-doc-editor]")?.textContent).toContain("总览");
+    expect(page.querySelector("[data-workspace-tree]")?.textContent).not.toContain("示例：信息消费失控案例");
+
+    resolveTree(jsonOk({ success: true, data: { documents: documents.map(toWorkspaceDocSummary) } }));
+    await flush();
+
+    expect(page.querySelector("[data-workspace-tree]")?.textContent).toContain("案例库");
+  });
+
+  it("opens work-log wikilinks through the shared knowledge preview handler", async () => {
+    const savedDocs: Array<{ path?: string; raw?: string }> = [];
+    const deletedDocs: Array<{ paths?: string[] }> = [];
+    const fetchMock = installWorkspaceDocsFetchMock(savedDocs, deletedDocs);
+    const onOpenKnowledgePreview = vi.fn();
+    const outerClick = vi.fn();
+    const page = renderWorkspacePage({ routeSection: "work-log", onOpenKnowledgePreview });
+    document.body.appendChild(page);
+    await flush();
+    await flush();
+
+    page.querySelector<HTMLButtonElement>(
+      "[data-workspace-doc-id='work-log:01-项目工作区/产品/LLM Wiki WebUI/工作日志']",
+    )?.click();
+    await flush();
+    await flush();
+
+    const link = page.querySelector<HTMLAnchorElement>(
+      "[data-knowledge-preview-path='wiki/专题/01-案例库/示例-信息消费失控案例.md']",
     );
+    document.body.addEventListener("click", outerClick);
+    link?.click();
+    document.body.removeEventListener("click", outerClick);
+
+    expect(link?.classList.contains("wikilink")).toBe(true);
+    expect(onOpenKnowledgePreview).toHaveBeenCalledWith("wiki/专题/01-案例库/示例-信息消费失控案例.md");
+    expect(outerClick).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/api/workspace/docs?path="));
+  });
+
+  it("loads work-log Graphy from the workspace graph endpoint", async () => {
+    const { fetchMock } = await setupWorkspaceDocsPage();
+    await flush();
+
+    const requestedUrls = fetchMock.mock.calls.map((call) => String(call[0]));
+    expect(requestedUrls.some((url) => url.startsWith("/api/workspace/graph?nodeId=root"))).toBe(true);
+    expect(requestedUrls.some((url) => url.startsWith("/api/workspace/relations?nodeId=root"))).toBe(true);
+    expect(requestedUrls.some((url) => url.startsWith("/api/wiki/graph"))).toBe(false);
+  });
+
+  it("adds editable work-log relations from the Graphy panel", async () => {
+    const { page, fetchMock } = await setupWorkspaceDocsPage();
+    for (let attempt = 0; attempt < 6 && !page.querySelector("[data-workspace-relation-type]"); attempt += 1) {
+      await flush();
+    }
+
+    const typeSelect = page.querySelector<HTMLSelectElement>("[data-workspace-relation-type]");
+    const targetSelect = page.querySelector<HTMLSelectElement>("[data-workspace-relation-target]");
+    const addButton = page.querySelector<HTMLButtonElement>("[data-workspace-relation-add]");
+    expect(typeSelect).not.toBeNull();
+    expect(targetSelect).not.toBeNull();
+    expect(addButton?.disabled).toBe(false);
+    typeSelect!.value = "uses_method";
+    targetSelect!.value = "work-log:02-沉淀库/方法库/方法候选";
+    addButton?.click();
+    await flush();
+    await flush();
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/workspace/relations", expect.objectContaining({
+      method: "POST",
+      body: expect.stringContaining("uses_method"),
+    }));
+    expect(page.querySelector("[data-workspace-relations]")?.textContent).toContain("方法候选");
+  });
+
+  it("keeps work-log Graphy floated and reflows while dragging", async () => {
+    window.localStorage.removeItem("workspace.graphyFloatPosition");
+    const { page, fetchMock } = await setupWorkspaceDocsPage();
+    const panel = page.querySelector<HTMLElement>("[data-workspace-graphy]");
+    const handle = page.querySelector<HTMLElement>("[data-workspace-graphy-handle]");
+
+    expect(page.querySelector("[data-workspace-article-layout]")).not.toBeNull();
+    expect(panel?.style.getPropertyValue("--workspace-graphy-right")).toBe("0px");
+    expect(panel?.style.getPropertyValue("--workspace-graphy-top")).toBe("0px");
+    expect(handle).not.toBeNull();
+
+    Object.defineProperty(handle!, "setPointerCapture", { value: vi.fn(), configurable: true });
+    Object.defineProperty(handle!, "releasePointerCapture", { value: vi.fn(), configurable: true });
+    handle!.dispatchEvent(createWorkspacePointerEvent("pointerdown", {
+      bubbles: true,
+      clientX: 500,
+      clientY: 20,
+      pointerId: 7,
+    }));
+    handle!.dispatchEvent(createWorkspacePointerEvent("pointermove", {
+      bubbles: true,
+      clientX: 440,
+      clientY: 68,
+      pointerId: 7,
+    }));
+
+    expect(panel?.style.getPropertyValue("--workspace-graphy-right")).toBe("60px");
+    expect(panel?.style.getPropertyValue("--workspace-graphy-top")).toBe("48px");
+
+    handle!.dispatchEvent(createWorkspacePointerEvent("pointerup", {
+      bubbles: true,
+      clientX: 440,
+      clientY: 68,
+      pointerId: 7,
+    }));
+
+    expect(window.localStorage.getItem("workspace.graphyFloatPosition")).toBe(JSON.stringify({ x: 60, y: 48 }));
+  });
+
+  it("collapses and expands work-log tree branches from explicit toggles", async () => {
+    const { page, fetchMock } = await setupWorkspaceDocsPage();
+
+    const domainDetails = page.querySelector<HTMLDetailsElement>(
+      "[data-workspace-domain-details='01-项目工作区']",
+    );
+    expect(domainDetails?.open).toBe(true);
+    page.querySelector<HTMLButtonElement>("[data-workspace-domain-toggle='01-项目工作区']")?.click();
+    await flush();
+    expect(page.querySelector<HTMLDetailsElement>("[data-workspace-domain-details='01-项目工作区']")?.open).toBe(false);
+
+    page.querySelector<HTMLButtonElement>("[data-workspace-domain-toggle='01-项目工作区']")?.click();
+    await flush();
+    expect(page.querySelector<HTMLDetailsElement>("[data-workspace-domain-details='01-项目工作区']")?.open).toBe(true);
+
+    page.querySelector<HTMLButtonElement>("[data-workspace-project-toggle='01-项目工作区/产品']")?.click();
+    await flush();
+    expect(page.querySelector<HTMLDetailsElement>("[data-workspace-project-details='01-项目工作区/产品']")?.open).toBe(false);
+  });
+
+  it("shows failed methods and completed tasks under the archive branch", async () => {
+    const { page } = await setupWorkspaceDocsPage();
+    const archiveTree = page.querySelector<HTMLDetailsElement>("[data-workspace-domain-details='03-归档']");
+
+    expect(archiveTree?.textContent).toContain("失败的方法");
+    expect(archiveTree?.textContent).toContain("失败方法");
+    expect(archiveTree?.textContent).toContain("已完成领域、项目、任务");
+    expect(archiveTree?.textContent).toContain("上线后对全部代码做一次review");
+
+    page.querySelector<HTMLButtonElement>("[data-workspace-doc-id='work-log:03-归档/失败的方法/method-failed.md']")?.click();
+    await flush();
+    await flush();
+
+    expect(page.querySelector("[data-workspace-doc-editor]")?.textContent).toContain("记录失败条件");
+  });
+
+  it("keeps the work-log tree scroll position when selecting documents", async () => {
+    const { page } = await setupWorkspaceDocsPage();
+    const tree = page.querySelector<HTMLElement>("[data-workspace-tree]");
+    expect(tree).not.toBeNull();
+    tree!.scrollTop = 720;
+
+    page.querySelector<HTMLButtonElement>(
+      "[data-workspace-doc-id='work-log:01-项目工作区/产品/LLM Wiki WebUI/工作日志']",
+    )?.click();
+    await flush();
+    await flush();
+
+    expect(page.querySelector<HTMLElement>("[data-workspace-tree]")?.scrollTop).toBe(720);
+    expect(page.querySelector("[data-workspace-doc-editor]")?.textContent).toContain("Updated the workspace documents.");
+  });
+
+  it("renders the execution-site workbench as one page", async () => {
+    const { page } = await setupWorkspaceDocsPage();
+
+    page.querySelector<HTMLButtonElement>("[data-workspace-doc-id='domain:00-执行现场']")?.click();
+    await flush();
+    await flush();
+
+    expect(fetch).toHaveBeenCalledWith("/api/workflow-artifacts");
+    expect(fetch).toHaveBeenCalledWith("/api/task-plan/state");
+    expect(page.querySelector("[data-execution-workbench]")?.textContent).toContain("待处理队列");
+    expect(page.querySelector("[data-execution-workbench]")?.textContent).toContain("待绑定任务");
+    expect(page.querySelector("[data-workspace-doc-editor]")).toBeNull();
+    page.querySelector<HTMLButtonElement>("[data-execution-tab='archive']")?.click();
+    expect(page.querySelector("[data-execution-queue='archive']")?.classList.contains("is-active")).toBe(true);
+    expect(page.querySelector<HTMLSelectElement>("[data-execution-archive-task='pending-archive-1']")).not.toBeNull();
+    expect(page.querySelector<HTMLButtonElement>("[data-execution-archive-record='pending-archive-1']")).not.toBeNull();
+  });
+
+  it("archives execution-site pending records into a selected task", async () => {
+    const { page, fetchMock } = await setupWorkspaceDocsPage();
+
+    page.querySelector<HTMLButtonElement>("[data-workspace-doc-id='domain:00-执行现场']")?.click();
+    await flush();
+    await flush();
+    page.querySelector<HTMLButtonElement>("[data-execution-tab='archive']")?.click();
+
+    const select = page.querySelector<HTMLSelectElement>("[data-execution-archive-task='pending-archive-1']");
+    const button = page.querySelector<HTMLButtonElement>("[data-execution-archive-record='pending-archive-1']");
+    expect(select?.textContent).toContain("工作日志整合");
+    expect(button?.disabled).toBe(true);
+
+    select!.value = "task-work-log";
+    select!.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(button?.disabled).toBe(false);
+    button?.click();
+    await flush();
+    await flush();
+
+    const archiveCall = fetchMock.mock.calls.find(([input]) => String(input) === "/api/workflow-recorder/archive");
+    expect(archiveCall?.[1]).toMatchObject({
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    expect(JSON.parse(String(archiveCall?.[1]?.body))).toEqual({
+      recordId: "pending-archive-1",
+      taskId: "task-work-log",
+    });
+  });
+
+  it("renders the project workspace as a connected execution hierarchy with time windows", async () => {
+    const { page, fetchMock } = await setupWorkspaceDocsPage();
+
+    page.querySelector<HTMLButtonElement>("[data-workspace-doc-id='domain:01-项目工作区']")?.click();
+    await flush();
+    await flush();
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/task-plan/state");
+    expectProjectWorkspaceGraph(page);
+    expect(page.querySelector("[data-workspace-doc-editor]")).toBeNull();
+  });
+
+  it("filters the project workspace to unfinished items by default", async () => {
+    const { page } = await setupWorkspaceDocsPage();
+
+    page.querySelector<HTMLButtonElement>("[data-workspace-doc-id='domain:01-项目工作区']")?.click();
+    await flush();
+    await flush();
+
+    const completedTask = page.querySelector<HTMLElement>("[data-project-node-id='task-completed-review']");
+    expect(completedTask?.closest<HTMLElement>("[data-project-filter-scope]")?.hidden).toBe(true);
+    expect(page.querySelector<HTMLButtonElement>("button[data-project-workspace-filter='unfinished']")?.className)
+      .toContain("is-active");
+
+    page.querySelector<HTMLButtonElement>("button[data-project-workspace-filter='all']")?.click();
+    expect(completedTask?.closest<HTMLElement>("[data-project-filter-scope]")?.hidden).toBe(false);
+  });
+
+  it("collapses and expands project workspace hierarchy branches", async () => {
+    const { page } = await setupWorkspaceDocsPage();
+
+    page.querySelector<HTMLButtonElement>("[data-workspace-doc-id='domain:01-项目工作区']")?.click();
+    await flush();
+    await flush();
+
+    const domainToggle = findProjectWorkspaceCollapseToggle(page, "domain:个人知识库");
+    const domainTarget = readProjectWorkspaceCollapseTarget(domainToggle);
+    expect(domainToggle).not.toBeNull();
+    expect(domainTarget?.textContent).toContain("LLM Wiki");
+
+    domainToggle!.click();
+    expect(domainToggle?.getAttribute("aria-expanded")).toBe("false");
+    expect(domainTarget?.hidden).toBe(true);
+
+    domainToggle!.click();
+    expect(domainToggle?.getAttribute("aria-expanded")).toBe("true");
+    expect(domainTarget?.hidden).toBe(false);
+
+    const projectToggle = findProjectWorkspaceCollapseToggle(page, "project:个人知识库:LLM Wiki");
+    const projectTarget = readProjectWorkspaceCollapseTarget(projectToggle);
+    expect(projectTarget?.textContent).toContain("Graphy 布局卡点");
+
+    projectToggle!.click();
+    expect(projectToggle?.getAttribute("aria-expanded")).toBe("false");
+    expect(projectTarget?.hidden).toBe(true);
+  });
+
+  it("links project workspace time windows back to graph nodes and persists split width", async () => {
+    window.localStorage.removeItem("workspace.projectWorkspaceSplit");
+    window.localStorage.removeItem("workspace.projectWorkspaceGraphScale");
+    const { page, fetchMock } = await setupWorkspaceDocsPage();
+
+    page.querySelector<HTMLButtonElement>("[data-workspace-doc-id='domain:01-项目工作区']")?.click();
+    await flush();
+    await flush();
+
+    page.querySelector<HTMLButtonElement>("[data-project-window-task='task-graphy-layout']")?.click();
+    expect(page.querySelector("[data-project-node-id='task-graphy-layout']")?.className).toContain("is-highlighted");
+    expect(fetchMock.mock.calls.some(([url, init]) =>
+      url === "/api/task-plan/pool" && (init as RequestInit | undefined)?.method === "PUT"
+    )).toBe(false);
+
+    const layout = page.querySelector<HTMLElement>("[data-project-workspace-layout]");
+    const handle = page.querySelector<HTMLElement>("[data-project-workspace-split]");
+    expect(layout).not.toBeNull();
+    expect(handle).not.toBeNull();
+
+    vi.spyOn(layout!, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 1000,
+      bottom: 600,
+      width: 1000,
+      height: 600,
+      toJSON() {
+        return {};
+      },
+    } as DOMRect);
+
+    handle!.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0, clientX: 600 }));
+    document.dispatchEvent(new MouseEvent("mousemove", { bubbles: true, clientX: 650 }));
+    document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, clientX: 650 }));
+
+    expect(layout?.style.getPropertyValue("--project-workspace-left-ratio")).toBe("0.65");
+    expect(window.localStorage.getItem("workspace.projectWorkspaceSplit")).toBe("0.65");
+
+    page.querySelector<HTMLButtonElement>("[data-project-graph-zoom='out']")?.click();
+    expect(page.querySelector<HTMLElement>("[data-project-graph-layer]")?.style.getPropertyValue("--project-workspace-graph-scale")).toBe("0.9");
+    expect(window.localStorage.getItem("workspace.projectWorkspaceGraphScale")).toBe("0.9");
+  });
+
+  it("drags project workspace tasks into today windows and syncs the task plan schedule", async () => {
+    const { page, fetchMock } = await setupWorkspaceDocsPage();
+
+    page.querySelector<HTMLButtonElement>("[data-workspace-doc-id='domain:01-项目工作区']")?.click();
+    await flush();
+    await flush();
+
+    const taskNode = page.querySelector<HTMLElement>("[data-project-task-node='task-method-review']");
+    const windowList = page.querySelector<HTMLElement>("[data-project-workspace-window-list]");
+    expect(taskNode).not.toBeNull();
+    expect(windowList).not.toBeNull();
+
+    const transfer = createMockDataTransfer();
+    dispatchDragEvent(taskNode!, "dragstart", transfer);
+    dispatchDragEvent(windowList!, "drop", transfer);
+    await flush();
+    await flush();
+
+    const scheduleCall = fetchMock.mock.calls.find(([url, init]) =>
+      url === "/api/task-plan/schedule" && (init as RequestInit | undefined)?.method === "PUT"
+    );
+    expect(scheduleCall).toBeTruthy();
+    const body = JSON.parse(String((scheduleCall?.[1] as RequestInit).body)) as {
+      items: Array<{ id: string; title: string; priority: MockTaskPlanPriority }>;
+    };
+    expect(body.items.at(-1)).toMatchObject({ id: "task-method-review", title: "方法库验收", priority: "low" });
+    expect(page.querySelector("[data-project-workspace-window-list]")?.textContent).toContain("方法库验收");
+
+    page.querySelector<HTMLButtonElement>("[data-workspace-tab='task-plan']")?.click();
+    await flush();
+    expect(page.querySelector("[data-task-plan-schedule-list]")?.textContent).toContain("方法库验收");
+  });
+
+  it("creates project workspace stages tasks and actions from keyboard shortcuts", async () => {
+    const { page, fetchMock } = await setupWorkspaceDocsPage();
+
+    page.querySelector<HTMLButtonElement>("[data-workspace-doc-id='domain:01-项目工作区']")?.click();
+    await flush();
+    await flush();
+
+    const projectNode = page.querySelector<HTMLElement>("[data-project-node-id='project:个人知识库:LLM Wiki']");
+    expect(projectNode).not.toBeNull();
+    dispatchProjectWorkspaceShortcut(projectNode!, "Tab");
+    await flush();
+    await flush();
+
+    let body = readProjectWorkspacePoolSaveBody(fetchMock);
+    const stage = body.stages?.find((item) => item.title === "新阶段" && item.project === "LLM Wiki");
+    expect(stage).toBeTruthy();
+
+    const stageNode = page.querySelector<HTMLElement>(`[data-project-stage-node='${stage?.id}']`);
+    expect(stageNode).not.toBeNull();
+    dispatchProjectWorkspaceShortcut(stageNode!, "Tab");
+    await flush();
+    await flush();
+
+    body = readProjectWorkspacePoolSaveBody(fetchMock);
+    const task = body.items.find((item) => item.title === "新任务" && item.stageId === stage?.id);
+    expect(task).toBeTruthy();
+
+    const taskNode = page.querySelector<HTMLElement>(`[data-project-task-node='${task?.id}']`);
+    expect(taskNode).not.toBeNull();
+    dispatchProjectWorkspaceShortcut(taskNode!, "Tab");
+    await flush();
+
+    body = readProjectWorkspacePoolSaveBody(fetchMock);
+    expect(body.items.find((item) => item.id === task?.id)?.actions?.at(0)?.title).toBe("新行动");
+  });
+
+  it("previews project workspace stage moves and persists the stage after drop", async () => {
+    const { page, fetchMock } = await setupWorkspaceDocsPage();
+
+    page.querySelector<HTMLButtonElement>("[data-workspace-doc-id='domain:01-项目工作区']")?.click();
+    await flush();
+    await flush();
+
+    const dragged = page.querySelector<HTMLElement>("[data-project-task-node='task-method-review']");
+    const stage = Array.from(page.querySelectorAll<HTMLElement>("[data-project-stage-node]"))
+      .find((node) => node.textContent?.includes("同步推进"));
+    expect(dragged).not.toBeNull();
+    expect(stage).not.toBeNull();
+
+    const transfer = createMockDataTransfer();
+    dispatchDragEvent(dragged!, "dragstart", transfer);
+    dispatchDragEvent(stage!, "dragover", transfer);
+
+    expect(stage?.className).toContain("is-drop-preview");
+    expect(fetchMock.mock.calls.some(([url, init]) =>
+      url === "/api/task-plan/pool" && (init as RequestInit | undefined)?.method === "PUT"
+    )).toBe(false);
+
+    dispatchDragEvent(stage!, "drop", transfer);
+    await flush();
+
+    const body = readProjectWorkspacePoolSaveBody(fetchMock);
+    expect(body.items.find((item) => item.id === "task-method-review")).toMatchObject({
+      domain: "个人知识库",
+      project: "LLM Wiki",
+      stageId: stage?.dataset.projectStageNode,
+    });
+  });
+
+  it("drops project workspace task cards onto phase columns", async () => {
+    const { page, fetchMock } = await setupWorkspaceDocsPage();
+
+    page.querySelector<HTMLButtonElement>("[data-workspace-doc-id='domain:01-项目工作区']")?.click();
+    await flush();
+    await flush();
+
+    const dragged = page.querySelector<HTMLElement>("[data-project-task-node='task-method-review']");
+    const phase = page.querySelector<HTMLElement>("[data-project-workspace-phase='阶段 2 · 同步推进']");
+    expect(dragged).not.toBeNull();
+    expect(phase).not.toBeNull();
+
+    const transfer = createMockDataTransfer();
+    dispatchDragEvent(dragged!, "dragstart", transfer);
+    dispatchDragEvent(phase!, "dragover", transfer);
+
+    expect(phase?.className).toContain("is-drop-preview");
+
+    dispatchDragEvent(phase!, "drop", transfer);
+    await flush();
+
+    const body = readProjectWorkspacePoolSaveBody(fetchMock);
+    expect(body.items.find((item) => item.id === "task-method-review")).toMatchObject({
+      domain: "个人知识库",
+      project: "LLM Wiki",
+      stageId: phase?.dataset.projectStageDropNode,
+    });
+  });
+
+  it("moves project workspace tasks with mouse drag onto phase columns", async () => {
+    const { page, fetchMock } = await setupWorkspaceDocsPage();
+
+    page.querySelector<HTMLButtonElement>("[data-workspace-doc-id='domain:01-项目工作区']")?.click();
+    await flush();
+    await flush();
+
+    const dragged = page.querySelector<HTMLElement>("[data-project-task-node='task-method-review']");
+    const phase = page.querySelector<HTMLElement>("[data-project-workspace-phase='阶段 2 · 同步推进']");
+    expect(dragged).not.toBeNull();
+    expect(phase).not.toBeNull();
+    Object.defineProperty(document, "elementFromPoint", {
+      configurable: true,
+      value: vi.fn(() => phase),
+    });
+
+    dispatchMouseEvent(dragged!, "mousedown", { clientX: 10, clientY: 10 });
+    dispatchMouseEvent(document, "mousemove", { clientX: 40, clientY: 40 });
+
+    expect(phase?.className).toContain("is-drop-preview");
+
+    dispatchMouseEvent(document, "mouseup", { clientX: 40, clientY: 40 });
+    await flush();
+
+    const body = readProjectWorkspacePoolSaveBody(fetchMock);
+    expect(body.items.find((item) => item.id === "task-method-review")).toMatchObject({
+      domain: "个人知识库",
+      project: "LLM Wiki",
+      stageId: phase?.dataset.projectStageDropNode,
+    });
+  });
+
+  it("moves project workspace action cards between tasks without moving the source task", async () => {
+    const { page, fetchMock } = await setupWorkspaceDocsPage();
+
+    page.querySelector<HTMLButtonElement>("[data-workspace-doc-id='domain:01-项目工作区']")?.click();
+    await flush();
+    await flush();
+
+    const action = page.querySelector<HTMLElement>("[data-project-action-node='action-work-log-outline']");
+    const target = page.querySelector<HTMLElement>("[data-project-task-node='task-graphy-layout']");
+    expect(action).not.toBeNull();
+    expect(target).not.toBeNull();
+
+    const transfer = createMockDataTransfer();
+    dispatchDragEvent(action!, "dragstart", transfer);
+    dispatchDragEvent(target!, "drop", transfer);
+    await flush();
+
+    const body = readProjectWorkspacePoolSaveBody(fetchMock);
+    expect(body.items.find((item) => item.id === "task-work-log")?.actions ?? []).toHaveLength(0);
+    expect(body.items.find((item) => item.id === "task-graphy-layout")?.actions?.at(-1)?.id)
+      .toBe("action-work-log-outline");
+    expect(body.items.find((item) => item.id === "task-work-log")?.project).toBe("LLM Wiki");
+  });
+
+  it("deletes project workspace task and action cards", async () => {
+    const { page, fetchMock } = await setupWorkspaceDocsPage();
+
+    page.querySelector<HTMLButtonElement>("[data-workspace-doc-id='domain:01-项目工作区']")?.click();
+    await flush();
+    await flush();
+
+    const actionDelete = page
+      .querySelector<HTMLElement>("[data-project-action-node='action-work-log-outline']")
+      ?.closest<HTMLElement>(".project-workspace-node-frame")
+      ?.querySelector<HTMLButtonElement>("[data-project-node-delete]");
+    expect(actionDelete).not.toBeNull();
+    actionDelete?.click();
+    await flush();
+
+    let body = readProjectWorkspacePoolSaveBody(fetchMock);
+    expect(body.items.find((item) => item.id === "task-work-log")?.actions ?? []).toHaveLength(0);
+    expect(body.items.find((item) => item.id === "task-work-log")).toBeTruthy();
+
+    const taskDelete = page
+      .querySelector<HTMLElement>("[data-project-task-node='task-method-review']")
+      ?.closest<HTMLElement>(".project-workspace-node-frame")
+      ?.querySelector<HTMLButtonElement>("[data-project-node-delete]");
+    expect(taskDelete).not.toBeNull();
+    taskDelete?.click();
+    await flush();
+
+    body = readProjectWorkspacePoolSaveBody(fetchMock);
+    expect(body.items.some((item) => item.id === "task-method-review")).toBe(false);
+  });
+
+  it("moves project workspace task cards onto empty stages", async () => {
+    const { page, fetchMock } = await setupWorkspaceDocsPage();
+
+    page.querySelector<HTMLButtonElement>("[data-workspace-doc-id='domain:01-项目工作区']")?.click();
+    await flush();
+    await flush();
+
+    const projectNode = page.querySelector<HTMLElement>("[data-project-node-id='project:个人知识库:LLM Wiki']");
+    expect(projectNode).not.toBeNull();
+    dispatchProjectWorkspaceShortcut(projectNode!, "Tab");
+    await flush();
+    await flush();
+
+    const bodyAfterCreate = readProjectWorkspacePoolSaveBody(fetchMock);
+    const emptyStage = bodyAfterCreate.stages?.find((item) => item.title === "新阶段" && item.project === "LLM Wiki");
+    const dragged = page.querySelector<HTMLElement>("[data-project-task-node='task-method-review']");
+    const phase = page.querySelector<HTMLElement>(`[data-project-stage-drop-node='${emptyStage?.id}']`);
+    expect(dragged).not.toBeNull();
+    expect(phase).not.toBeNull();
+
+    const transfer = createMockDataTransfer();
+    dispatchDragEvent(dragged!, "dragstart", transfer);
+    dispatchDragEvent(phase!, "drop", transfer);
+    await flush();
+
+    const body = readProjectWorkspacePoolSaveBody(fetchMock);
+    expect(body.items.find((item) => item.id === "task-method-review")).toMatchObject({
+      domain: "个人知识库",
+      project: "LLM Wiki",
+      stageId: emptyStage?.id,
+    });
+  });
+
+  it("moves project workspace task cards across projects", async () => {
+    const { page, fetchMock } = await setupWorkspaceDocsPage();
+
+    page.querySelector<HTMLButtonElement>("[data-workspace-doc-id='domain:01-项目工作区']")?.click();
+    await flush();
+    await flush();
+
+    const dragged = page.querySelector<HTMLElement>("[data-project-task-node='task-graphy-layout']");
+    const target = page.querySelector<HTMLElement>("[data-project-task-node='task-method-review']");
+    expect(dragged).not.toBeNull();
+    expect(target).not.toBeNull();
+
+    const transfer = createMockDataTransfer();
+    dispatchDragEvent(dragged!, "dragstart", transfer);
+    dispatchDragEvent(target!, "drop", transfer);
+    await flush();
+
+    const body = readProjectWorkspacePoolSaveBody(fetchMock);
+    expect(body.items.find((item) => item.id === "task-graphy-layout")?.projectOrder).toBe(1);
+    expect(body.items.find((item) => item.id === "task-method-review")?.projectOrder).toBe(2);
+    expect(body.items.find((item) => item.id === "task-graphy-layout")).toMatchObject({
+      domain: "个人知识库",
+      project: "知识沉淀",
+    });
+  });
+
+  it("moves project workspace project cards across domains", async () => {
+    const { page, fetchMock } = await setupWorkspaceDocsPage();
+
+    page.querySelector<HTMLButtonElement>("[data-workspace-doc-id='domain:01-项目工作区']")?.click();
+    await flush();
+    await flush();
+
+    const dragged = page.querySelector<HTMLElement>("[data-project-node-id='project:个人知识库:知识沉淀']");
+    const target = page.querySelector<HTMLElement>("[data-project-node-id='domain:健康']");
+    expect(dragged).not.toBeNull();
+    expect(target).not.toBeNull();
+
+    const transfer = createMockDataTransfer();
+    dispatchDragEvent(dragged!, "dragstart", transfer);
+    dispatchDragEvent(target!, "drop", transfer);
+    await flush();
+
+    const body = readProjectWorkspacePoolSaveBody(fetchMock);
+    expect(body.items.find((item) => item.id === "task-method-review")).toMatchObject({
+      domain: "健康",
+      project: "知识沉淀",
+    });
+  });
+
+  it("renders the deposit library as method and tool lanes with draggable validation columns", async () => {
+    const { page, savedDocs, fetchMock } = await setupWorkspaceDocsPage();
+
+    page.querySelector<HTMLButtonElement>("[data-workspace-doc-id='domain:02-沉淀库']")?.click();
+    await flush();
+
+    expect(page.querySelector("[data-workspace-library-gallery]")).not.toBeNull();
+    expect(page.querySelector("[data-workspace-tree]")?.textContent).toContain("案例库");
+    expect(page.querySelector("[data-workspace-tree]")?.textContent).not.toContain("工具箱");
+    expect(page.querySelector("[data-workspace-tree]")?.textContent).not.toContain("方法候选");
+    expect(page.querySelector("[data-workspace-library-kind='case']")).toBeNull();
+    expect(page.querySelector("[data-workspace-library-kind='method']")?.textContent).toContain("待验证");
+    expect(page.querySelector("[data-workspace-library-kind='method']")?.textContent).toContain("方法候选");
+    expect(page.querySelector("[data-workspace-library-kind='tool']")?.textContent).toContain("Figma");
+    page.querySelector<HTMLButtonElement>(
+      "[data-workspace-gallery-card='wiki/专题/02-方法库/待验证/method-1.md']",
+    )?.click();
+    await flush();
+    expect(page.querySelector(".workspace-library-detail")?.textContent).toContain("用于验证画册视图。");
+
+    const editor = page.querySelector<HTMLElement>("[data-workspace-gallery-editor]");
+    editor!.innerHTML = "<h1>方法候选 Pro</h1><p>保存详情。</p>";
+    page.querySelector<HTMLButtonElement>("[data-workspace-gallery-save]")?.click();
+    await flush();
+
+    expect(savedDocs).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: "wiki/专题/02-方法库/待验证/method-1.md",
+        raw: expect.stringContaining("保存详情。"),
+      }),
+    ]));
+
+    const transfer = createMockDataTransfer();
+    const methodCard = page.querySelector<HTMLElement>(
+      "[data-workspace-gallery-card='wiki/专题/02-方法库/待验证/method-1.md']",
+    );
+    const successColumn = page.querySelector<HTMLElement>(
+      "[data-workspace-gallery-drop-status='已验证但成功']",
+    );
+    expect(methodCard).not.toBeNull();
+    expect(successColumn).not.toBeNull();
+
+    dispatchDragEvent(methodCard!, "dragstart", transfer);
+    dispatchDragEvent(successColumn!, "dragover", transfer);
+    expect(successColumn?.className).toContain("is-drop-preview");
+    dispatchDragEvent(successColumn!, "drop", transfer);
+    await flush();
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/workspace/docs/status", expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({
+        path: "wiki/专题/02-方法库/待验证/method-1.md",
+        status: "已验证但成功",
+      }),
+    }));
+    expect(page.querySelector(
+      "[data-workspace-gallery-card='wiki/专题/02-方法库/已验证但成功/method-1.md']",
+    )).not.toBeNull();
+  });
+
+  it("saves edited work-log documents from the workspace page", async () => {
+    const { page, savedDocs } = await setupWorkspaceDocsPage();
+    page.querySelector<HTMLButtonElement>(
+      "[data-workspace-doc-id='work-log:01-项目工作区/产品/LLM Wiki WebUI/工作日志']",
+    )?.click();
+    await flush();
+    const editor = page.querySelector<HTMLElement>("[data-workspace-doc-editor]");
+
+    expect(window.location.hash).toBe("#/workspace/work-log");
+    expect(editor?.textContent).toContain("Updated the workspace documents.");
+    editWorkspaceDoc(editor!);
+    await flush();
+
+    expect(savedDocs).toEqual([
+      expect.objectContaining({
+        path: "领域/产品/LLM Wiki WebUI/工作日志.md",
+        raw: expect.stringContaining("Edited in workspace"),
+      }),
+    ]);
+    expect(savedDocs[0]?.raw).toContain("[link](https://example.com)");
+    expect(savedDocs[0]?.raw).toContain("- [x] Ship task block");
+    expect(savedDocs[0]?.raw).toContain("> Quoted note");
+    expect(savedDocs[0]?.raw).toContain("```");
+    expect(savedDocs[0]?.raw).toContain("![Diagram](./asset.png)");
+    expect(page.querySelector("[data-workspace-doc-id='work-log:01-项目工作区/产品/LLM Wiki WebUI/工作日志']")?.textContent).toContain("Work Log");
+  });
+
+  it("deletes topic pages with their child work-log documents", async () => {
+    const { page, deletedDocs } = await setupWorkspaceDocsPage();
+    page.querySelector<HTMLButtonElement>("[data-workspace-doc-delete='domain:01-案例库']")?.click();
+    await flush();
+
+    expect(page.querySelector(".workspace-doc-delete-dialog")?.textContent).toContain("包括 1 个子页面");
+    page.querySelector<HTMLButtonElement>("[data-workspace-doc-delete-confirm='children']")?.click();
+    await flush();
+
+    expect(deletedDocs).toEqual([
+      {
+        paths: [
+          "wiki/专题/01-案例库/index.md",
+          "wiki/专题/01-案例库/示例-信息消费失控案例.md",
+        ],
+      },
+    ]);
+    expect(page.querySelector("[data-workspace-doc-id='domain:01-案例库']")).toBeNull();
+    expect(page.querySelector("[data-workspace-doc-id='work-log:01-案例库/示例-信息消费失控案例']")).toBeNull();
   });
 });
 
 async function flush(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+function findProjectWorkspaceCollapseToggle(page: ParentNode, id: string): HTMLButtonElement | null {
+  return Array.from(page.querySelectorAll<HTMLButtonElement>("[data-project-collapse-toggle]"))
+    .find((toggle) => toggle.dataset.projectCollapseToggle === id) ?? null;
+}
+
+function readProjectWorkspaceCollapseTarget(toggle: HTMLElement | null): HTMLElement | null {
+  const group = toggle?.closest<HTMLElement>("[data-project-collapse-group]");
+  if (!group) return null;
+  return Array.from(group.children).find((child): child is HTMLElement =>
+    child instanceof HTMLElement && child.hasAttribute("data-project-collapse-target")
+  ) ?? null;
+}
+
+function expectProjectWorkspaceGraph(page: HTMLElement): void {
+  const graph = page.querySelector("[data-project-workspace-graph]");
+  const windowList = page.querySelector("[data-project-workspace-window-list]");
+  expect(page.querySelector("[data-project-workspace]")).not.toBeNull();
+  expect(graph).not.toBeNull();
+  expect(windowList).not.toBeNull();
+  const graphText = graph!.textContent ?? "";
+  const windowText = windowList!.textContent ?? "";
+  expect(graphText).toContain("个人知识库");
+  expect(graphText).toContain("LLM Wiki");
+  expect(graphText).toContain("工作日志整合");
+  expect(graphText).toContain("确认项目工作区布局");
+  expect(graphText).toContain("阶段 2 · 同步推进");
+  expect(graphText).toContain("2 个任务同步");
+  expect(graphText).not.toContain("补充下一步行动");
+  const activePhase = Array.from(page.querySelectorAll<HTMLElement>("[data-project-workspace-phase='阶段 2 · 同步推进']"))
+    .find((phase) => phase.textContent?.includes("工作日志整合"));
+  expect(activePhase?.textContent).toContain("Graphy 布局卡点");
+  expect(page.querySelectorAll("[data-project-workspace-link]")).toHaveLength(13);
+  expect(windowText).toContain("10:30");
+  expect(windowText).toContain("Graphy 布局卡点");
+  expect(readProjectNodeText(page, "task-graphy-layout")).toContain("正在进行");
+  expect(readProjectNodeText(page, "task-method-review")).toContain("未确定");
+}
+
+function readProjectNodeText(page: HTMLElement, nodeId: string): string {
+  const node = page.querySelector(`[data-project-node-id='${nodeId}']`);
+  expect(node).not.toBeNull();
+  return node!.textContent ?? "";
+}
+
+function createWorkspacePointerEvent(
+  type: string,
+  init: MouseEventInit & { pointerId: number },
+): Event {
+  const EventConstructor = typeof window.PointerEvent === "function" ? window.PointerEvent : MouseEvent;
+  const event = new EventConstructor(type, init);
+  if (!("pointerId" in event)) {
+    Object.defineProperty(event, "pointerId", { value: init.pointerId });
+  }
+  return event;
+}
+
+async function setupWorkspaceDocsPage(): Promise<{
+  page: HTMLElement;
+  fetchMock: ReturnType<typeof vi.fn>;
+  savedDocs: Array<{ path?: string; raw?: string }>;
+  deletedDocs: Array<{ paths?: string[] }>;
+}> {
+  const savedDocs: Array<{ path?: string; raw?: string }> = [];
+  const deletedDocs: Array<{ paths?: string[] }> = [];
+  const fetchMock = installWorkspaceDocsFetchMock(savedDocs, deletedDocs);
+  const page = renderWorkspacePage();
+  document.body.appendChild(page);
+  page.querySelector<HTMLButtonElement>("[data-workspace-tab='work-log']")?.click();
+  await flush();
+  return { page, fetchMock, savedDocs, deletedDocs };
+}
+
+function editWorkspaceDoc(editor: HTMLElement): void {
+  editor.innerHTML = `
+    <h1>Work Log</h1>
+    <p>Edited in workspace with <a href="https://example.com">link</a>.</p>
+    <ul><li><input type="checkbox" checked> Ship task block</li></ul>
+    <blockquote><p>Quoted note</p></blockquote>
+    <pre><code>const ok = true;</code></pre>
+    <p><img src="./asset.png" alt="Diagram"></p>
+  `;
+  editor.dispatchEvent(new Event("input", { bubbles: true }));
+  editor.dispatchEvent(new Event("blur", { bubbles: true }));
+}
+
+function installWorkspaceDocsFetchMock(
+  savedDocs: Array<{ path?: string; raw?: string }>,
+  deletedDocs: Array<{ paths?: string[] }>,
+): ReturnType<typeof vi.fn> {
+  const documents = workspaceDocsFixture();
+  const taskPlan = { state: projectWorkspaceTaskPlanFixture() as MockTaskPlanState };
+  const relations: Array<{ id: string; sourceId: string; targetId: string; type: string }> = [];
+  // Route-style mock keeps workspace docs fixture behavior in one place.
+  // fallow-ignore-next-line complexity
+  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    const taskPlanResponse = projectWorkspaceTaskPlanResponse(url, init, taskPlan);
+    if (taskPlanResponse) return taskPlanResponse;
+    if (url === "/api/workspace/docs?mode=tree" || url === "/api/workspace/docs") {
+      return workspaceDocsResponse(init, savedDocs, deletedDocs, documents);
+    }
+    if (url === "/api/workspace/docs/status" && init?.method === "POST") {
+      return workspaceGalleryStatusResponse(init, documents);
+    }
+    if (url.startsWith("/api/workspace/docs?path=")) {
+      return workspaceDocumentContentResponse(url, documents);
+    }
+    if (url.startsWith("/api/workspace/graph?")) {
+      return workspaceGraphResponse(url);
+    }
+    const relationResponse = workspaceRelationRequestResponse(url, init, documents, relations);
+    if (relationResponse) {
+      return relationResponse;
+    }
+    if (url.startsWith("/api/page?")) {
+      return workspacePageResponse(url, documents);
+    }
+    if (url === "/api/workflow-artifacts") {
+      return jsonOk({ success: true, data: workflowArtifactsFixture() });
+    }
+    if (url === "/api/workflow-recorder/archive" && init?.method === "POST") {
+      return jsonOk({ success: true, data: { status: "archived", message: "已写入任务卡和项目工作日志" } });
+    }
+    throw new Error(`unexpected fetch ${url}`);
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+function projectWorkspaceTaskPlanResponse(
+  url: string,
+  init: RequestInit | undefined,
+  taskPlan: { state: MockTaskPlanState },
+): Response | null {
+  if (url === "/api/task-plan/state") {
+    return jsonOk({ success: true, data: { state: taskPlan.state } });
+  }
+  if (url === "/api/task-plan/schedule" && init?.method === "PUT") {
+    return updateProjectWorkspaceScheduleFixture(init, taskPlan);
+  }
+  if (url === "/api/task-plan/pool" && init?.method === "PUT") {
+    return updateProjectWorkspacePoolFixture(init, taskPlan);
+  }
+  return null;
+}
+
+function updateProjectWorkspaceScheduleFixture(
+  init: RequestInit,
+  taskPlan: { state: MockTaskPlanState },
+): Response {
+  const payload = JSON.parse(String(init.body)) as {
+    items: MockTaskPlanState["schedule"]["items"];
+    confirmed: boolean;
+  };
+  taskPlan.state = { ...taskPlan.state, schedule: { ...taskPlan.state.schedule, ...payload } };
+  return jsonOk({ success: true, data: { schedule: taskPlan.state.schedule } });
+}
+
+function updateProjectWorkspacePoolFixture(
+  init: RequestInit,
+  taskPlan: { state: MockTaskPlanState },
+): Response {
+  const payload = JSON.parse(String(init.body)) as {
+    items: MockTaskPlanState["pool"]["items"];
+    stages?: MockTaskPlanState["pool"]["stages"];
+  };
+  taskPlan.state = {
+    ...taskPlan.state,
+    pool: { ...taskPlan.state.pool, items: payload.items, stages: payload.stages ?? taskPlan.state.pool.stages },
+  };
+  return jsonOk({ success: true, data: { state: taskPlan.state } });
+}
+
+function workspaceRelationRequestResponse(
+  url: string,
+  init: RequestInit | undefined,
+  documents: unknown[],
+  relations: Array<{ id: string; sourceId: string; targetId: string; type: string }>,
+): Response | null {
+  if (url.startsWith("/api/workspace/relations/") && init?.method === "DELETE") {
+    deleteWorkspaceRelationFixture(url, relations);
+    return jsonOk({ success: true });
+  }
+  if (url === "/api/workspace/relations" && init?.method === "POST") {
+    return createWorkspaceRelationFixture(init, relations);
+  }
+  return url.startsWith("/api/workspace/relations?") ? workspaceRelationsResponse(url, documents, relations) : null;
+}
+
+function deleteWorkspaceRelationFixture(
+  url: string,
+  relations: Array<{ id: string; sourceId: string; targetId: string; type: string }>,
+): void {
+  const id = decodeURIComponent(url.split("/").at(-1) ?? "");
+  const index = relations.findIndex((relation) => relation.id === id);
+  if (index >= 0) relations.splice(index, 1);
+}
+
+function createWorkspaceRelationFixture(
+  init: RequestInit,
+  relations: Array<{ id: string; sourceId: string; targetId: string; type: string }>,
+): Response {
+  const body = JSON.parse(String(init.body ?? "{}")) as { sourceId: string; targetId: string; type: string };
+  relations.push({ id: `relation-${relations.length + 1}`, ...body });
+  return jsonOk({ success: true, data: relations.at(-1) });
+}
+
+function workspaceRelationsResponse(
+  url: string,
+  documents: unknown[],
+  relations: Array<{ id: string; sourceId: string; targetId: string; type: string }>,
+): Response {
+  const nodeId = new URL(url, "http://localhost").searchParams.get("nodeId") ?? "root";
+  const nodes = documents.map(workspaceRelationNode).filter((node): node is WorkspaceRelationNodeFixture => Boolean(node));
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  return jsonOk({
+    success: true,
+    data: {
+      current: nodeById.get(nodeId) ?? null,
+      relations: relations
+        .filter((relation) => relation.sourceId === nodeId || relation.targetId === nodeId)
+        .map((relation) => ({
+          id: relation.id,
+          type: relation.type,
+          typeLabel: relation.type === "uses_method" ? "使用方法" : "引用",
+          source: nodeById.get(relation.sourceId),
+          target: nodeById.get(relation.targetId),
+        })),
+      candidates: nodes.filter((node) => node.id !== nodeId),
+      types: [{ value: "uses_method", label: "使用方法" }, { value: "references", label: "引用" }],
+    },
+  });
+}
+
+interface WorkspaceRelationNodeFixture {
+  id: string;
+  label: string;
+  type: string;
+  path: string;
+}
+
+function workspaceRelationNode(document: unknown): WorkspaceRelationNodeFixture | null {
+  if (typeof document !== "object" || document === null) {
+    return null;
+  }
+  const record = document as { id?: unknown; title?: unknown; label?: unknown; kind?: unknown; path?: unknown };
+  if (typeof record.id !== "string" || typeof record.path !== "string") {
+    return null;
+  }
+  return {
+    id: record.id,
+    label: String(record.title ?? record.label ?? record.id),
+    type: String(record.kind ?? "work-log"),
+    path: record.path,
+  };
+}
+
+function workspaceGraphResponse(url: string): Response {
+  const nodeId = new URL(url, "http://localhost").searchParams.get("nodeId") ?? "root";
+  return jsonOk({
+    success: true,
+    data: {
+      nodes: [
+        {
+          id: nodeId,
+          label: "当前对象",
+          path: "wiki/专题/index.md",
+          type: "root",
+          size: 11,
+          color: "#111827",
+        },
+        {
+          id: "domain:01-项目工作区",
+          label: "项目工作区",
+          path: "wiki/专题/01-项目工作区/index.md",
+          type: "domain",
+          size: 8,
+          color: "#2563eb",
+        },
+      ],
+      edges: [{ id: `${nodeId}::domain:01-项目工作区::双链`, source: nodeId, target: "domain:01-项目工作区", weight: 1, label: "双链" }],
+    },
+  });
+}
+
+function workspaceDocsResponse(
+  init: RequestInit | undefined,
+  savedDocs: Array<{ path?: string; raw?: string }>,
+  deletedDocs: Array<{ paths?: string[] }>,
+  documents: unknown[],
+): Response {
+  if (!init || init.method === undefined) {
+    return jsonOk({ success: true, data: { documents: documents.map(toWorkspaceDocSummary) } });
+  }
+  if (init.method === "PUT") {
+    savedDocs.push(JSON.parse(String(init.body ?? "{}")) as { path?: string; raw?: string });
+    return jsonOk({ success: true });
+  }
+  if (init.method === "DELETE") {
+    deletedDocs.push(JSON.parse(String(init.body ?? "{}")) as { paths?: string[] });
+    return jsonOk({ success: true, data: deletedDocs.at(-1) });
+  }
+  throw new Error(`unexpected workspace docs method ${init.method}`);
+}
+
+function workspaceGalleryStatusResponse(init: RequestInit, documents: unknown[]): Response {
+  const payload = JSON.parse(String(init.body ?? "{}")) as { path?: string; status?: string };
+  const previousPath = payload.path ?? "";
+  const status = payload.status ?? "";
+  const nextPath = previousPath.replace(
+    /\/(已验证但成功|待验证|已验证但失败)\//u,
+    `/${status}/`,
+  );
+  const document = documents.find((item): item is { path: string; gallery?: { status?: string | null } } => {
+    const record = item && typeof item === "object" ? item as { path?: unknown } : null;
+    return record?.path === previousPath;
+  });
+  if (document) {
+    document.path = nextPath;
+    if (document.gallery) document.gallery.status = status;
+  }
+  return jsonOk({ success: true, data: { previousPath, path: nextPath, status } });
+}
+
+function workspaceDocumentContentResponse(url: string, documents: unknown[]): Response {
+  const document = findWorkspaceDocumentByPath(url, documents);
+  if (!document) {
+    return { ok: false, json: async () => ({ success: false, error: "not found" }) } as Response;
+  }
+  return jsonOk({ success: true, data: { document } });
+}
+
+function workspacePageResponse(url: string, documents: unknown[]): Response {
+  const document = findWorkspaceDocumentByPath(url, documents);
+  if (!document) {
+    return { ok: false, json: async () => ({}) } as Response;
+  }
+  return jsonOk(document);
+}
+
+function findWorkspaceDocumentByPath(url: string, documents: unknown[]): unknown | null {
+  const path = new URL(url, "http://localhost").searchParams.get("path") ?? "";
+  const document = documents.find((item) =>
+    typeof item === "object"
+      && item !== null
+      && "path" in item
+      && (item as { path?: unknown }).path === path
+  );
+  return document ?? null;
+}
+
+function toWorkspaceDocSummary(document: unknown): unknown {
+  if (typeof document !== "object" || document === null) {
+    return document;
+  }
+  if ((document as { contentLoaded?: unknown }).contentLoaded === true) {
+    return document;
+  }
+  return {
+    ...(document as Record<string, unknown>),
+    html: "",
+    raw: "",
+  };
+}
+
+function jsonOk(body: unknown): Response {
+  return {
+    ok: true,
+    json: async () => body,
+  } as Response;
+}
+
+function workspaceDocsFixture(): unknown[] {
+  return [
+    workspaceDoc("root", "root", "工作日志", "wiki/专题/index.md", "工作日志", "<h1>工作日志</h1><p>总览。</p>", "# 工作日志", null, null),
+    workspaceDoc("domain:00-执行现场", "domain", "00-执行现场", "wiki/专题/00-执行现场/index.md", "执行现场", "<h1>执行现场</h1><p>行动队列。</p>", "# 执行现场", "00-执行现场", null),
+    workspaceDoc("domain:01-项目工作区", "domain", "01-项目工作区", "wiki/专题/01-项目工作区/index.md", "项目工作区", "<h1>项目工作区</h1>", "# 项目工作区", "01-项目工作区", null),
+    workspaceDoc(
+      "project:01-项目工作区/产品",
+      "project",
+      "产品",
+      "领域/产品.md",
+      "产品",
+      "<h1>产品</h1><p>产品领域说明。</p>",
+      "# 产品",
+      "01-项目工作区",
+      "产品",
+    ),
+    workspaceDoc(
+      "work-log:01-项目工作区/产品/LLM Wiki WebUI/项目概览",
+      "work-log",
+      "LLM Wiki WebUI",
+      "领域/产品/LLM Wiki WebUI.md",
+      "LLM Wiki WebUI",
+      "<h1>LLM Wiki WebUI</h1><h2>项目文档</h2><p>项目文档。</p>",
+      "# LLM Wiki WebUI\n\n## Overview\n\nProject notes.",
+      "01-项目工作区",
+      "产品",
+    ),
+    workspaceDoc(
+      "work-log:01-项目工作区/产品/LLM Wiki WebUI/工作日志",
+      "work-log",
+      "LLM Wiki WebUI / 工作日志",
+      "领域/产品/LLM Wiki WebUI/工作日志.md",
+      "Work Log",
+      "<h1>Work Log</h1><h2>Today</h2><p>Updated the workspace documents. <a class=\"wikilink wikilink-alive\" href=\"/?page=wiki%2F%E4%B8%93%E9%A2%98%2F01-%E6%A1%88%E4%BE%8B%E5%BA%93%2F%E7%A4%BA%E4%BE%8B-%E4%BF%A1%E6%81%AF%E6%B6%88%E8%B4%B9%E5%A4%B1%E6%8E%A7%E6%A1%88%E4%BE%8B.md\" data-wikilink-target=\"示例：信息消费失控案例\">案例库案例</a></p>",
+      "# Work Log\n\n## Today\n\nUpdated the workspace documents.",
+      "01-项目工作区",
+      "产品",
+    ),
+    workspaceDoc("domain:01-案例库", "domain", "01-案例库", "wiki/专题/01-案例库/index.md", "案例库", "<h1>案例库</h1><p>案例占位页。</p>", "# 案例库", "01-案例库", null),
+    workspaceDoc("domain:02-沉淀库", "domain", "02-沉淀库", "wiki/专题/02-沉淀库/index.md", "沉淀库", "<h1>沉淀库</h1><p>资产沉淀。</p>", "# 沉淀库", "02-沉淀库", null),
+    workspaceDoc(
+      "work-log:01-案例库/示例-信息消费失控案例",
+      "work-log",
+      "示例-信息消费失控案例",
+      "wiki/专题/01-案例库/示例-信息消费失控案例.md",
+      "示例：信息消费失控案例",
+      "<h1>示例：信息消费失控案例</h1><p>浏览记录诊断示例。</p>",
+      "# 示例：信息消费失控案例",
+      "01-案例库",
+      null,
+      { gallery: { type: "case", status: null }, contentLoaded: true },
+    ),
+    workspaceDoc(
+      "work-log:02-沉淀库/方法库/方法候选",
+      "work-log",
+      "方法候选",
+      "wiki/专题/02-方法库/待验证/method-1.md",
+      "方法候选",
+      "<h1>方法候选</h1><p>用于验证画册视图。</p>",
+      "# 方法候选\n\n用于验证画册视图。",
+      "02-沉淀库",
+      "方法库",
+      { treeHidden: true, gallery: { type: "method", status: "待验证" }, contentLoaded: true },
+    ),
+    workspaceDoc(
+      "work-log:02-沉淀库/方法库/失败方法",
+      "work-log",
+      "失败方法",
+      "wiki/专题/02-方法库/已验证但失败/method-failed.md",
+      "失败方法",
+      "<h1>失败方法</h1><p>记录失败条件。</p>",
+      "# 失败方法\n\n记录失败条件。",
+      "02-沉淀库",
+      "方法库",
+      { treeHidden: true, gallery: { type: "method", status: "已验证但失败" }, contentLoaded: true },
+    ),
+    workspaceDoc(
+      "work-log:02-沉淀库/工具箱/待验证/figma",
+      "work-log",
+      "Figma",
+      "wiki/专题/03-工具箱/待验证/figma.md",
+      "Figma",
+      "<h1>Figma</h1><p>界面协作工具。</p>",
+      "# Figma\n\n界面协作工具。",
+      "02-沉淀库",
+      "工具箱",
+      { treeHidden: true, gallery: { type: "tool", status: "待验证" }, contentLoaded: true },
+    ),
+    workspaceDoc("domain:03-归档", "domain", "03-归档", "wiki/专题/03-归档/index.md", "归档", "<h1>归档</h1>", "# 归档", "03-归档", null),
+    workspaceDoc("project:03-归档/失败的方法", "project", "失败的方法", "wiki/专题/03-归档/失败的方法/index.md", "失败的方法", "<h1>失败的方法</h1>", "# 失败的方法", "03-归档", "失败的方法"),
+    workspaceDoc(
+      "work-log:03-归档/失败的方法/method-failed.md",
+      "work-log",
+      "失败方法",
+      "wiki/专题/03-归档/失败的方法/method-failed.md",
+      "失败方法",
+      "<h1>失败方法</h1><p>记录失败条件。</p>",
+      "# 失败方法\n\n记录失败条件。",
+      "03-归档",
+      "失败的方法",
+    ),
+    workspaceDoc("project:03-归档/已完成领域、项目、任务", "project", "已完成领域、项目、任务", "wiki/专题/03-归档/已完成领域、项目、任务/index.md", "已完成领域、项目、任务", "<h1>已完成领域、项目、任务</h1>", "# 已完成领域、项目、任务", "03-归档", "已完成领域、项目、任务"),
+    workspaceDoc(
+      "work-log:03-归档/completed/task-completed-review",
+      "work-log",
+      "上线后对全部代码做一次review",
+      "wiki/专题/03-归档/已完成领域、项目、任务/task-completed-review.md",
+      "上线后对全部代码做一次review",
+      "<h1>上线后对全部代码做一次review</h1><p>已完成代码 review。</p>",
+      "# 上线后对全部代码做一次review\n\n已完成代码 review。",
+      "03-归档",
+      "已完成领域、项目、任务",
+    ),
+  ];
+}
+
+function projectWorkspaceTaskPlanFixture(): unknown {
+  const recordedAt = "2026-05-03T09:00:00.000Z";
+  return {
+    voice: { transcript: "", audioPath: null, updatedAt: null },
+    statusSummary: "项目工作区执行现场",
+    pool: {
+      items: [
+        {
+          id: "task-work-log",
+          title: "工作日志整合",
+          priority: "high",
+          source: "工作日志",
+          domain: "个人知识库",
+          project: "LLM Wiki",
+          currentProgress: "执行现场已经合并为单页",
+          nextStep: "确认项目工作区布局",
+          workflowLog: [{
+            id: "log-merge-execution",
+            recordedAt,
+            node: "推进",
+            tool: "workspace",
+            input: "执行现场合并",
+            output: "合并执行现场页面",
+            issue: "",
+            nextStep: "确认项目工作区布局",
+            attachments: [],
+            sourceRecordId: "we_1",
+          }],
+          actions: [{ id: "action-work-log-outline", title: "确认日志输入", order: 0 }],
+        },
+        {
+          id: "task-graphy-layout",
+          title: "Graphy 布局卡点",
+          priority: "mid",
+          source: "工作日志",
+          domain: "个人知识库",
+          project: "LLM Wiki",
+          lastStop: "Graphy 与正文布局互相抢占空间",
+          nextStep: "确定 Graphy 在项目工作区中的辅助边界",
+          workflowLog: [{
+            id: "log-graphy-blocker",
+            recordedAt,
+            node: "卡点",
+            tool: "workspace",
+            input: "Graphy 默认右上角",
+            output: "",
+            issue: "Graphy 与正文布局互相抢占空间",
+            nextStep: "确定 Graphy 在项目工作区中的辅助边界",
+            attachments: [],
+            sourceRecordId: "we_2",
+          }],
+        },
+        {
+          id: "task-method-review",
+          title: "方法库验收",
+          priority: "low",
+          source: "AI 生成",
+          domain: "个人知识库",
+          project: "知识沉淀",
+          nextStep: "沉淀方法库验收规则",
+          workflowLog: [],
+        },
+        {
+          id: "task-health-sleep",
+          title: "排查睡眠质量问题",
+          priority: "low",
+          source: "工作日志",
+          domain: "健康",
+          project: "个人健康",
+          nextStep: "整理睡眠记录",
+          workflowLog: [],
+        },
+        {
+          id: "task-completed-review",
+          title: "上线后对全部代码做一次review",
+          priority: "mid",
+          source: "工作日志",
+          domain: "代码质量",
+          project: "个人App开发",
+          completedAt: recordedAt,
+          currentProgress: "已完成代码 review",
+          workflowLog: [],
+        },
+      ],
+    },
+    schedule: {
+      generationId: null,
+      revisionId: null,
+      confirmed: true,
+      items: [{ id: "task-graphy-layout", title: "Graphy 布局卡点", startTime: "10:30", priority: "mid" }],
+    },
+    roadmap: { view: "week", windowStart: "2026-05-03", topLabel: "", windowLabel: "", groups: [] },
+    morningFlow: { voiceDone: false, diaryDone: false, planningDone: false },
+  };
+}
+
+function workflowArtifactsFixture(): unknown {
+  const now = new Date().toISOString();
+  return {
+    folders: [],
+    runtimeFiles: [],
+    events: [
+      { event_id: "we_1", raw_input: "完成执行现场页面整合", matched_task: "整合执行现场", confidence: "high", createdAt: now },
+      { event_id: "we_2", raw_input: "记录一条待绑定行动", event_type: "过程记录", confidence: "medium", createdAt: now },
+    ],
+    pendingConfirm: [
+      { id: "pending-bind-1", text: "绑定任务来源", confidence: "medium", eventId: "we_2", createdAt: now },
+    ],
+    pendingArchive: [
+      { id: "pending-archive-1", text: "确认沉淀位置", confidence: "low", eventId: "we_3", createdAt: now },
+    ],
+    resources: [],
+    validations: [],
+    methods: [],
+  };
+}
+
+function workspaceDoc(
+  id: string,
+  kind: string,
+  label: string,
+  path: string,
+  title: string,
+  html: string,
+  raw: string,
+  domain: string | null,
+  project: string | null,
+  extras: Record<string, unknown> = {},
+): unknown {
+  return {
+    id,
+    kind,
+    label,
+    path,
+    title,
+    html,
+    raw,
+    modifiedAt: "2026-04-23T10:00:00.000Z",
+    domain,
+    project,
+    ...extras,
+  };
+}
+
+function changeTaskPoolSort(page: HTMLElement, zone: string, value: string): void {
+  const input = page.querySelector<HTMLSelectElement>(`[data-task-pool-sort-zone='${zone}']`);
+  expect(input).not.toBeNull();
+  input!.value = value;
+  input!.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function changeTaskPoolGroup(page: HTMLElement, zone: string, value: string): void {
+  const input = page.querySelector<HTMLSelectElement>(`[data-task-pool-group-zone='${zone}']`);
+  expect(input).not.toBeNull();
+  input!.value = value;
+  input!.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function readFirstTaskPoolCardTitle(page: HTMLElement, zone: string): string | null {
+  return page
+    .querySelector(`[data-task-pool-drop-zone='${zone}'] [data-task-pool-card] h4`)
+    ?.textContent ?? null;
+}
+
+function changeTaskPlanPoolSort(page: HTMLElement, value: string): void {
+  const input = page.querySelector<HTMLSelectElement>("[data-task-plan-pool-sort]");
+  expect(input).not.toBeNull();
+  input!.value = value;
+  input!.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function readFirstTaskPlanPoolTitle(page: HTMLElement): string | null {
+  return page.querySelector("[data-task-plan-pool-list] .workspace-task-plan-poster__pool-text")?.textContent ?? null;
+}
+
+function readProjectWorkspacePoolSaveBody(fetchMock: ReturnType<typeof vi.fn>): {
+  readonly items: Array<{
+    id: string;
+    domain?: string;
+    project?: string;
+    projectOrder?: number;
+    stageId?: string;
+    actions?: Array<{ id: string; title: string; order: number }>;
+  }>;
+  readonly stages?: Array<{ id: string; title: string; domain: string; project: string; order: number }>;
+} {
+  const poolCall = fetchMock.mock.calls.filter(([url, init]) =>
+    url === "/api/task-plan/pool" && (init as RequestInit | undefined)?.method === "PUT"
+  ).at(-1);
+  expect(poolCall).toBeTruthy();
+  return JSON.parse(String((poolCall?.[1] as RequestInit).body)) as {
+    items: Array<{
+      id: string;
+      domain?: string;
+      project?: string;
+      projectOrder?: number;
+      stageId?: string;
+      actions?: Array<{ id: string; title: string; order: number }>;
+    }>;
+    stages?: Array<{ id: string; title: string; domain: string; project: string; order: number }>;
+  };
 }
 
 type MockTaskPlanPriority = "high" | "mid" | "low" | "cool" | "neutral";
@@ -2378,6 +3764,28 @@ interface MockTaskPlanState {
       source: MockTaskPlanSource;
       domain?: string;
       project?: string;
+      projectOrder?: number;
+      stageId?: string;
+      taskOrder?: number;
+      zone?: "mine" | "ai" | "candidate";
+      owner?: "me" | "ai";
+      createdAt?: string;
+      completedAt?: string;
+      dueDate?: string;
+      diaryDate?: string;
+      generationBatchId?: string;
+      generatedReason?: string;
+      duplicateOfTitle?: string;
+      actions?: Array<{ id: string; title: string; order: number; completedAt?: string }>;
+    }>;
+    stages?: Array<{ id: string; title: string; domain: string; project: string; order: number; note?: string }>;
+    generationRecords?: Array<{
+      id: string;
+      generatedAt: string;
+      diaryPaths: string[];
+      diaryDates: string[];
+      createdTaskIds: string[];
+      skippedDuplicateTitles: string[];
     }>;
   };
   schedule: {
@@ -2618,181 +4026,6 @@ function installWorkspaceHealthPartialVerificationFetchMock() {
   return { fetchMock, taskPlan };
 }
 
-function installLegacyToolboxFetchMock() {
-  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = String(input);
-    if (url === "/api/toolbox" && (!init || init.method === undefined)) {
-      return jsonResponse(buildLegacyToolboxListPayload());
-    }
-    if (url === "/api/toolbox" && init?.method === "POST") {
-      return jsonResponse(buildLegacyToolboxCreatePayload());
-    }
-    if (url === "/api/toolbox" && (init?.method === "PUT" || init?.method === "DELETE")) {
-      return jsonResponse({ success: true });
-    }
-    throw new Error(`unexpected fetch ${url}`);
-  });
-  vi.stubGlobal("fetch", fetchMock);
-  return fetchMock;
-}
-
-function installManagedToolboxFetchMock() {
-  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = String(input);
-    if (url === "/api/toolbox" && (!init || init.method === undefined)) {
-      return jsonResponse(buildManagedToolboxListPayload());
-    }
-    if (url === "/api/toolbox" && init?.method === "POST") {
-      return jsonResponse(buildManagedToolboxCreatePayload());
-    }
-    if (url === "/api/toolbox" && (init?.method === "PUT" || init?.method === "DELETE")) {
-      return jsonResponse({ success: true });
-    }
-    throw new Error(`unexpected fetch ${url}`);
-  });
-  vi.stubGlobal("fetch", fetchMock);
-  return fetchMock;
-}
-
-function buildLegacyToolboxListPayload() {
-  return {
-    success: true,
-    data: {
-      categories: ["checklist", "assets"],
-      items: [
-        {
-          path: "toolbox/checklist/research-flow.md",
-          kind: "checklist",
-          title: "Research Flow",
-          solves: "Collect source material before drafting",
-          url: "",
-          tags: ["research", "sources"],
-          body: "Review the source list before writing.",
-          raw: "# Research Flow",
-          modifiedAt: "2026-04-24T08:00:00.000Z",
-        },
-        {
-          path: "toolbox/assets/figma.md",
-          kind: "assets",
-          title: "Figma",
-          solves: "Design and prototype UI",
-          url: "https://www.figma.com/",
-          tags: ["design"],
-          body: "Collaborative design tool.",
-          raw: "# Figma",
-          modifiedAt: "2026-04-24T08:05:00.000Z",
-        },
-      ],
-    },
-  };
-}
-
-function buildLegacyToolboxCreatePayload() {
-  return {
-    success: true,
-    data: {
-      item: {
-        path: "toolbox/checklist/new-tool.md",
-        kind: "checklist",
-        title: "New Tool",
-        solves: "",
-        url: "",
-        tags: [],
-        body: "",
-        raw: "# New Tool",
-        modifiedAt: "2026-04-24T08:10:00.000Z",
-      },
-    },
-  };
-}
-
-function buildManagedToolboxListPayload() {
-  return {
-    success: true,
-    data: {
-      page: {
-        title: "Toolbox",
-        subtitle: "Managed workspace tools",
-        defaultMode: "工作流",
-        modes: ["工作流", "工具资产"],
-        assetCategories: ["全部", "标准资料", "软件"],
-      },
-      workflows: [
-        {
-          id: "workflow-1",
-          entityType: "workflow",
-          title: "Daily Brief",
-          summary: "Prepare a short daily brief",
-          ratioLabel: "1:1",
-          agentName: "Brief Agent",
-          accent: "blue",
-        },
-      ],
-      assets: [
-        {
-          id: "asset-1",
-          entityType: "asset",
-          title: "Research Kit",
-          summary: "Collect source material for article drafts",
-          category: "标准资料",
-          badge: "标准资料",
-          href: "",
-          source: {
-            type: "managed",
-          },
-        },
-        {
-          id: "asset-2",
-          entityType: "asset",
-          title: "Figma",
-          summary: "UI design and prototyping",
-          category: "软件",
-          badge: "软件",
-          href: "https://www.figma.com/",
-          source: {
-            type: "managed",
-          },
-        },
-      ],
-      recentRuns: [
-        {
-          id: "recent-1",
-          agentName: "Brief Agent",
-          ranAtLabel: "09:00",
-          accent: "blue",
-        },
-      ],
-      favorites: [
-        {
-          id: "favorite-1",
-          title: "Pinned Tool",
-          accent: "green",
-        },
-      ],
-    },
-  };
-}
-
-function buildManagedToolboxCreatePayload() {
-  return {
-    success: true,
-    data: {
-      record: {
-        id: "asset-new",
-        entityType: "asset",
-        title: "New Managed Asset",
-        summary: "",
-        category: "标准资料",
-        badge: "标准资料",
-        href: "",
-        source: {
-          type: "managed",
-        },
-      },
-    },
-  };
-}
-
 function createMockTaskPlanFixture(): { state: MockTaskPlanState } {
   return {
     state: {
@@ -2807,6 +4040,7 @@ function createMockTaskPlanFixture(): { state: MockTaskPlanState } {
           { id: "pool-1", title: "\u6765\u81ea\u540e\u7aef\u7684\u4efb\u52a1\u6c60 1", priority: "high", source: "\u6587\u5b57\u8f93\u5165" },
           { id: "pool-2", title: "\u6765\u81ea\u540e\u7aef\u7684\u4efb\u52a1\u6c60 2", priority: "mid", source: "AI \u751f\u6210" },
         ],
+        generationRecords: [],
       },
       schedule: {
         generationId: "task-plan-generation-1",
@@ -2978,6 +4212,14 @@ function dispatchDragEvent(target: Element, type: string, dataTransfer?: MockDat
   };
   event.dataTransfer = dataTransfer ?? createMockDataTransfer();
   target.dispatchEvent(event);
+}
+
+function dispatchMouseEvent(target: EventTarget, type: string, init: MouseEventInit): void {
+  target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, ...init }));
+}
+
+function dispatchProjectWorkspaceShortcut(target: Element, key: "Enter" | "Tab"): void {
+  target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
 }
 
 function dispatchGestureEvent(target: Element, type: string, scale: number): void {

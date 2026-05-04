@@ -106,4 +106,51 @@ describe("search hybrid", () => {
     expect(results[0]?.id).toBe("wiki-incident-playbook");
     expect(results[1]?.id).toBe("source-incident-playbook");
   });
+
+  it("does not return raw entries that do not contain the query", () => {
+    const results = hybridSearch(
+      [
+        {
+          id: "raw-unrelated",
+          title: "Daily photo",
+          path: "raw/闪念日记/2026-04-29.md",
+          layer: "raw",
+          excerpt: "早餐照片和行程记录。",
+          tags: ["闪念日记"],
+          modifiedAt: null,
+        },
+        {
+          id: "raw-match",
+          title: "申请反馈",
+          path: "raw/剪藏/application.md",
+          layer: "raw",
+          excerpt: "我们认真评估了你的申请。",
+          tags: ["剪藏"],
+          modifiedAt: null,
+        },
+      ],
+      "我们",
+    );
+
+    expect(results.map((item) => item.id)).toEqual(["raw-match"]);
+  });
+
+  it("tokenizes Chinese queries into bigrams for hybrid recall", () => {
+    const results = hybridSearch(
+      [
+        {
+          id: "tacit-knowledge",
+          title: "默会知识",
+          path: "wiki/concepts/tacit-knowledge.md",
+          layer: "wiki",
+          excerpt: "关于实践中的隐性知识。",
+          tags: [],
+          modifiedAt: null,
+        },
+      ],
+      "默会知识是什么",
+    );
+
+    expect(results[0]?.id).toBe("tacit-knowledge");
+  });
 });

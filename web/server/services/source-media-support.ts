@@ -26,6 +26,7 @@ export interface SourceMediaIndexRecord {
   mediaKinds: SourceMediaKind[];
   coverImagePath?: string;
   ocrTextPath?: string;
+  ocrFingerprint?: string;
   transcriptPath?: string;
   media: SourceMediaReference[];
 }

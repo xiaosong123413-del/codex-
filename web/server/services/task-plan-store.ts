@@ -12,6 +12,8 @@ export interface TaskPlanStoreOptions {
 
 export type TaskPlanPriority = "high" | "mid" | "low" | "cool" | "neutral";
 export type TaskPlanTaskSource = "文字输入" | "近日状态" | "闪念日记" | "工作日志" | "AI 生成" | "手动新增";
+export type TaskPoolZone = "mine" | "ai" | "candidate";
+export type TaskPoolOwner = "me" | "ai";
 
 interface TaskPlanVoiceState {
   transcript: string;
@@ -26,10 +28,70 @@ export interface TaskPlanPoolItem {
   source: TaskPlanTaskSource;
   domain?: string;
   project?: string;
+  stageId?: string;
+  projectOrder?: number;
+  taskOrder?: number;
+  zone?: TaskPoolZone;
+  owner?: TaskPoolOwner;
+  createdAt?: string;
+  completedAt?: string;
+  dueDate?: string;
+  diaryDate?: string;
+  generationBatchId?: string;
+  generatedReason?: string;
+  duplicateOfTitle?: string;
+  currentProgress?: string;
+  lastStop?: string;
+  nextStep?: string;
+  linkedCases?: string[];
+  linkedResources?: string[];
+  linkedMethods?: string[];
+  sourceRefs?: string[];
+  workflowLog?: TaskWorkflowLogEntry[];
+  actions?: TaskPlanActionItem[];
+}
+
+export interface TaskPlanStageItem {
+  id: string;
+  title: string;
+  domain: string;
+  project: string;
+  order: number;
+}
+
+export interface TaskPlanActionItem {
+  id: string;
+  title: string;
+  order: number;
+  completedAt?: string;
+}
+
+export interface TaskWorkflowLogEntry {
+  id: string;
+  recordedAt: string;
+  node: string;
+  tool: string;
+  input: string;
+  output: string;
+  issue: string;
+  nextStep: string;
+  attachments: string[];
+  sourceRecordId: string;
+}
+
+export interface TaskPoolGenerationRecord {
+  id: string;
+  generatedAt: string;
+  diaryPaths: string[];
+  diaryDates: string[];
+  createdTaskIds: string[];
+  skippedDuplicateTitles: string[];
 }
 
 interface TaskPlanPoolState {
   items: TaskPlanPoolItem[];
+  stages: TaskPlanStageItem[];
+  generationRecords: TaskPoolGenerationRecord[];
 }
 
 export interface TaskPlanScheduleItem {
@@ -99,7 +161,7 @@ export async function readTaskPlanState(
 ): Promise<TaskPlanState> {
   const filePath = getStatePath(resolveStorageRoot(options));
   if (!existsSync(filePath)) {
-    const state = createDefaultTaskPlanState();
+    const state = normalizeTaskPlanState(createDefaultTaskPlanState());
     await writeJson(filePath, state);
     return state;
   }
@@ -111,8 +173,10 @@ export async function readTaskPlanState(
 export async function writeTaskPlanState(
   state: TaskPlanState,
   options: TaskPlanStoreOptions = {},
-): Promise<void> {
-  await writeJson(getStatePath(resolveStorageRoot(options)), state);
+): Promise<TaskPlanState> {
+  const normalized = normalizeTaskPlanState(state);
+  await writeJson(getStatePath(resolveStorageRoot(options)), normalized);
+  return normalized;
 }
 
 function createDefaultTaskPlanState(): TaskPlanState {
@@ -125,6 +189,8 @@ function createDefaultTaskPlanState(): TaskPlanState {
     },
     pool: {
       items: createDefaultPoolItems(),
+      stages: [],
+      generationRecords: [],
     },
     schedule: {
       generationId: null,
@@ -265,10 +331,20 @@ function normalizeTaskPlanPool(
   input: Partial<TaskPlanState>,
   defaults: TaskPlanState,
 ): TaskPlanPoolState {
+  const pool = input.pool;
+  const items = Array.isArray(pool?.items)
+    ? pool.items.map((item, index) => normalizeTaskPlanPoolItem(item, defaults.pool.items[index]))
+    : defaults.pool.items;
+  const stages = Array.isArray(pool?.stages)
+    ? pool.stages.map(normalizeTaskPlanStage).filter((stage): stage is TaskPlanStageItem => stage !== null)
+    : [];
+  const migrated = ensureTaskPlanStages(items, stages);
   return {
-    items: Array.isArray(input.pool?.items)
-      ? input.pool.items.map((item, index) => normalizeTaskPlanPoolItem(item, defaults.pool.items[index]))
-      : defaults.pool.items,
+    items: migrated.items,
+    stages: migrated.stages,
+    generationRecords: Array.isArray(pool?.generationRecords)
+      ? pool.generationRecords.map(normalizeTaskPoolGenerationRecord)
+      : defaults.pool.generationRecords,
   };
 }
 
@@ -328,18 +404,172 @@ function readOptionalText(value: unknown): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
+function readOptionalNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
 function normalizeTaskPlanPoolItem(input: unknown, fallback: TaskPlanPoolItem | undefined): TaskPlanPoolItem {
   const defaults = fallback ?? createDefaultPoolItems()[0];
   if (!isRecord(input)) {
     return defaults;
   }
-  return {
+  const item: TaskPlanPoolItem = {
     id: typeof input.id === "string" && input.id.trim() ? input.id : defaults.id,
     title: typeof input.title === "string" && input.title.trim() ? input.title : defaults.title,
     priority: isTaskPlanPriority(input.priority) ? input.priority : defaults.priority,
     source: isTaskPlanTaskSource(input.source) ? input.source : defaults.source,
-    domain: readOptionalText(input.domain),
-    project: readOptionalText(input.project),
+  };
+  assignOptionalTaskPoolFields(item, input);
+  return item;
+}
+
+function assignOptionalTaskPoolFields(item: TaskPlanPoolItem, input: Record<string, unknown>): void {
+  const textFields = [
+    "domain",
+    "project",
+    "stageId",
+    "createdAt",
+    "completedAt",
+    "dueDate",
+    "diaryDate",
+    "generationBatchId",
+    "generatedReason",
+    "duplicateOfTitle",
+    "currentProgress",
+    "lastStop",
+    "nextStep",
+  ] as const;
+  for (const field of textFields) {
+    const value = readOptionalText(input[field]);
+    if (value) {
+      item[field] = value;
+    }
+  }
+  const zone = readTaskPoolZone(input.zone);
+  if (zone) item.zone = zone;
+  const projectOrder = readOptionalNumber(input.projectOrder);
+  if (projectOrder !== undefined) item.projectOrder = projectOrder;
+  const taskOrder = readOptionalNumber(input.taskOrder);
+  if (taskOrder !== undefined) item.taskOrder = taskOrder;
+  const owner = readTaskPoolOwner(input.owner);
+  if (owner) item.owner = owner;
+  const workflowLog = readTaskWorkflowLog(input.workflowLog);
+  if (workflowLog.length > 0) item.workflowLog = workflowLog;
+  const actions = readTaskActions(input.actions);
+  if (actions.length > 0) item.actions = actions;
+  assignOptionalTaskPoolLists(item, input);
+}
+
+function normalizeTaskPlanStage(input: unknown): TaskPlanStageItem | null {
+  if (!isRecord(input)) return null;
+  const id = readOptionalText(input.id);
+  const title = readOptionalText(input.title);
+  const domain = readOptionalText(input.domain);
+  const project = readOptionalText(input.project);
+  const order = readOptionalNumber(input.order);
+  if (!id || !title || !domain || !project || order === undefined) return null;
+  return { id, title, domain, project, order };
+}
+
+function ensureTaskPlanStages(
+  items: TaskPlanPoolItem[],
+  stages: TaskPlanStageItem[],
+): { items: TaskPlanPoolItem[]; stages: TaskPlanStageItem[] } {
+  const nextStages = [...stages];
+  const nextItems = items.map((item) => {
+    const domain = item.domain ?? "待分组领域";
+    const project = item.project ?? "未归类项目";
+    const stageId = item.stageId && nextStages.some((stage) => stage.id === item.stageId)
+      ? item.stageId
+      : ensureDefaultStage(nextStages, domain, project, defaultStageTitle(item));
+    return { ...item, stageId };
+  });
+  return { items: nextItems, stages: nextStages };
+}
+
+function ensureDefaultStage(
+  stages: TaskPlanStageItem[],
+  domain: string,
+  project: string,
+  title: string,
+): string {
+  const existing = stages.find((stage) => stage.domain === domain && stage.project === project && stage.title === title);
+  if (existing) return existing.id;
+  const projectStages = stages.filter((stage) => stage.domain === domain && stage.project === project);
+  const id = `stage:${safeStagePart(domain)}:${safeStagePart(project)}:${safeStagePart(title)}`;
+  stages.push({ id, title, domain, project, order: projectStages.length });
+  return id;
+}
+
+function defaultStageTitle(item: TaskPlanPoolItem): string {
+  if (item.completedAt?.trim()) return "已完成";
+  if (item.currentProgress?.trim() || item.lastStop?.trim()) return "同步推进";
+  return "待推进";
+}
+
+function safeStagePart(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/g, "-").replace(/^-|-$/g, "") || "stage";
+}
+
+function readTaskActions(value: unknown): TaskPlanActionItem[] {
+  if (!Array.isArray(value)) return [];
+  return value.map(readTaskAction).filter((action): action is TaskPlanActionItem => action !== null);
+}
+
+function readTaskAction(value: unknown): TaskPlanActionItem | null {
+  if (!isRecord(value)) return null;
+  const id = readOptionalText(value.id);
+  const title = readOptionalText(value.title);
+  const order = readOptionalNumber(value.order);
+  if (!id || !title || order === undefined) return null;
+  const completedAt = readOptionalText(value.completedAt);
+  return completedAt ? { id, title, order, completedAt } : { id, title, order };
+}
+
+function assignOptionalTaskPoolLists(item: TaskPlanPoolItem, input: Record<string, unknown>): void {
+  const listFields = ["linkedCases", "linkedResources", "linkedMethods", "sourceRefs"] as const;
+  for (const field of listFields) {
+    const value = readStringArray(input[field]);
+    if (value.length > 0) {
+      item[field] = value;
+    }
+  }
+}
+
+function readTaskWorkflowLog(value: unknown): TaskWorkflowLogEntry[] {
+  if (!Array.isArray(value)) return [];
+  return value.map(readTaskWorkflowLogEntry).filter((entry): entry is TaskWorkflowLogEntry => entry !== null);
+}
+
+// fallow-ignore-next-line complexity
+function readTaskWorkflowLogEntry(value: unknown): TaskWorkflowLogEntry | null {
+  if (!isRecord(value)) return null;
+  const id = readOptionalText(value.id);
+  const recordedAt = readOptionalText(value.recordedAt);
+  if (!id || !recordedAt) return null;
+  return {
+    id,
+    recordedAt,
+    node: readOptionalText(value.node) ?? "待整理",
+    tool: readOptionalText(value.tool) ?? "未识别",
+    input: readOptionalText(value.input) ?? "",
+    output: readOptionalText(value.output) ?? "",
+    issue: readOptionalText(value.issue) ?? "",
+    nextStep: readOptionalText(value.nextStep) ?? "",
+    attachments: readStringArray(value.attachments),
+    sourceRecordId: readOptionalText(value.sourceRecordId) ?? id,
+  };
+}
+
+function normalizeTaskPoolGenerationRecord(input: unknown): TaskPoolGenerationRecord {
+  const record = isRecord(input) ? input : {};
+  return {
+    id: readStringValue(record.id, `task-pool-generation-${Date.now()}`),
+    generatedAt: readStringValue(record.generatedAt, new Date().toISOString()),
+    diaryPaths: readStringArray(record.diaryPaths),
+    diaryDates: readStringArray(record.diaryDates),
+    createdTaskIds: readStringArray(record.createdTaskIds),
+    skippedDuplicateTitles: readStringArray(record.skippedDuplicateTitles),
   };
 }
 
@@ -350,6 +580,18 @@ function isTaskPlanPriority(value: unknown): value is TaskPlanPriority {
 function isTaskPlanTaskSource(value: unknown): value is TaskPlanTaskSource {
   return value === "文字输入" || value === "近日状态" || value === "闪念日记" || value === "工作日志" || value === "AI 生成"
     || value === "手动新增";
+}
+
+function readTaskPoolZone(value: unknown): TaskPoolZone | undefined {
+  return value === "mine" || value === "ai" || value === "candidate" ? value : undefined;
+}
+
+function readTaskPoolOwner(value: unknown): TaskPoolOwner | undefined {
+  return value === "me" || value === "ai" ? value : undefined;
+}
+
+function readStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -16,6 +16,7 @@ export async function onRequestGet(context) {
   return json({ success: true, data: comments });
 }
 
+// fallow-ignore-next-line complexity
 export async function onRequestPost(context) {
   const missing = requireDb(context.env);
   if (missing) return missing;

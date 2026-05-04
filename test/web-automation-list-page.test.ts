@@ -24,6 +24,7 @@ describe("automation workspace list and logs", () => {
           automations: [
             { id: "daily-sync", name: "每日同步", summary: "同步昨日新增内容。", icon: "calendar", enabled: true, trigger: "schedule", sourceKind: "automation" },
             { id: "publish-hook", name: "发布回调", summary: "收到发布回调后执行。", icon: "rocket", enabled: false, trigger: "webhook", sourceKind: "automation" },
+            { id: "code-flow-information-transfer", name: "信息流转流程", summary: "追踪输入信息流转。", icon: "git-branch", enabled: true, trigger: "message", sourceKind: "information" },
             { id: "code-flow-sync-entry", name: "同步入口", summary: "真实同步入口分支。", icon: "rocket", enabled: true, trigger: "message", sourceKind: "code" },
             { id: "code-flow-compile-chain", name: "编译链路", summary: "真实编译链路。", icon: "cpu", enabled: true, trigger: "message", sourceKind: "code" },
           ],
@@ -35,6 +36,7 @@ describe("automation workspace list and logs", () => {
           automations: [
             { id: "daily-sync", name: "每日同步 v2", summary: "同步昨日新增内容。", icon: "calendar", enabled: true, trigger: "schedule", sourceKind: "automation" },
             { id: "publish-hook", name: "发布回调", summary: "收到发布回调后执行。", icon: "rocket", enabled: false, trigger: "webhook", sourceKind: "automation" },
+            { id: "code-flow-information-transfer", name: "信息流转流程", summary: "追踪输入信息流转。", icon: "git-branch", enabled: true, trigger: "message", sourceKind: "information" },
             { id: "code-flow-sync-entry", name: "同步入口", summary: "真实同步入口分支。", icon: "rocket", enabled: true, trigger: "message", sourceKind: "code" },
             { id: "code-flow-compile-chain", name: "编译链路", summary: "真实编译链路。", icon: "cpu", enabled: true, trigger: "message", sourceKind: "code" },
           ],
@@ -66,7 +68,7 @@ describe("automation workspace list and logs", () => {
     }));
   });
 
-  it("renders the list view, filters by status and search, and navigates to detail and logs", async () => {
+  it("renders the list view, searches, and navigates to detail and logs", async () => {
     const page = renderAutomationWorkspacePage();
     document.body.appendChild(page);
     await flush();
@@ -74,18 +76,17 @@ describe("automation workspace list and logs", () => {
     expect(page.querySelector(".automation-page")).not.toBeNull();
     expect(page.getAttribute("data-automation-scroll")).toBe("");
     expect(page.textContent).toContain("Workflow");
-    expect(page.textContent).toContain("真实 Workflow");
+    expect(page.textContent).toContain("应用流程");
+    expect(page.textContent).toContain("信息流转流程");
     expect(page.textContent).toContain("源码真实流程");
     expect(page.textContent).toContain("每日同步");
     expect(page.textContent).toContain("发布回调");
+    expect(page.textContent).toContain("追踪输入信息流转。");
     expect(page.textContent).toContain("同步入口");
     expect(page.textContent).toContain("编译链路");
+    expect(page.querySelector("[data-automation-filter]")).toBeNull();
+    expect(page.textContent).not.toContain("全部 Workflow");
 
-    page.querySelector<HTMLButtonElement>("[data-automation-filter='stopped']")?.click();
-    expect(page.textContent).not.toContain("每日同步");
-    expect(page.textContent).toContain("发布回调");
-
-    page.querySelector<HTMLButtonElement>("[data-automation-filter='all']")?.click();
     const search = page.querySelector<HTMLInputElement>("[data-automation-search]");
     expect(search).not.toBeNull();
     search!.value = "每日";

@@ -1,9 +1,9 @@
 {
   "source_vault_root": "D:\\Desktop\\ai的仓库",
-  "runtime_output_root": "D:\\Desktop\\llm-wiki-compiler-main\\.runtime\\ai-vault",
+  "runtime_output_root": "D:\\Desktop\\llm-wiki-compiler-main\\.runtime\\accounts\\f9e5c7a8-7fcd-4636-8d85-fc73e5dec3f0\\fff5ad00-683d-4d34-89e4-f8ced91e56ac",
   "compiler_root": "D:\\Desktop\\llm-wiki-compiler-main",
   "source_folders": [
-    "D:\\Desktop\\ai的仓库\\raw"
+    "D:\\Desktop\\ai的仓库\\raw\\剪藏"
   ],
   "compile_mode": "batch",
   "publish_mode": "final_only",
@@ -23,5 +23,6 @@
     ".claude",
     ".claudian",
     "_已清理"
-  ]
+  ],
+  "cloudflare_workspace_id": "fff5ad00-683d-4d34-89e4-f8ced91e56ac"
 }

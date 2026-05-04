@@ -58,6 +58,152 @@ describe("flash diary page", () => {
     ).not.toBeNull();
   });
 
+  it("opens current-page find from the diary top area when Ctrl+F is pressed", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          twelveQuestions: {
+            kind: "document",
+            title: "十二个问题",
+            path: "wiki/journal-twelve-questions.md",
+            description: "固定追问清单",
+            exists: false,
+            modifiedAt: null,
+          },
+          items: [],
+          memory: {
+            kind: "memory",
+            title: "Memory",
+            path: "wiki/journal-memory.md",
+            description: "根据日记沉淀的分层记忆",
+            exists: false,
+            modifiedAt: null,
+            lastAppliedDiaryDate: null,
+          },
+        },
+      }),
+    }));
+
+    const page = renderFlashDiaryPage();
+    document.body.appendChild(page);
+    await waitFor(() => {
+      expect(page.querySelector("[data-flash-diary-memory]")).toBeTruthy();
+    });
+
+    const event = new KeyboardEvent("keydown", {
+      key: "f",
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+
+    expect(document.dispatchEvent(event)).toBe(false);
+    const input = page.querySelector<HTMLInputElement>("[data-page-text-search-input]");
+    expect(input).toBeTruthy();
+    expect(input?.closest(".flash-diary-page__list-panel")).toBeNull();
+    expect(document.activeElement).toBe(input);
+  });
+
+  it("finds text only inside the currently opened diary page", async () => {
+    const fetchMock = vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/flash-diary") {
+        return ok({
+          twelveQuestions: {
+            kind: "document",
+            title: "十二个问题",
+            path: "wiki/journal-twelve-questions.md",
+            description: "固定追问清单",
+            exists: false,
+            modifiedAt: null,
+          },
+          items: [
+            {
+              path: "raw/闪念日记/2026-04-29.md",
+              title: "2026-04-29",
+              date: "2026-04-29",
+              entryCount: 1,
+              modifiedAt: "2026-04-29T10:00:00.000Z",
+              thumbnailUrl: null,
+            },
+          ],
+          memory: {
+            kind: "memory",
+            title: "Memory",
+            path: "wiki/journal-memory.md",
+            description: "根据日记沉淀的分层记忆",
+            exists: false,
+            modifiedAt: null,
+            lastAppliedDiaryDate: null,
+          },
+        });
+      }
+      if (url.includes("/api/flash-diary/page?")) {
+        return ok({
+          path: "raw/闪念日记/2026-04-29.md",
+          title: "2026-04-29",
+          raw: "# 2026-04-29\n\n## 10:00:00\n\n我们只查当前日记。\n",
+          html: "<h1>2026-04-29</h1><h2>10:00:00</h2><p>我们只查当前日记。</p>",
+          modifiedAt: "2026-04-29T10:00:00.000Z",
+          entryCount: 1,
+        });
+      }
+      return ok({});
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const page = renderFlashDiaryPage();
+    document.body.appendChild(page);
+    await waitFor(() => {
+      expect(page.querySelector("[data-flash-diary-visual-editor]")?.textContent).toContain("我们只查当前日记");
+    });
+
+    const event = new KeyboardEvent("keydown", {
+      key: "f",
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    document.dispatchEvent(event);
+
+    const input = page.querySelector<HTMLInputElement>("[data-page-text-search-input]")!;
+    input.dispatchEvent(new Event("compositionstart", { bubbles: true }));
+    input.value = "h";
+    input.dispatchEvent(createComposingInputEvent());
+    expect(document.activeElement).toBe(input);
+    expect(page.querySelector("[data-page-text-search-status]")?.textContent).toBe("");
+
+    input.value = "ha";
+    input.dispatchEvent(createComposingInputEvent());
+    expect(document.activeElement).toBe(input);
+    expect(page.querySelector("[data-page-text-search-status]")?.textContent).toBe("");
+
+    input.value = "好";
+    input.dispatchEvent(new Event("compositionend", { bubbles: true }));
+    expect(document.activeElement).toBe(input);
+    expect(page.querySelector("[data-page-text-search-status]")?.textContent).toBe("无结果");
+
+    input.value = "我们";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+
+    expect(window.getSelection()?.toString()).toBe("");
+    expect(page.querySelectorAll("[data-page-text-search-mark]").length).toBeGreaterThan(0);
+    expect(page.querySelector("[data-page-text-search-status]")?.textContent).toBe("1 个结果");
+
+    page.querySelector<HTMLButtonElement>("[data-page-text-search-next]")?.click();
+
+    expect(window.getSelection()?.toString()).toBe("我们");
+
+    input.value = "Memory";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+
+    expect(page.querySelector("[data-page-text-search-status]")?.textContent).toBe("无结果");
+    expect(window.getSelection()?.toString()).toBe("");
+    expect(fetchMock.mock.calls.some(([call]) => String(call).includes("/api/search?"))).toBe(false);
+  });
+
   it("loads the latest diary and opens it automatically", async () => {
     vi.stubGlobal("fetch", vi.fn()
       .mockResolvedValueOnce({
@@ -89,6 +235,7 @@ describe("flash diary page", () => {
                 date: "2026-04-19",
                 entryCount: 2,
                 modifiedAt: "2026-04-19T10:00:00.000Z",
+                thumbnailUrl: "/api/flash-diary/media?path=raw%2F%E9%97%AA%E5%BF%B5%E6%97%A5%E8%AE%B0%2Fassets%2F2026-04-19%2Fidea.png",
               },
             ],
           },
@@ -115,9 +262,93 @@ describe("flash diary page", () => {
     });
 
     expect(page.textContent).toContain("2026-04-19");
+    expect(page.querySelector("[data-flash-diary-timeline]")).toBeTruthy();
+    expect(page.querySelector<HTMLImageElement>(".flash-diary-page__timeline-thumb img")?.src).toContain("/api/flash-diary/media");
     expect((page.querySelector("[data-flash-diary-editor]") as HTMLTextAreaElement).value).toContain("hello");
     expect(page.querySelector("[data-flash-diary-preview]")).toBeNull();
     expect(page.querySelector("[data-flash-diary-save]")).toBeTruthy();
+  });
+
+  it("renders diary markdown images as visual thumbnails and opens a closable preview modal", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: {
+            twelveQuestions: {
+              kind: "document",
+              title: "十二个问题",
+              path: "wiki/journal-twelve-questions.md",
+              description: "固定追问清单",
+              exists: false,
+              modifiedAt: null,
+            },
+            memory: {
+              kind: "memory",
+              title: "Memory",
+              path: "wiki/journal-memory.md",
+              description: "根据日记沉淀的分层记忆",
+              exists: true,
+              modifiedAt: "2026-04-27T10:00:00.000Z",
+              lastAppliedDiaryDate: "2026-04-26",
+            },
+            items: [
+              {
+                path: "raw/闪念日记/2026-04-27.md",
+                title: "2026-04-27",
+                date: "2026-04-27",
+                entryCount: 1,
+                modifiedAt: "2026-04-27T10:00:00.000Z",
+              },
+            ],
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: {
+            path: "raw/闪念日记/2026-04-27.md",
+            title: "2026-04-27",
+            raw: [
+              "# 2026-04-27 闪念日记",
+              "",
+              "今天想补一张图。",
+              "",
+              "![图片 1](./assets/2026-04-27/pasted.png)",
+            ].join("\n"),
+            html: "",
+            modifiedAt: "2026-04-27T10:00:00.000Z",
+            entryCount: 1,
+          },
+        }),
+      }));
+
+    const page = renderFlashDiaryPage();
+    await waitFor(() => {
+      expect(page.querySelector("[data-flash-diary-visual-editor]")).toBeTruthy();
+    });
+
+    await waitFor(() => {
+      expect(page.querySelector("[data-flash-diary-image-thumb]")).toBeTruthy();
+    });
+
+    const image = page.querySelector<HTMLImageElement>("[data-flash-diary-image-thumb]");
+    expect(image).toBeTruthy();
+    expect(image?.getAttribute("src")).toContain("/api/flash-diary/media?path=");
+    image?.click();
+
+    await waitFor(() => {
+      expect(page.querySelector<HTMLElement>("[data-flash-diary-image-preview]")?.hidden).toBe(false);
+    });
+
+    page.querySelector<HTMLButtonElement>("[data-flash-diary-image-preview-close]")?.click();
+
+    await waitFor(() => {
+      expect(page.querySelector<HTMLElement>("[data-flash-diary-image-preview]")?.hidden).toBe(true);
+    });
   });
 
   it("opens memory in rendered commentable mode when the memory card is clicked", async () => {
@@ -395,6 +626,7 @@ describe("flash diary page", () => {
     expect(page.querySelector("[data-flash-diary-memory-layout]")?.hasAttribute("hidden")).toBe(false);
   });
 
+  // fallow-ignore-next-line complexity
   it("shows the shared selection toolbar in memory mode and creates comments from the selected quote", async () => {
     let createdComment:
       | {
@@ -560,17 +792,31 @@ describe("flash diary page", () => {
     }
   });
 
+  // fallow-ignore-next-line complexity
   it("keeps the memory layout at a fixed viewport height so the article scrolls internally", () => {
     const styles = readFileSync(path.join(process.cwd(), "web", "client", "styles.css"), "utf8");
     const memoryLayoutBlock = styles.match(/\.flash-diary-page__memory-layout\s*\{[^}]+\}/)?.[0] ?? "";
     const workspaceBlock = styles.match(/\.flash-diary-page__workspace\s*\{[^}]+\}/)?.[0] ?? "";
+    const editorPanelBlock = Array.from(styles.matchAll(/\.flash-diary-page__editor-panel\s*\{[^}]+\}/g))
+      .map((match) => match[0])
+      .find((block) => block.includes("grid-template-rows")) ?? "";
+    const visualEditorBlock = styles.match(/\.flash-diary-visual-editor\s*\{[^}]+\}/)?.[0] ?? "";
     const listBlock = styles.match(/\.flash-diary-page__list\s*\{[^}]+\}/)?.[0] ?? "";
     const listItemBlock = styles.match(/\.flash-diary-page__list-item\s*\{[^}]+\}/)?.[0] ?? "";
+    const timelineItemBlock = styles.match(/\.flash-diary-page__timeline-item\s*\{[^}]+\}/)?.[0] ?? "";
+    const timelineThumbBlock = Array.from(styles.matchAll(/\.flash-diary-page__timeline-thumb img\s*\{[^}]+\}/g))
+      .map((match) => match[0])
+      .at(0) ?? "";
 
-    expect(memoryLayoutBlock).toMatch(/\n\s+height: calc\(100vh - 240px\);/);
-    expect(workspaceBlock).toMatch(/\n\s+height: calc\(100vh - 180px\);/);
-    expect(listBlock).toMatch(/\n\s+overflow: auto;/);
+    expect(memoryLayoutBlock).toMatch(/\n\s+height: 100%;/);
+    expect(workspaceBlock).toMatch(/\n\s+height: 100%;/);
+    expect(editorPanelBlock).toMatch(/\n\s+grid-template-rows: auto minmax\(0, 1fr\);/);
+    expect(visualEditorBlock).toMatch(/\n\s+height: 100%;/);
+    expect(listBlock).toMatch(/\n\s+overflow-x: hidden;/);
+    expect(listBlock).toMatch(/\n\s+overflow-y: auto;/);
     expect(listItemBlock).toMatch(/\n\s+padding: 12px 14px;/);
+    expect(timelineItemBlock).toMatch(/\n\s+grid-template-columns: 54px minmax\(0, 1fr\);/);
+    expect(timelineThumbBlock).toMatch(/\n\s+object-fit: cover;/);
   });
 });
 
@@ -588,6 +834,7 @@ async function waitFor(assertion: () => void): Promise<void> {
   assertion();
 }
 
+// fallow-ignore-next-line complexity
 function ok(data: unknown) {
   return {
     ok: true,
@@ -600,6 +847,14 @@ async function flush(): Promise<void> {
   await Promise.resolve();
 }
 
+// fallow-ignore-next-line complexity
+function createComposingInputEvent(): InputEvent {
+  const event = new Event("input", { bubbles: true }) as InputEvent;
+  Object.defineProperty(event, "isComposing", { value: true });
+  return event;
+}
+
+// fallow-ignore-next-line complexity
 function createDomRect(values: { left: number; top: number; width: number; height: number }): DOMRect {
   return {
     x: values.left,

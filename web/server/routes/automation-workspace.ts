@@ -18,6 +18,11 @@ import {
   updateAutomationWorkspaceComment,
 } from "../services/automation-workspace-store.js";
 import {
+  createAutomationPotentialDestination,
+  deleteAutomationPotentialDestination,
+  updateAutomationPotentialDestination,
+} from "../services/automation-source-insight-store.js";
+import {
   listAutomationWorkspace,
   listAutomationWorkspaceCommentsForId,
   listAutomationWorkspaceLogsForId,
@@ -34,6 +39,9 @@ export function registerAutomationWorkspaceRoutes(app: Express, cfg: ServerConfi
   app.post("/api/automation-workspace/:id/comments", handleAutomationWorkspaceCommentCreate(cfg));
   app.patch("/api/automation-workspace/:id/comments/:commentId", handleAutomationWorkspaceCommentPatch(cfg));
   app.delete("/api/automation-workspace/:id/comments/:commentId", handleAutomationWorkspaceCommentDelete(cfg));
+  app.post("/api/automation-workspace/:id/potential-destinations", handleAutomationPotentialDestinationCreate(cfg));
+  app.patch("/api/automation-workspace/:id/potential-destinations/:potentialId", handleAutomationPotentialDestinationPatch(cfg));
+  app.delete("/api/automation-workspace/:id/potential-destinations/:potentialId", handleAutomationPotentialDestinationDelete(cfg));
   app.get("/api/automation-workspace/:id/layout", handleAutomationWorkspaceLayoutGet(cfg));
   app.put("/api/automation-workspace/:id/layout", handleAutomationWorkspaceLayoutSave(cfg));
 }
@@ -161,6 +169,58 @@ export function handleAutomationWorkspaceCommentDelete(cfg: ServerConfig) {
   };
 }
 
+export function handleAutomationPotentialDestinationCreate(cfg: ServerConfig) {
+  return async (req: Request, res: Response) => {
+    try {
+      const automationId = readAutomationId(req);
+      const input = parsePotentialDestinationCreate(req.body);
+      const created = createAutomationPotentialDestination(cfg.runtimeRoot, automationId, input.nodeId, input);
+      res.json({ success: true, data: created });
+    } catch (error) {
+      respondError(res, 400, error);
+    }
+  };
+}
+
+export function handleAutomationPotentialDestinationPatch(cfg: ServerConfig) {
+  return (req: Request, res: Response) => {
+    try {
+      const updated = updateAutomationPotentialDestination(
+        cfg.runtimeRoot,
+        readAutomationId(req),
+        String(req.params.potentialId ?? ""),
+        parsePotentialDestinationPatch(req.body),
+      );
+      if (!updated) {
+        res.status(404).json({ success: false, error: "Potential destination not found." });
+        return;
+      }
+      res.json({ success: true, data: updated });
+    } catch (error) {
+      respondError(res, 400, error);
+    }
+  };
+}
+
+export function handleAutomationPotentialDestinationDelete(cfg: ServerConfig) {
+  return (req: Request, res: Response) => {
+    try {
+      const removed = deleteAutomationPotentialDestination(
+        cfg.runtimeRoot,
+        readAutomationId(req),
+        String(req.params.potentialId ?? ""),
+      );
+      if (!removed) {
+        res.status(404).json({ success: false, error: "Potential destination not found." });
+        return;
+      }
+      res.json({ success: true });
+    } catch (error) {
+      respondError(res, 400, error);
+    }
+  };
+}
+
 export function handleAutomationWorkspaceLayoutGet(cfg: ServerConfig) {
   return (req: Request, res: Response) => {
     try {
@@ -269,11 +329,61 @@ function parseCommentPatch(body: unknown): Partial<{
   return patch;
 }
 
+function parsePotentialDestinationCreate(body: unknown): {
+  nodeId: string;
+  label: string;
+  intendedOutcome: string;
+  note: string;
+} {
+  const nodeId = readRequiredTrimmedString(body, "nodeId");
+  const label = readRequiredTrimmedString(body, "label");
+  const intendedOutcome = readRequiredTrimmedString(body, "intendedOutcome");
+  const note = readOptionalPotentialString(body, "note") ?? "";
+  return { nodeId, label, intendedOutcome, note };
+}
+
+function parsePotentialDestinationPatch(body: unknown): Partial<{
+  label: string;
+  intendedOutcome: string;
+  note: string;
+}> {
+  const patch: Partial<{ label: string; intendedOutcome: string; note: string }> = {};
+  const label = readOptionalPotentialString(body, "label");
+  const intendedOutcome = readOptionalPotentialString(body, "intendedOutcome");
+  const note = readOptionalPotentialString(body, "note");
+  if (typeof label === "string") patch.label = label;
+  if (typeof intendedOutcome === "string") patch.intendedOutcome = intendedOutcome;
+  if (typeof note === "string") patch.note = note;
+  return patch;
+}
+
 function readCommentField(body: unknown, key: "targetId" | "text"): string {
   return readOptionalString(body, key) ?? "";
 }
 
+function readRequiredTrimmedString(
+  body: unknown,
+  key: "nodeId" | "label" | "intendedOutcome",
+): string {
+  const value = readOptionalPotentialString(body, key) ?? "";
+  if (value === "") {
+    throw new Error(`${key} is required.`);
+  }
+  return value;
+}
+
 function readOptionalString(body: unknown, key: "targetId" | "text"): string | undefined {
+  const value = readBodyValue(body, key);
+  if (value === undefined) {
+    return undefined;
+  }
+  return String(value).trim();
+}
+
+function readOptionalPotentialString(
+  body: unknown,
+  key: "nodeId" | "label" | "intendedOutcome" | "note",
+): string | undefined {
   const value = readBodyValue(body, key);
   if (value === undefined) {
     return undefined;
@@ -332,7 +442,7 @@ function requireNumber(body: unknown, key: "pinnedX" | "pinnedY"): number {
 
 function readBodyValue(
   body: unknown,
-  key: "targetId" | "text" | "targetType" | "pinnedX" | "pinnedY" | "manualX" | "manualY",
+  key: "targetId" | "text" | "targetType" | "pinnedX" | "pinnedY" | "manualX" | "manualY" | "nodeId" | "label" | "intendedOutcome" | "note",
 ): unknown {
   if (!body || typeof body !== "object") {
     return undefined;

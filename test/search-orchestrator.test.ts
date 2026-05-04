@@ -46,6 +46,8 @@ describe("search orchestrator", () => {
       },
       web: {
         configured: true,
+        ok: true,
+        error: null,
         results: [{ title: "Redis Docs", url: "https://redis.io", snippet: "official" }],
       },
     });
@@ -64,6 +66,8 @@ describe("search orchestrator", () => {
 
     expect(result.web).toEqual({
       configured: false,
+      ok: false,
+      error: "Missing CLOUDFLARE_SEARCH_ENDPOINT",
       results: [],
     });
   });

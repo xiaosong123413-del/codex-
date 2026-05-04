@@ -140,6 +140,7 @@ function readSourceDocumentRecord(
     mediaKinds: [...new Set(media.map((item) => item.kind))],
     coverImagePath: pickCoverImagePath(media),
     ocrTextPath: previous?.ocrTextPath,
+    ocrFingerprint: previous?.ocrFingerprint,
     transcriptPath: previous?.transcriptPath,
     media,
   };
@@ -276,6 +277,7 @@ function normalizeRecordEntry(
     mediaKinds: normalizeMediaKinds(value.mediaKinds, media),
     coverImagePath: readOptionalString(value.coverImagePath),
     ocrTextPath: readOptionalString(value.ocrTextPath),
+    ocrFingerprint: readOptionalString(value.ocrFingerprint),
     transcriptPath: readOptionalString(value.transcriptPath),
     media,
   }];

@@ -46,6 +46,8 @@ export function getSourceLabel(sourceKind: AutomationListItem["sourceKind"]): st
       return "显式 Workflow";
     case "app":
       return "应用流程";
+    case "information":
+      return "信息流转流程";
     case "code":
       return "源码真实流程";
     default:
@@ -57,14 +59,22 @@ export function isCodeItem(item: Pick<AutomationListItem, "sourceKind">): boolea
   return item.sourceKind === "code";
 }
 
+export function isExecutableItem(item: Pick<AutomationListItem, "sourceKind">): boolean {
+  return item.sourceKind === "automation" || item.sourceKind === "app";
+}
+
+export function isInformationItem(item: Pick<AutomationListItem, "sourceKind">): boolean {
+  return item.sourceKind === "information";
+}
+
 function createAutomationListCardHtml(item: AutomationListItem): string {
-  const meta = isCodeItem(item)
-    ? `<span class="automation-list-card__source" data-source-kind="${item.sourceKind}">${escapeHtml(getSourceLabel(item.sourceKind))}</span>`
-    : `
+  const meta = isExecutableItem(item)
+    ? `
       <span class="automation-list-card__source" data-source-kind="${item.sourceKind}">${escapeHtml(getSourceLabel(item.sourceKind))}</span>
       <span class="automation-list-card__status" data-enabled="${item.enabled ? "true" : "false"}">${item.enabled ? "运行中" : "未启动"}</span>
       <button type="button" class="btn btn-secondary" data-automation-log="${escapeAttr(item.id)}">运行日志</button>
-    `;
+    `
+    : `<span class="automation-list-card__source" data-source-kind="${item.sourceKind}">${escapeHtml(getSourceLabel(item.sourceKind))}</span>`;
   return `
     <article class="automation-list-card" data-automation-item="${escapeAttr(item.id)}">
       <button type="button" class="automation-list-card__open" data-automation-open="${escapeAttr(item.id)}">

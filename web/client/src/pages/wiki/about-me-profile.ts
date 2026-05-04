@@ -1,5 +1,5 @@
 /**
- * Controller for the dedicated personal profile page backed by wiki/about-me.md.
+ * Controller for the dedicated personal profile page backed by wiki/个人信息档案/about-me.md.
  *
  * The page keeps the dashboard rendering and raw markdown editing in the same
  * surface so the user can edit text and avatar content without leaving the

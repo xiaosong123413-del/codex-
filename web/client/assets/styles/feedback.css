@@ -84,6 +84,88 @@
   margin-bottom: 18px;
 }
 
+.run-progress-toast {
+  --run-progress-percent: 1%;
+  width: min(340px, calc(100vw - 48px));
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px 16px;
+  overflow: hidden;
+  border: 1px solid rgba(124, 92, 252, 0.2);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 180ms var(--ease-out);
+}
+
+.run-progress-toast__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.run-progress-toast__title {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 18px;
+}
+
+.run-progress-toast__percent {
+  flex: 0 0 auto;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.run-progress-toast__message {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.run-progress-toast__bar {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(124, 92, 252, 0.14);
+}
+
+.run-progress-toast__bar-fill {
+  width: var(--run-progress-percent);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7c5cfc, #14b8a6);
+  transition: width 220ms var(--ease-out);
+}
+
+.run-progress-toast[data-state="complete"] .run-progress-toast__bar-fill,
+.run-progress-toast[data-state="error"] .run-progress-toast__bar-fill {
+  transform: none;
+}
+
+.run-progress-toast[data-state="complete"] .run-progress-toast__bar-fill {
+  background: #16a34a;
+}
+
+.run-progress-toast[data-state="error"] .run-progress-toast__bar-fill {
+  background: #ef4444;
+}
+
+.run-progress-toast.is-leaving {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
 @media (max-width: 920px) {
   .wiki-comments-panel {
     padding: var(--space-4);

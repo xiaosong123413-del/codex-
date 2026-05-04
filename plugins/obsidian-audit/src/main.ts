@@ -72,6 +72,7 @@ export default class LLMWikiAuditPlugin extends Plugin {
     await this.saveData(this.settings);
   }
 
+  // fallow-ignore-next-line complexity
   private async handleAddFeedback(editor: Editor, view: MarkdownView): Promise<void> {
     const selection = editor.getSelection();
     if (!selection || !selection.trim()) {
@@ -114,6 +115,7 @@ export default class LLMWikiAuditPlugin extends Plugin {
     }
   }
 
+  // fallow-ignore-next-line complexity
   private async handleListFeedbackForCurrentFile(): Promise<void> {
     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
     if (!view || !view.file) {

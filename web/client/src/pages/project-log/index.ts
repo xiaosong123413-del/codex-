@@ -40,7 +40,7 @@ const PROJECT_LOG_TOC_BOUNDS: PanelWidthBounds = {
 };
 
 export function renderProjectLogPage(): HTMLElement {
-  const root = document.createElement("section");
+  const root = document.createElement("section") as HTMLElement & { __dispose?: () => void };
   root.className = "project-log-page";
   root.innerHTML = `
     <div class="project-log-page__toolbar" data-project-log-toolbar>
@@ -92,7 +92,7 @@ export function renderProjectLogPage(): HTMLElement {
     <button type="button" class="btn btn-primary btn-inline project-log-page__selection-comment" data-project-log-selection-comment hidden>\u8bc4\u8bba</button>
   `;
 
-  bindProjectLogTools(root);
+  root.__dispose = bindProjectLogTools(root);
   void loadProjectLog(root);
   return root;
 }
@@ -117,7 +117,7 @@ async function loadProjectLog(root: HTMLElement): Promise<void> {
   }
 }
 
-function bindProjectLogTools(root: HTMLElement): void {
+function bindProjectLogTools(root: HTMLElement): () => void {
   const comments: ProjectLogComment[] = [];
   let filter: CommentFilter = "all";
   let commentsWidth = readPanelWidth("projectLog.commentsWidth", PROJECT_LOG_COMMENTS_BOUNDS);
@@ -234,6 +234,10 @@ function bindProjectLogTools(root: HTMLElement): void {
     }
     handleProjectLogCommentCardClick(root, clickTarget, comments, filter);
   });
+
+  return () => {
+    document.removeEventListener("selectionchange", syncSelectionCommentButton);
+  };
 }
 
 function shouldHideProjectLogSelectionCommentButton(clickTarget: HTMLElement): boolean {

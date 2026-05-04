@@ -9,10 +9,10 @@
   "b3": {
     "wiki-procedures-cache-warmup": 2,
     "wiki-concepts-redis-cache": 1,
-    "wiki-episodes-cache-retro": 1
+    "sources-cache-retro": 1
   },
   "b4": {
-    "wiki-episodes-redis-outage": 2,
+    "sources-redis-outage": 2,
     "wiki-procedures-cache-recovery": 1
   },
   "b5": {
@@ -35,7 +35,7 @@
     "sources-vector-eval": 2
   },
   "b9": {
-    "wiki-episodes-redis-outage": 2,
+    "sources-redis-outage": 2,
     "wiki-procedures-cache-recovery": 2,
     "wiki-concepts-incident-playbook": 1
   },
@@ -45,7 +45,7 @@
     "sources-source-audit": 1
   },
   "b11": {
-    "wiki-episodes-cache-retro": 2,
+    "sources-cache-retro": 2,
     "wiki-procedures-cache-warmup": 1
   },
   "b12": {

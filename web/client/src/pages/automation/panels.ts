@@ -12,7 +12,10 @@ import {
   type AutomationCommentDraftTarget,
   type AutomationCommentResponse,
 } from "./api.js";
-import { resolveCommentPinPosition } from "./mermaid-comments.js";
+import {
+  resolveCommentPinPosition,
+  resolveMermaidDraftTarget,
+} from "./mermaid-comments.js";
 import type { RenderedMermaidSurface } from "./mermaid-view.js";
 
 export interface AutomationCommentPanelState {
@@ -20,14 +23,16 @@ export interface AutomationCommentPanelState {
   commentMode: boolean;
   selectedCommentId: string | null;
   draft: AutomationCommentDraftTarget | null;
+  draftLabel: string | null;
+  targetLabels: Record<string, string>;
   orphanedCommentIds: ReadonlySet<string>;
 }
 
 interface AutomationCommentPanelHandlers {
-  onToggleCommentMode: () => void;
   onSaveDraft: (text: string) => Promise<void>;
   onDeleteComment: (commentId: string) => Promise<void>;
   onSelectComment: (commentId: string) => void;
+  onClosePanel: () => void;
 }
 
 export async function loadAutomationLogs(root: HTMLElement, automationId: string): Promise<void> {
@@ -56,44 +61,40 @@ export function renderAutomationCommentPanel(
   handlers: AutomationCommentPanelHandlers,
 ): void {
   panel.innerHTML = `
-    <button
-      type="button"
-      class="btn ${state.commentMode ? "btn-primary" : "btn-secondary"}"
-      data-automation-comment-toggle
-      aria-pressed="${state.commentMode ? "true" : "false"}"
-    >${state.commentMode ? "退出评论模式" : "评论模式"}</button>
-    <div class="automation-detail__comment-hint">${getCommentHint(state)}</div>
-    <div data-automation-comment-error hidden></div>
-    ${state.draft ? `
-      <div class="automation-detail__comment-item">
-        <strong>${escapeHtml(getDraftLabel(state.draft))}</strong>
-        <textarea class="automation-detail__comment-input" data-automation-comment-input placeholder="输入评论"></textarea>
-        <button type="button" class="btn btn-primary" data-automation-comment-save>保存评论</button>
+    <header class="automation-detail__comment-panel-head">
+      <div>
+        <strong class="automation-detail__comment-panel-title">评论</strong>
+        <div class="automation-detail__comment-panel-meta">共 ${state.comments.length} 条</div>
       </div>
-    ` : ""}
-    <div class="automation-detail__comment-list">
-      ${state.comments.map((comment) => `
-        <article class="automation-detail__comment-item" data-selected="${comment.id === state.selectedCommentId ? "true" : "false"}">
-          <button type="button" class="btn btn-secondary" data-automation-comment-select="${escapeAttr(comment.id)}">${escapeHtml(getCommentTitle(comment))}</button>
-          <div>${escapeHtml(comment.text)}</div>
-          ${state.orphanedCommentIds.has(comment.id) ? `<div>原目标已不存在，当前显示为保留图钉。</div>` : ""}
-          <button type="button" class="btn btn-secondary" data-automation-comment-delete="${escapeAttr(comment.id)}">删除</button>
-        </article>
-      `).join("")}
-    </div>
+      <button type="button" class="btn btn-secondary" data-automation-comment-close>关闭</button>
+    </header>
+    <div data-automation-comment-body></div>
   `;
+  const body = panel.querySelector<HTMLElement>("[data-automation-comment-body]");
+  if (!body) {
+    return;
+  }
+  renderAutomationCommentPanelContent(body, state, handlers);
+  panel.querySelector<HTMLButtonElement>("[data-automation-comment-close]")?.addEventListener("click", () => {
+    clearCommentPanelError(body);
+    handlers.onClosePanel();
+  });
+}
+
+function renderAutomationCommentPanelContent(
+  panel: HTMLElement,
+  state: AutomationCommentPanelState,
+  handlers: Omit<AutomationCommentPanelHandlers, "onClosePanel">,
+): void {
+  panel.innerHTML = createAutomationCommentPanelBodyHtml(state);
   bindCommentPanel(panel, state, handlers);
 }
 
 function bindCommentPanel(
   panel: HTMLElement,
   state: AutomationCommentPanelState,
-  handlers: AutomationCommentPanelHandlers,
+  handlers: Omit<AutomationCommentPanelHandlers, "onClosePanel">,
 ): void {
-  panel.querySelector<HTMLButtonElement>("[data-automation-comment-toggle]")?.addEventListener("click", () => {
-    clearCommentPanelError(panel);
-    handlers.onToggleCommentMode();
-  });
   panel.querySelector<HTMLButtonElement>("[data-automation-comment-save]")?.addEventListener("click", async () => {
     const input = panel.querySelector<HTMLTextAreaElement>("[data-automation-comment-input]");
     if (!state.draft || !input) {
@@ -124,6 +125,30 @@ function bindCommentPanel(
   });
 }
 
+function createAutomationCommentPanelBodyHtml(state: AutomationCommentPanelState): string {
+  return `
+    <div class="automation-detail__comment-hint">${getCommentHint(state)}</div>
+    <div data-automation-comment-error hidden></div>
+    ${state.draft ? `
+      <div class="automation-detail__comment-item">
+        <strong>${escapeHtml(getDraftLabel(state))}</strong>
+        <textarea class="automation-detail__comment-input" data-automation-comment-input placeholder="输入评论"></textarea>
+        <button type="button" class="btn btn-primary" data-automation-comment-save>保存评论</button>
+      </div>
+    ` : ""}
+    <div class="automation-detail__comment-list">
+      ${state.comments.map((comment) => `
+        <article class="automation-detail__comment-item" data-selected="${comment.id === state.selectedCommentId ? "true" : "false"}">
+          <button type="button" class="btn btn-secondary" data-automation-comment-select="${escapeAttr(comment.id)}">${escapeHtml(getCommentTitle(comment, state))}</button>
+          <div>${escapeHtml(comment.text)}</div>
+          ${state.orphanedCommentIds.has(comment.id) ? "<div>原目标已不存在，当前显示为保留图钉。</div>" : ""}
+          <button type="button" class="btn btn-secondary" data-automation-comment-delete="${escapeAttr(comment.id)}">删除</button>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
 export async function createAutomationDraftComment(
   automationId: string,
   draft: AutomationCommentDraftTarget,
@@ -151,7 +176,7 @@ async function deleteAutomationExistingComment(automationId: string, commentId: 
 
 function getCommentHint(state: AutomationCommentPanelState): string {
   if (state.draft) {
-    return "已选择图上目标，输入评论后保存。";
+    return "已选中图上目标，输入评论后保存。";
   }
   if (state.commentMode) {
     return "评论模式已开启，点击节点、连线或空白处落点。";
@@ -162,16 +187,18 @@ function getCommentHint(state: AutomationCommentPanelState): string {
   return "进入评论模式后，再点击节点、连线或空白处添加评论。";
 }
 
-function getDraftLabel(draft: AutomationCommentDraftTarget): string {
-  if (draft.targetType === "canvas") {
+function getDraftLabel(state: AutomationCommentPanelState): string {
+  if (!state.draft) {
+    return "";
+  }
+  if (state.draft.targetType === "canvas") {
     return "当前草稿: 画布空白处";
   }
-  return `当前草稿: ${draft.targetType} / ${draft.targetId}`;
+  return `当前草稿: ${state.draftLabel ?? state.draft.targetId}`;
 }
 
-function getCommentTitle(comment: AutomationCommentResponse): string {
-  const targetLabel = comment.targetType === "canvas" ? "画布" : comment.targetId;
-  return `${targetLabel}${comment.id ? ` · ${comment.id}` : ""}`;
+function getCommentTitle(comment: AutomationCommentResponse, state: AutomationCommentPanelState): string {
+  return state.targetLabels[comment.id] ?? (comment.targetType === "canvas" ? "画布空白处" : comment.targetId);
 }
 
 export async function removeAutomationComment(
@@ -218,32 +245,18 @@ export function bindAutomationCommentTargets(
   commentMode: boolean,
   onCreateDraft: (draftTarget: AutomationCommentDraftTarget) => void,
 ): void {
-  for (const anchor of surface.anchors) {
-    const target = anchor.targetType === "canvas"
-      ? surface.surface.querySelector<HTMLElement>("[data-automation-canvas-target]")
-      : surface.svg.querySelector<HTMLElement>(`#${escapeSelector(anchor.targetId)}`);
-    if (!target) {
-      continue;
-    }
-    target.dataset.automationCommentTarget = anchor.targetId;
-    target.dataset.automationCommentTargetType = anchor.targetType;
-    if (anchor.targetType === "canvas") {
-      target.hidden = !commentMode;
-    }
-    if (!commentMode) {
-      continue;
-    }
-    target.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      onCreateDraft({
-        targetType: anchor.targetType,
-        targetId: anchor.targetId,
-        pinnedX: anchor.x,
-        pinnedY: anchor.y,
-      });
-    });
+  if (!commentMode) {
+    return;
   }
+  surface.surface.addEventListener("click", (event) => {
+    const draftTarget = resolveMermaidDraftTarget(surface, event.target, event);
+    if (!draftTarget) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    onCreateDraft(draftTarget);
+  });
 }
 
 function escapeHtml(value: string): string {
@@ -252,10 +265,6 @@ function escapeHtml(value: string): string {
 
 function escapeAttr(value: string): string {
   return escapeHtml(value).replace(/'/g, "&#39;");
-}
-
-function escapeSelector(value: string): string {
-  return value.replace(/["\\]/g, "\\$&");
 }
 
 function clearCommentPanelError(panel: HTMLElement): void {

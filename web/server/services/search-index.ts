@@ -10,6 +10,9 @@ import fs from "node:fs";
 import path from "node:path";
 import type { ServerConfig } from "../config.js";
 import { runtimePath } from "../runtime-paths.js";
+import { readSourceOcrSidecar } from "./ocr-service.js";
+import { readSourceMediaIndex } from "./source-media-index.js";
+import type { MarkdownImageRef } from "./markdown-images.js";
 
 export interface SearchIndexEntry {
   id: string;
@@ -19,6 +22,8 @@ export interface SearchIndexEntry {
   excerpt: string;
   tags: string[];
   modifiedAt: string | null;
+  searchText?: string;
+  images?: MarkdownImageRef[];
 }
 
 interface RawSearchIndexEntry {
@@ -29,6 +34,7 @@ interface RawSearchIndexEntry {
   excerpt?: unknown;
   tags?: unknown;
   modifiedAt?: unknown;
+  images?: unknown;
 }
 
 export function loadSearchIndex(cfg?: ServerConfig): SearchIndexEntry[] {
@@ -44,10 +50,45 @@ export function loadSearchIndex(cfg?: ServerConfig): SearchIndexEntry[] {
         ? (parsed as { items: unknown[] }).items
         : [];
 
-    return items.flatMap((item) => normalizeEntry(item));
+    return enrichEntriesWithOcrText(cfg.runtimeRoot, items.flatMap((item) => normalizeEntry(item)));
   } catch {
     return [];
   }
+}
+
+function enrichEntriesWithOcrText(runtimeRoot: string, entries: SearchIndexEntry[]): SearchIndexEntry[] {
+  const ocrRecordIds = buildOcrRecordIdsByPath(runtimeRoot);
+  if (ocrRecordIds.size === 0) {
+    return entries;
+  }
+  return entries.map((entry) => enrichEntryWithOcrText(runtimeRoot, entry, ocrRecordIds));
+}
+
+function enrichEntryWithOcrText(
+  runtimeRoot: string,
+  entry: SearchIndexEntry,
+  ocrRecordIds: ReadonlyMap<string, string>,
+): SearchIndexEntry {
+  const sourceId = ocrRecordIds.get(normalizeIndexPath(entry.path));
+  if (!sourceId) {
+    return entry;
+  }
+  const ocrText = readSourceOcrSidecar(runtimeRoot, sourceId).trim();
+  if (!ocrText) {
+    return entry;
+  }
+  return {
+    ...entry,
+    searchText: [entry.searchText, ocrText].filter(Boolean).join("\n"),
+  };
+}
+
+function buildOcrRecordIdsByPath(runtimeRoot: string): Map<string, string> {
+  const index = readSourceMediaIndex(runtimeRoot);
+  const entries = Object.values(index.records)
+    .filter((record) => record.ocrTextPath)
+    .map((record) => [normalizeIndexPath(record.path), record.id] as const);
+  return new Map(entries);
 }
 
 function normalizeEntry(item: unknown): SearchIndexEntry[] {
@@ -59,13 +100,34 @@ function normalizeEntry(item: unknown): SearchIndexEntry[] {
   if (!required) {
     return [];
   }
-  return [{
+  const entry: SearchIndexEntry = {
     ...required,
     layer: normalizeSearchLayer(raw.layer),
     excerpt: readOptionalSearchText(raw.excerpt) ?? "",
     tags: normalizeSearchTags(raw.tags),
     modifiedAt: readOptionalSearchText(raw.modifiedAt),
-  }];
+  };
+  const images = normalizeImages(raw.images);
+  if (images.length > 0) {
+    entry.images = images;
+  }
+  return [entry];
+}
+
+function normalizeImages(value: unknown): MarkdownImageRef[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const record = item as Partial<MarkdownImageRef>;
+    const url = typeof record.url === "string" ? record.url.trim() : "";
+    if (!url) return [];
+    return [{
+      url,
+      alt: typeof record.alt === "string" ? record.alt.trim() : "",
+    }];
+  });
 }
 
 function readRequiredSearchEntry(
@@ -103,4 +165,8 @@ function readOptionalSearchText(value: unknown): string | null {
 
 function hasSearchText(value: string | null): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function normalizeIndexPath(value: string): string {
+  return value.replace(/\\/g, "/").toLowerCase();
 }

@@ -96,6 +96,35 @@ describe("source gallery routes", () => {
     expect(flash.body.data.path).toMatch(/^raw\/闪念日记\//);
   });
 
+  it("copies manually attached media into text-only clipping entries", async () => {
+    const cfg = makeConfig();
+    const imagePath = path.join(cfg.projectRoot, "manual.png");
+    const videoPath = path.join(cfg.projectRoot, "manual.mp4");
+    fs.writeFileSync(imagePath, "image", "utf8");
+    fs.writeFileSync(videoPath, "video", "utf8");
+    const response = createResponse();
+
+    await handleSourceGalleryCreate(cfg)({
+      body: {
+        type: "clipping",
+        title: "手动剪藏",
+        body: "说明这个素材要怎么用",
+        mediaPaths: [imagePath, videoPath],
+        now: "2026-04-20T08:00:00.000Z",
+      },
+    } as unknown as Request, response as Response);
+
+    expect(response.statusCode).toBe(200);
+    const markdownPath = path.join(cfg.sourceVaultRoot, ...String(response.body.data.path).split("/"));
+    const raw = fs.readFileSync(markdownPath, "utf8");
+    expect(raw).toContain("说明这个素材要怎么用");
+    expect(raw).toContain("## 手动附件");
+    expect(raw).toContain("![](./assets/");
+    expect(raw).toContain("[视频：manual.mp4](./assets/");
+    expect(fs.existsSync(path.join(path.dirname(markdownPath), "assets", "2026-04-20-手动剪藏", "manual.png"))).toBe(true);
+    expect(fs.existsSync(path.join(path.dirname(markdownPath), "assets", "2026-04-20-手动剪藏", "manual.mp4"))).toBe(true);
+  });
+
   it("moves selected items into inbox copies", async () => {
     const cfg = makeConfig();
     write(cfg.sourceVaultRoot, "raw/剪藏/demo.md", "# Raw\n\nBody");
@@ -186,8 +215,8 @@ describe("source gallery routes", () => {
     const cfg = makeConfig();
     write(cfg.runtimeRoot, "sources_full/archive.md", "# Source\n\nArchive body");
     const conversationId = "chat-source-1";
-    fs.mkdirSync(path.join(cfg.runtimeRoot, ".chat"), { recursive: true });
-    fs.writeFileSync(path.join(cfg.runtimeRoot, ".chat", `${conversationId}.json`), JSON.stringify({
+    fs.mkdirSync(path.join(cfg.sourceVaultRoot, ".chat"), { recursive: true });
+    fs.writeFileSync(path.join(cfg.sourceVaultRoot, ".chat", `${conversationId}.json`), JSON.stringify({
       id: conversationId,
       title: "Source compile",
       createdAt: "2026-04-24T00:00:00.000Z",

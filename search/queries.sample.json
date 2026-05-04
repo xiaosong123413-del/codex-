@@ -37,20 +37,20 @@
       "modifiedAt": "2026-04-03"
     },
     {
-      "id": "wiki-episodes-cache-warmup-retro",
-      "title": "Cache Warmup Retro",
-      "path": "wiki/episodes/2026-04-02-cache-warmup-retro.md",
-      "layer": "wiki",
-      "excerpt": "A dated episode about the cache warmup rollout.",
+      "id": "sources-full-cache-warmup-retro",
+      "title": "Cache Warmup Retro Source",
+      "path": "sources_full/notes/2026-04-02-cache-warmup-retro.md",
+      "layer": "source",
+      "excerpt": "A dated source note about the cache warmup rollout.",
       "tags": ["retro", "cache", "temporal"],
       "modifiedAt": "2026-04-02"
     },
     {
-      "id": "wiki-episodes-redis-outage-brief",
-      "title": "Redis Outage Brief",
-      "path": "wiki/episodes/2026-04-03-redis-outage.md",
-      "layer": "wiki",
-      "excerpt": "A short postmortem for the Redis outage.",
+      "id": "sources-full-redis-outage-brief",
+      "title": "Redis Outage Brief Source",
+      "path": "sources_full/notes/2026-04-03-redis-outage.md",
+      "layer": "source",
+      "excerpt": "A short source postmortem for the Redis outage.",
       "tags": ["incident", "redis", "temporal"],
       "modifiedAt": "2026-04-03"
     },

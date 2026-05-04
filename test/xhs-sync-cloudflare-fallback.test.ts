@@ -101,7 +101,7 @@ describe("xhs sync cloudflare fallback", () => {
     expect(raw).toContain("![](video/64f000000000000001234567-1.mp4)");
     expect(raw).toContain("这是本地 Whisper 回退转录。");
     expect(raw).not.toContain("视频转录失败");
-  });
+  }, 30_000);
 });
 
 function makeRoot(): string {

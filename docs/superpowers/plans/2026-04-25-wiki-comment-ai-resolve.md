@@ -1,8 +1,8 @@
-# Wiki Comment AI Resolve Implementation Plan
+﻿# Wiki Comment AI Resolve Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add an `AI自动解决` action to Farzapedia wiki comments that generates a diff-only page edit proposal, confirms it back to the Obsidian source markdown, auto-resolves the comment, and refreshes the current wiki page.
+**Goal:** Add an `AI自动解决` action to Peiweipedia wiki comments that generates a diff-only page edit proposal, confirms it back to the Obsidian source markdown, auto-resolves the comment, and refreshes the current wiki page.
 
 **Architecture:** Keep the current manual comment CRUD flow intact and layer a separate single-draft-per-comment AI workflow on top. Backend work is split into three focused pieces: source-editability detection in the page/read path, a runtime-backed AI draft service that reads source markdown and writes confirmed edits, and dedicated comment-AI routes. Frontend work stays inside the existing wiki comment drawer, adding per-card AI state and a diff review sub-state without changing the page shell.
 

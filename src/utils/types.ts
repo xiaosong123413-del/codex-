@@ -43,8 +43,17 @@ export interface ClaimCandidate {
   claimKey: string;
   claimText: string;
   claimType: ClaimType;
-  sourceFile: string;
-  episodeId: string;
+  source: ClaimSourceReference;
+  observedAt: string;
+}
+
+/** Source metadata retained directly on claims for provenance. */
+export interface ClaimSourceReference {
+  file: string;
+  title: string;
+  kind: string;
+  channel: string;
+  url?: string;
   observedAt: string;
 }
 
@@ -55,7 +64,7 @@ export interface ClaimRecord {
   claimText: string;
   claimType: ClaimType;
   sourceFiles: string[];
-  episodeIds: string[];
+  sources: ClaimSourceReference[];
   firstSeenAt: string;
   lastConfirmedAt: string;
   lastAccessedAt?: string;
@@ -69,20 +78,6 @@ export interface ClaimRecord {
   halfLifeDays: number;
 }
 
-export interface EpisodeRecord {
-  id: string;
-  sourceFile: string;
-  title: string;
-  sourceKind: string;
-  sourceChannel: string;
-  sourceUrl?: string;
-  observedAt: string;
-  summary: string;
-  conceptSlugs: string[];
-  candidateClaimIds: string[];
-  procedureIds: string[];
-}
-
 export interface ProcedureRecord {
   id: string;
   conceptSlug: string;
@@ -91,7 +86,6 @@ export interface ProcedureRecord {
   summary: string;
   supportingClaimIds: string[];
   sourceFiles: string[];
-  episodeIds: string[];
   confidence: number;
   lastConfirmedAt: string;
 }
@@ -104,7 +98,6 @@ interface FinalCompileResult {
   internalBatchCount: number;
   batchLimit: number;
   claimsUpdated: number;
-  episodesUpdated: number;
   proceduresUpdated: number;
   wikiOutputDir: string;
   publishedAt?: string;

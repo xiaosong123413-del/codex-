@@ -10,7 +10,7 @@
 import type { TaskPlanPoolItem } from "./index.js";
 
 export type TaskPoolTreeLevel = "domain" | "project" | "task";
-export type TaskPoolTreeNodeType = TaskPoolTreeLevel;
+type TaskPoolTreeNodeType = TaskPoolTreeLevel;
 
 export interface TaskPoolTreeNodeIdentity {
   readonly type: TaskPoolTreeNodeType;
@@ -55,7 +55,7 @@ export function getTaskPoolDomainName(item: TaskPlanPoolItem): string {
 /**
  * Returns the display label used for the item's project in the tree.
  */
-export function getTaskPoolProjectName(item: TaskPlanPoolItem): string {
+function getTaskPoolProjectName(item: TaskPlanPoolItem): string {
   return item.project?.trim() || TASK_POOL_UNGROUPED_PROJECT;
 }
 
@@ -371,6 +371,7 @@ function createTaskPoolDraftTask(
     source: "手动新增",
     domain,
     project,
+    createdAt: new Date().toISOString(),
   };
 }
 

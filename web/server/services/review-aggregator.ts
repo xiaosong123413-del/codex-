@@ -18,9 +18,10 @@ import {
 import type { RunSnapshot } from "./run-manager.js";
 import { readFlashDiaryFailures } from "./flash-diary.js";
 import { listMarkdownFilesRecursive } from "./markdown-file-listing.js";
+import { readPersonalTimelineSourceFailures } from "./personal-timeline-source-refresh.js";
 import { readXhsSyncFailures } from "./xhs-sync.js";
 
-type ReviewKind = "deep-research" | "run" | "state" | "inbox" | "flash-diary-failure" | "xhs-sync-failure";
+type ReviewKind = "deep-research" | "run" | "state" | "inbox" | "flash-diary-failure" | "xhs-sync-failure" | "personal-timeline-source-failure";
 
 export interface ReviewItem {
   id: string;
@@ -32,6 +33,7 @@ export interface ReviewItem {
   target?: string;
   deepResearch?: DeepResearchReviewData;
   stateInfo?: ReviewStateData;
+  run?: ReviewRunData;
   webSearchSuggestions?: Array<{ title: string; url: string; snippet: string }>;
 }
 
@@ -56,6 +58,12 @@ interface DeepResearchReviewData {
 interface ReviewStateData {
   frozenSlugs: string[];
   suspiciousFrozenSlugs: string[];
+}
+
+interface ReviewRunData {
+  kind: RunSnapshot["kind"];
+  status: RunSnapshot["status"];
+  exitCode?: number | null;
 }
 
 interface ReviewStateSummary {
@@ -84,6 +92,7 @@ export function aggregateReviewItems(context: ReviewContext): ReviewSummary {
     ...loadRunItems(context.currentRun ?? null),
     ...loadInboxItems(context.sourceVaultRoot),
     ...loadFlashDiaryFailureItems(context.runtimeRoot),
+    ...loadPersonalTimelineSourceFailureItems(context.runtimeRoot),
     ...loadXhsSyncFailureItems(context.runtimeRoot),
   ];
   const state = loadStateSummary(context.runtimeRoot);
@@ -163,6 +172,20 @@ function loadXhsSyncFailureItems(wikiRoot: string): ReviewItem[] {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+function loadPersonalTimelineSourceFailureItems(wikiRoot: string): ReviewItem[] {
+  return readPersonalTimelineSourceFailures(wikiRoot)
+    .map((item) => ({
+      id: item.id,
+      kind: "personal-timeline-source-failure" as const,
+      severity: "error" as const,
+      title: "个人时间线来源刷新失败",
+      detail: `${item.label}\n${item.entries.join("\n")}\n\n错误：${item.error}`,
+      createdAt: item.createdAt,
+      target: "wiki/个人信息档案/个人时间线.md",
+    }))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
 function loadInboxItems(wikiRoot: string): ReviewItem[] {
   const inboxDir = path.join(wikiRoot, "inbox");
   if (!fs.existsSync(inboxDir)) return [];
@@ -223,6 +246,7 @@ function loadFailedRunItems(run: RunSnapshot): ReviewItem[] {
       title: run.kind === "sync" ? "\u540c\u6b65\u7f16\u8bd1\u5931\u8d25" : "\u7cfb\u7edf\u68c0\u67e5\u5931\u8d25",
       detail,
       createdAt: run.endedAt ?? run.startedAt,
+      run: toReviewRunData(run),
     },
   ];
 }
@@ -238,8 +262,17 @@ function loadSuccessfulRunItems(run: RunSnapshot): ReviewItem[] {
       title: run.kind === "sync" ? "\u540c\u6b65\u7f16\u8bd1\u5b58\u5728\u5f85\u786e\u8ba4\u95ee\u9898" : "\u7cfb\u7edf\u68c0\u67e5\u53d1\u73b0\u5f85\u5904\u7406\u4e8b\u9879",
       detail: problemLines.slice(0, 12).join("\n"),
       createdAt: run.endedAt ?? run.startedAt,
+      run: toReviewRunData(run),
     },
   ];
+}
+
+function toReviewRunData(run: RunSnapshot): ReviewRunData {
+  return {
+    kind: run.kind,
+    status: run.status,
+    exitCode: run.exitCode,
+  };
 }
 
 function summarizeFailedRunDetail(run: RunSnapshot): string {

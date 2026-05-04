@@ -1,0 +1,25 @@
+{
+  "name": "llmwiki-ai-native-mcp-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Cloudflare Worker remote MCP gateway for LLM Wiki, Codex, and OpenClaw.",
+  "scripts": {
+    "build": "wrangler deploy --dry-run --config wrangler.jsonc",
+    "deploy": "wrangler deploy --config wrangler.jsonc",
+    "dev": "wrangler dev --config wrangler.jsonc",
+    "typecheck": "tsc --noEmit",
+    "typegen": "wrangler types"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "agents": "^0.12.3",
+    "llm-wiki-compiler": "file:../..",
+    "zod": "^4.1.8"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260421.0",
+    "typescript": "^5.7.0",
+    "wrangler": "^4.0.0"
+  }
+}

@@ -50,6 +50,7 @@ describe("getProvider", () => {
     delete process.env.LLMWIKI_PROVIDER;
     delete process.env.LLMWIKI_MODEL;
     delete process.env.LLMWIKI_OPENAI_BASE_URL;
+    delete process.env.MINIMAX_BASE_URL;
     delete process.env.ANTHROPIC_BASE_URL;
     delete process.env.ANTHROPIC_API_KEY;
     delete process.env.ANTHROPIC_AUTH_TOKEN;
@@ -119,6 +120,18 @@ describe("getProvider", () => {
     process.env.MINIMAX_API_KEY = "test-key";
     const provider = getProvider();
     expect(provider).toBeInstanceOf(MiniMaxProvider);
+  });
+
+  it("uses MiniMax Anthropic endpoint and bearer auth", () => {
+    process.env.LLMWIKI_PROVIDER = "minimax";
+    process.env.MINIMAX_API_KEY = "test-key";
+    process.env.MINIMAX_BASE_URL = "https://api.minimaxi.com/anthropic/";
+
+    const provider = getProvider();
+
+    expect(provider).toBeInstanceOf(MiniMaxProvider);
+    expect(provider).toBeInstanceOf(AnthropicProvider);
+    expect(Reflect.get(provider, "model")).toBe("MiniMax-M2.7");
   });
 
   it("throws when MINIMAX_API_KEY is absent for minimax provider", () => {

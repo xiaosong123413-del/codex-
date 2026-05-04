@@ -14,8 +14,11 @@ import {
 } from "./runtime-helpers.js";
 import {
   buildMobileChatReply,
+  handleMobileChatCompleteCodexDirect,
   handleMobileChatList,
+  handleMobileChatPrepareCodexDirect,
   handleMobileChatSend,
+  handleMobileChatSourceRemove,
 } from "./mobile-chat-api.js";
 import {
   handleMobileEntryCreate,
@@ -37,10 +40,85 @@ import {
   handleMobileDocumentGet,
   handleMobileDocumentSave,
 } from "./mobile-document-api.js";
+import { handleMobileLinkPreview } from "./mobile-link-preview-api.js";
 import {
+  handleMobileDiaryImageGenerate,
   handleMobileProviderSave,
   writeDailyDiaryImages,
 } from "./mobile-diary-image-api.js";
+import {
+  handleMobileCodexQuotaRefresh,
+  handleMobileCodexQuotaTokenSync,
+} from "./mobile-codex-quota-api.js";
+import {
+  handleMobileCodexOAuthPoll,
+  handleMobileCodexOAuthStart,
+} from "./mobile-codex-oauth-api.js";
+import { handleMobileCloudflareQuotaStatus } from "./mobile-cloudflare-quota-api.js";
+import {
+  handleAccountIdentityBind,
+  handleAccountIdentitiesList,
+  handleAccountIdentityUnbind,
+  handleAccountWeChatBind,
+  handleAuthLogin,
+  handleAuthRegister,
+  handleAuthSession,
+  handleAuthWeChatAuthorizeUrl,
+  handleAuthWeChatLogin,
+} from "./account-auth-api.js";
+import {
+  handleAuthWeChatMiniLoginConfirm,
+  handleAuthWeChatMiniLoginPoll,
+  handleAuthWeChatMiniLoginStart,
+} from "./account-wechat-mini-login-api.js";
+import {
+  handleAccountAiChatCompletions,
+  handleAccountAiSettingsGet,
+  handleAccountAiSettingsSave,
+} from "./account-ai-api.js";
+import {
+  handleAccountSyncLocationGet,
+  handleAccountSyncLocationSave,
+  handleAccountWorkspaceBind,
+  handleAccountWorkspaceList,
+} from "./account-workspace-api.js";
+import {
+  handleUserMobileEntryCreate,
+  handleUserMobileEntryDelete,
+  handleUserMobileEntryList,
+  handleUserMobileEntryPending,
+  handleUserMobileEntryStatus,
+  handleUserMobileWikiList,
+  handleUserMobileWikiPage,
+  handleUserPublish,
+} from "./account-user-sync-api.js";
+import {
+  handleUserMediaUpload,
+  handleUserMobileChatCompleteCodexDirect,
+  handleUserMobileChatList,
+  handleUserMobileChatPrepareCodexDirect,
+  handleUserMobileChatSend,
+  handleUserMobileChatSourceRemove,
+  handleUserMobileCloudflareQuotaStatus,
+  handleUserMobileCodexOAuthPoll,
+  handleUserMobileCodexOAuthStart,
+  handleUserMobileCodexQuotaRefresh,
+  handleUserMobileCodexQuotaTokenSync,
+  handleUserMobileDiaryImageGenerate,
+  handleUserMobileDocumentGet,
+  handleUserMobileDocumentSave,
+  handleUserMobileLinkPreview,
+  handleUserMobileProviderSave,
+  handleUserMobileTaskAiDone,
+  handleUserMobileTaskList,
+  handleUserMobileTaskReviewSettingSave,
+  handleUserMobileTaskSave,
+} from "./account-user-mobile-api.js";
+import {
+  handleWikiPublishEvents,
+  notifyWikiPublished,
+  WikiPublishEvents,
+} from "./wiki-publish-events.js";
 
 interface Env {
   REMOTE_TOKEN: string;
@@ -51,12 +129,21 @@ interface Env {
   CLOUDFLARE_SEARCH_ENDPOINT?: string;
   CLOUDFLARE_SEARCH_TOKEN?: string;
   CLOUDFLARE_SEARCH_MODEL?: string;
+  QUOTA_READER_URL?: string;
+  QUOTA_READER_TOKEN?: string;
+  CLOUDFLARE_ACCOUNT_ID?: string;
+  CLOUDFLARE_API_TOKEN?: string;
   PUBLIC_MEDIA_BASE_URL?: string;
+  WECHAT_WEB_APP_ID?: string;
+  WECHAT_WEB_APP_SECRET?: string;
+  WECHAT_MINI_PROGRAM_APP_ID?: string;
+  WECHAT_MINI_PROGRAM_APP_SECRET?: string;
   DB?: D1Database;
   WIKI_BUCKET?: R2Bucket;
   MEDIA_BUCKET?: R2Bucket;
   VECTORIZE?: VectorizeIndex;
   AI?: Ai;
+  WIKI_PUBLISH_EVENTS?: DurableObjectNamespace;
 }
 
 interface WikiFile {
@@ -127,6 +214,16 @@ interface MediaUploadPayload {
   mimeType?: string;
 }
 
+interface AndroidAppUpdateManifest {
+  platform?: string;
+  versionCode?: number;
+  versionName?: string;
+  apkUrl?: string;
+  sizeBytes?: number;
+  publishedAt?: string;
+  notes?: string;
+}
+
 interface PullPayload {
   limit?: number;
   cursor?: string;
@@ -141,7 +238,59 @@ interface WorkerRoute {
 
 const PUBLIC_ROUTES: readonly WorkerRoute[] = [
   createExactRoute("GET", "/status", (_request, env) => json({ ok: true, bindings: bindingStatus(env) })),
-  createPrefixRoute("GET", "/media/", (_request, env, url) => handleMediaRead(url, env)),
+  createExactRoute("GET", "/app/update/latest", (_request, env) => handleAppUpdateLatest(env)),
+  createExactRoute("GET", "/wiki/events", (request, env) => handleWikiPublishEvents(request, env)),
+  createPrefixRoute("GET", "/media/", (request, env, url) => handleMediaRead(request, url, env)),
+    createExactRoute("POST", "/auth/register", (request, env) => handleAuthRegister(request, env)),
+    createExactRoute("POST", "/auth/login", (request, env) => handleAuthLogin(request, env)),
+    createExactRoute("POST", "/auth/wechat/authorize-url", (request, env) => handleAuthWeChatAuthorizeUrl(request, env)),
+    createExactRoute("POST", "/auth/wechat/login", (request, env) => handleAuthWeChatLogin(request, env)),
+    createExactRoute("POST", "/auth/wechat/mini-login/start", (request, env) => handleAuthWeChatMiniLoginStart(request, env)),
+    createExactRoute("POST", "/auth/wechat/mini-login/confirm", (request, env) => handleAuthWeChatMiniLoginConfirm(request, env)),
+    createExactRoute("POST", "/auth/wechat/mini-login/poll", (request, env) => handleAuthWeChatMiniLoginPoll(request, env)),
+  createExactRoute("POST", "/auth/session", (request, env) => handleAuthSession(request, env)),
+  createExactRoute("POST", "/account/identities/list", (request, env) => handleAccountIdentitiesList(request, env)),
+  createExactRoute("POST", "/account/identities/bind", (request, env) => handleAccountIdentityBind(request, env)),
+  createExactRoute("POST", "/account/identities/wechat/bind", (request, env) => handleAccountWeChatBind(request, env)),
+  createExactRoute("POST", "/account/identities/unbind", (request, env) => handleAccountIdentityUnbind(request, env)),
+  createExactRoute("POST", "/account/workspaces/bind", (request, env) => handleAccountWorkspaceBind(request, env)),
+  createExactRoute("POST", "/account/workspaces/list", (request, env) => handleAccountWorkspaceList(request, env)),
+  createExactRoute("POST", "/account/sync-location/save", (request, env) => handleAccountSyncLocationSave(request, env)),
+  createExactRoute("POST", "/account/sync-location/get", (request, env) => handleAccountSyncLocationGet(request, env)),
+  createExactRoute("POST", "/user/ai/settings/get", (request, env) => handleAccountAiSettingsGet(request, env)),
+  createExactRoute("POST", "/user/ai/settings/save", (request, env) => handleAccountAiSettingsSave(request, env)),
+  createExactRoute("POST", "/user/ai/chat/completions", (request, env) => handleAccountAiChatCompletions(request, env)),
+  createExactRoute("POST", "/user/ai/codex-oauth/start", (request, env) => handleUserMobileCodexOAuthStart(request, env)),
+  createExactRoute("POST", "/user/ai/codex-oauth/poll", (request, env) => handleUserMobileCodexOAuthPoll(request, env)),
+  createExactRoute("POST", "/user/ai/codex-quota/refresh", (request, env) => handleUserMobileCodexQuotaRefresh(request, env)),
+  createExactRoute("POST", "/user/publish", (request, env) => handleUserPublish(request, env)),
+  createExactRoute("POST", "/user/mobile/entries", (request, env) => handleUserMobileEntryCreate(request, env)),
+  createExactRoute("POST", "/user/mobile/entries/list", (request, env) => handleUserMobileEntryList(request, env)),
+  createExactRoute("POST", "/user/mobile/entries/delete", (request, env) => handleUserMobileEntryDelete(request, env)),
+  createExactRoute("POST", "/user/mobile/entries/pending", (request, env) => handleUserMobileEntryPending(request, env)),
+  createExactRoute("POST", "/user/mobile/entries/status", (request, env) => handleUserMobileEntryStatus(request, env)),
+  createExactRoute("POST", "/user/mobile/wiki/list", (request, env) => handleUserMobileWikiList(request, env)),
+  createExactRoute("POST", "/user/mobile/wiki/page", (request, env) => handleUserMobileWikiPage(request, env)),
+  createExactRoute("POST", "/user/media/upload", (request, env) => handleUserMediaUpload(request, env)),
+  createExactRoute("POST", "/user/mobile/chat/list", (request, env) => handleUserMobileChatList(request, env)),
+  createExactRoute("POST", "/user/mobile/chat/send", (request, env) => handleUserMobileChatSend(request, env)),
+  createExactRoute("POST", "/user/mobile/chat/codex-direct/prepare", (request, env) => handleUserMobileChatPrepareCodexDirect(request, env)),
+  createExactRoute("POST", "/user/mobile/chat/codex-direct/complete", (request, env) => handleUserMobileChatCompleteCodexDirect(request, env)),
+  createExactRoute("POST", "/user/mobile/chat/source/remove", (request, env) => handleUserMobileChatSourceRemove(request, env)),
+  createExactRoute("POST", "/user/mobile/link-preview", (request, env) => handleUserMobileLinkPreview(request, env)),
+  createExactRoute("POST", "/user/mobile/provider/save", (request, env) => handleUserMobileProviderSave(request, env)),
+  createExactRoute("POST", "/user/mobile/diary-image/generate", (request, env) => handleUserMobileDiaryImageGenerate(request, env)),
+  createExactRoute("POST", "/user/mobile/codex-oauth/start", (request, env) => handleUserMobileCodexOAuthStart(request, env)),
+  createExactRoute("POST", "/user/mobile/codex-oauth/poll", (request, env) => handleUserMobileCodexOAuthPoll(request, env)),
+  createExactRoute("POST", "/user/mobile/codex-quota/sync-token", (request, env) => handleUserMobileCodexQuotaTokenSync(request, env)),
+  createExactRoute("POST", "/user/mobile/codex-quota/refresh", (request, env) => handleUserMobileCodexQuotaRefresh(request, env)),
+  createExactRoute("POST", "/user/mobile/cloudflare-quota/status", (request, env) => handleUserMobileCloudflareQuotaStatus(request, env)),
+  createExactRoute("POST", "/user/mobile/tasks/list", (request, env) => handleUserMobileTaskList(request, env)),
+  createExactRoute("POST", "/user/mobile/tasks/save", (request, env) => handleUserMobileTaskSave(request, env)),
+  createExactRoute("POST", "/user/mobile/tasks/done-ai", (request, env) => handleUserMobileTaskAiDone(request, env)),
+  createExactRoute("POST", "/user/mobile/tasks/review-setting", (request, env) => handleUserMobileTaskReviewSettingSave(request, env)),
+  createExactRoute("POST", "/user/mobile/documents/get", (request, env) => handleUserMobileDocumentGet(request, env)),
+  createExactRoute("POST", "/user/mobile/documents/save", (request, env) => handleUserMobileDocumentSave(request, env)),
 ];
 
 const AUTHORIZED_ROUTES: readonly WorkerRoute[] = [
@@ -165,7 +314,17 @@ const AUTHORIZED_ROUTES: readonly WorkerRoute[] = [
   createExactRoute("POST", "/mobile/wiki/page", (request, env) => handleMobileWikiPage(request, env)),
   createExactRoute("POST", "/mobile/chat/list", (request, env) => handleMobileChatList(request, env)),
   createExactRoute("POST", "/mobile/chat/send", (request, env) => handleMobileChatSend(request, env)),
+  createExactRoute("POST", "/mobile/chat/codex-direct/prepare", (request, env) => handleMobileChatPrepareCodexDirect(request, env)),
+  createExactRoute("POST", "/mobile/chat/codex-direct/complete", (request, env) => handleMobileChatCompleteCodexDirect(request, env)),
+  createExactRoute("POST", "/mobile/chat/source/remove", (request, env) => handleMobileChatSourceRemove(request, env)),
+  createExactRoute("POST", "/mobile/link-preview", (request, env) => handleMobileLinkPreview(request, env)),
   createExactRoute("POST", "/mobile/provider/save", (request, env) => handleMobileProviderSave(request, env)),
+  createExactRoute("POST", "/mobile/diary-image/generate", (request, env) => handleMobileDiaryImageGenerate(request, env)),
+  createExactRoute("POST", "/mobile/codex-oauth/start", (request, env) => handleMobileCodexOAuthStart(request, env)),
+  createExactRoute("POST", "/mobile/codex-oauth/poll", (request, env) => handleMobileCodexOAuthPoll(request, env)),
+  createExactRoute("POST", "/mobile/codex-quota/sync-token", (request, env) => handleMobileCodexQuotaTokenSync(request, env)),
+  createExactRoute("POST", "/mobile/codex-quota/refresh", (request, env) => handleMobileCodexQuotaRefresh(request, env)),
+  createExactRoute("POST", "/mobile/cloudflare-quota/status", (_request, env) => handleMobileCloudflareQuotaStatus(env)),
   createExactRoute("POST", "/mobile/tasks/list", (request, env) => handleMobileTaskList(request, env)),
   createExactRoute("POST", "/mobile/tasks/save", (request, env) => handleMobileTaskSave(request, env)),
   createExactRoute("POST", "/mobile/tasks/done-ai", (request, env) => handleMobileTaskAiDone(request, env)),
@@ -176,18 +335,23 @@ const AUTHORIZED_ROUTES: readonly WorkerRoute[] = [
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    if (request.method === "OPTIONS") {
-      return corsPreflight(request);
-    }
+    try {
+      if (request.method === "OPTIONS") {
+        return corsPreflight(request);
+      }
 
-    const url = new URL(request.url);
-    const publicResponse = await dispatchRoute(PUBLIC_ROUTES, request, env, url);
-    if (publicResponse) return withCors(publicResponse, request);
-    if (!(await authorize(request, env))) {
-      return withCors(json({ ok: false, error: "unauthorized" }, 401), request);
+      const url = new URL(request.url);
+      const publicResponse = await dispatchRoute(PUBLIC_ROUTES, request, env, url);
+      if (publicResponse) return webSocketSafeResponse(publicResponse, request);
+      if (!(await authorize(request, env))) {
+        return withCors(json({ ok: false, error: "unauthorized" }, 401), request);
+      }
+      const response = await dispatchRoute(AUTHORIZED_ROUTES, request, env, url) ?? json({ ok: false, error: "not_found" }, 404);
+      return withCors(response, request);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "worker_unhandled_error";
+      return withCors(json({ ok: false, error: message }, 500), request);
     }
-    const response = await dispatchRoute(AUTHORIZED_ROUTES, request, env, url) ?? json({ ok: false, error: "not_found" }, 404);
-    return withCors(response, request);
   },
   async scheduled(_event: ScheduledEvent, env: Env): Promise<void> {
     await writeDailyTaskReview(env);
@@ -195,7 +359,7 @@ export default {
   },
 };
 
-export { buildMobileChatReply };
+export { buildMobileChatReply, WikiPublishEvents };
 
 async function dispatchRoute(
   routes: readonly WorkerRoute[],
@@ -255,7 +419,7 @@ async function handleOcr(request: Request, env: Env): Promise<Response> {
     }
     const result = await env.AI.run(env.OCR_MODEL, {
       ...mediaAiInput(payload, "image"),
-      prompt: "Read all visible text in the image exactly. Return plain text only.",
+      prompt: "Return only the verbatim OCR text visible in the image. Preserve Chinese and line breaks. Do not describe the image. If no readable text is visible, return an empty string.",
     });
     return json({ text: extractWorkerText(result) });
   } catch {
@@ -354,18 +518,130 @@ async function handleMediaUpload(request: Request, env: Env): Promise<Response> 
   return json({ key: payload.key, url: `${url.origin}/media/${encodeMediaKey(payload.key)}` });
 }
 
-async function handleMediaRead(url: URL, env: Env): Promise<Response> {
+async function handleAppUpdateLatest(env: Env): Promise<Response> {
+  if (!env.MEDIA_BUCKET) return noStore(json({ ok: false, error: "missing_media_bucket_binding" }, 500));
+  const object = await env.MEDIA_BUCKET.get("app/android/latest.json");
+  if (!object) return noStore(json({ ok: true, update: null }));
+  const text = await object.text();
+  const manifest = normalizeAndroidAppUpdateManifest(JSON.parse(text) as AndroidAppUpdateManifest);
+  return noStore(json({ ok: true, update: manifest }));
+}
+
+function normalizeAndroidAppUpdateManifest(value: AndroidAppUpdateManifest): AndroidAppUpdateManifest | null {
+  const required = normalizeAndroidAppRequiredFields(value);
+  if (!required) {
+    return null;
+  }
+  return {
+    platform: "android",
+    ...required,
+    sizeBytes: normalizeOptionalPositiveNumber(value.sizeBytes),
+    notes: String(value.notes ?? "").trim(),
+  };
+}
+
+function normalizeAndroidAppRequiredFields(
+  value: AndroidAppUpdateManifest,
+): Pick<AndroidAppUpdateManifest, "versionCode" | "versionName" | "apkUrl" | "publishedAt"> | null {
+  const versionCode = Number(value.versionCode);
+  const versionName = String(value.versionName ?? "").trim();
+  const apkUrl = String(value.apkUrl ?? "").trim();
+  const publishedAt = String(value.publishedAt ?? "").trim();
+  if (!Number.isInteger(versionCode) || versionCode <= 0) return null;
+  if (!versionName || !apkUrl || !publishedAt) return null;
+  return { versionCode, versionName, apkUrl, publishedAt };
+}
+
+function normalizeOptionalPositiveNumber(value: unknown): number | undefined {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : undefined;
+}
+
+function noStore(response: Response): Response {
+  response.headers.set("cache-control", "no-store");
+  return response;
+}
+
+// fallow-ignore-next-line complexity
+async function handleMediaRead(request: Request, url: URL, env: Env): Promise<Response> {
   if (!env.MEDIA_BUCKET) return json({ ok: false, error: "missing_media_bucket_binding" }, 500);
   const key = decodeURIComponent(url.pathname.replace(/^\/media\//, ""));
   if (!key) return json({ ok: false, error: "missing_media_key" }, 400);
+
+  const rangeHeader = request.headers.get("range");
+  if (rangeHeader) {
+    const head = await env.MEDIA_BUCKET.head(key);
+    if (!head) return json({ ok: false, error: "media_not_found" }, 404);
+    const range = parseSingleByteRange(rangeHeader, head.size);
+    if (!range) {
+      return new Response(null, {
+        status: 416,
+        headers: {
+          "content-range": `bytes */${head.size}`,
+          "accept-ranges": "bytes",
+        },
+      });
+    }
+    const object = await env.MEDIA_BUCKET.get(key, {
+      range: {
+        offset: range.offset,
+        length: range.length,
+      },
+    });
+    if (!object) return json({ ok: false, error: "media_not_found" }, 404);
+    return new Response(object.body, {
+      status: 206,
+      headers: {
+        "content-type": object.httpMetadata?.contentType || head.httpMetadata?.contentType || "application/octet-stream",
+        "content-range": `bytes ${range.offset}-${range.end}/${head.size}`,
+        "content-length": String(range.length),
+        "accept-ranges": "bytes",
+        "cache-control": "public, max-age=31536000, immutable",
+      },
+    });
+  }
+
   const object = await env.MEDIA_BUCKET.get(key);
   if (!object) return json({ ok: false, error: "media_not_found" }, 404);
   return new Response(object.body, {
     headers: {
       "content-type": object.httpMetadata?.contentType || "application/octet-stream",
+      "content-length": String(object.size),
+      "accept-ranges": "bytes",
       "cache-control": "public, max-age=31536000, immutable",
     },
   });
+}
+
+// fallow-ignore-next-line complexity
+function parseSingleByteRange(value: string, size: number): { offset: number; length: number; end: number } | null {
+  const match = /^bytes=(\d*)-(\d*)$/i.exec(value.trim());
+  if (!match || size <= 0) {
+    return null;
+  }
+  const startText = match[1];
+  const endText = match[2];
+  if (!startText && !endText) {
+    return null;
+  }
+  if (!startText) {
+    const suffixLength = Number(endText);
+    if (!Number.isFinite(suffixLength) || suffixLength <= 0) return null;
+    const length = Math.min(suffixLength, size);
+    const offset = size - length;
+    return { offset, length, end: size - 1 };
+  }
+  const offset = Number(startText);
+  const requestedEnd = endText ? Number(endText) : size - 1;
+  if (!Number.isFinite(offset) || !Number.isFinite(requestedEnd) || offset < 0 || requestedEnd < offset || offset >= size) {
+    return null;
+  }
+  const end = Math.min(requestedEnd, size - 1);
+  return {
+    offset,
+    length: end - offset + 1,
+    end,
+  };
 }
 
 async function handlePublish(request: Request, env: Env): Promise<Response> {
@@ -386,6 +662,12 @@ async function handlePublish(request: Request, env: Env): Promise<Response> {
   try {
     const vectorStats = await publishWikiPages(env, publish.pages, publish.publishedAt);
     await markPublishRunPublished(env.DB, publish.runId);
+    await notifyWikiPublished(env, {
+      publishVersion: publish.publishVersion,
+      publishedAt: publish.publishedAt,
+      pageCount: publish.pages.length,
+      scope: "global",
+    });
     return json({
       ok: true,
       action: "publish",
@@ -706,6 +988,7 @@ function bindingStatus(env: Env): Record<string, boolean> {
     mediaR2: Boolean(env.MEDIA_BUCKET),
     vectorize: Boolean(env.VECTORIZE),
     ai: Boolean(env.AI),
+    wikiEvents: Boolean(env.WIKI_PUBLISH_EVENTS),
   };
 }
 
@@ -821,6 +1104,10 @@ function withCors(response: Response, request: Request): Response {
     statusText: response.statusText,
     headers,
   });
+}
+
+function webSocketSafeResponse(response: Response, request: Request): Response {
+  return response.status === 101 ? response : withCors(response, request);
 }
 
 function corsHeaders(request: Request): Headers {

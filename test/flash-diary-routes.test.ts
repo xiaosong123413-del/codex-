@@ -6,18 +6,24 @@ import type { LLMMessage, LLMProvider } from "../src/utils/provider.js";
 import type { ServerConfig } from "../web/server/config.js";
 import {
   handleFlashDiaryList,
+  handleFlashDiaryAppend,
+  handleFlashDiaryMedia,
   handleFlashDiaryMemory,
+  handleFlashDiaryMediaUpload,
   handleFlashDiaryPage,
   handleFlashDiarySave,
 } from "../web/server/routes/flash-diary.js";
+import { readWorkflowEvents } from "../web/server/services/workflow-recorder.js";
 
 const tempRoots: string[] = [];
+const LEGACY_REFRESH_RACE_TIMEOUT_MS = 500;
 
 afterEach(() => {
   vi.restoreAllMocks();
   delete process.env.LLMWIKI_REMOTE_PROVIDER;
   delete process.env.CLOUDFLARE_WORKER_URL;
   delete process.env.CLOUDFLARE_REMOTE_TOKEN;
+  delete process.env.CLOUDFLARE_OCR_MODEL;
   while (tempRoots.length > 0) {
     const root = tempRoots.pop();
     if (root) fs.rmSync(root, { recursive: true, force: true });
@@ -268,7 +274,7 @@ describe("flash diary routes", () => {
         now: new Date(2026, 3, 26, 12, 0, 0),
         provider: createHangingProvider(),
       })({} as never, { json, status } as never).then(() => "completed"),
-      new Promise<string>((resolve) => setTimeout(() => resolve("timed-out"), 50)),
+      new Promise<string>((resolve) => setTimeout(() => resolve("timed-out"), LEGACY_REFRESH_RACE_TIMEOUT_MS)),
     ]);
 
     expect(result).toBe("completed");
@@ -276,6 +282,51 @@ describe("flash diary routes", () => {
     expect(payload.success).toBe(true);
     expect(payload.data.html).toContain("已有短期记忆");
     expect(payload.data.html).toContain("已有长期记忆");
+  });
+
+  it("prefers the local memory file over a stale cloud memory document", async () => {
+    const cfg = createConfig();
+    process.env.LLMWIKI_REMOTE_PROVIDER = "cloudflare";
+    process.env.CLOUDFLARE_WORKER_URL = "https://example.workers.dev/";
+    process.env.CLOUDFLARE_REMOTE_TOKEN = "token";
+    writeMemory(
+      cfg.sourceVaultRoot,
+      [
+        "# Memory",
+        "",
+        "## 短期记忆（最近 7 天）",
+        "- 本地新 Memory",
+        "",
+        "## 长期记忆",
+        "- 本地长期内容",
+      ].join("\n"),
+    );
+    writeMemoryState(cfg.runtimeRoot, "2026-04-29");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      text: async () => JSON.stringify({
+        ok: true,
+        document: {
+          path: "wiki/journal-memory.md",
+          raw: "# Memory\n\n## 短期记忆（最近 7 天）\n- 云端旧 Memory\n",
+          updatedAt: "2026-04-26T06:20:00.000Z",
+        },
+      }),
+    }));
+    const json = vi.fn();
+    const status = vi.fn(() => ({ json }));
+
+    await handleFlashDiaryMemory(cfg, {
+      now: new Date(2026, 3, 30, 12, 0, 0),
+    })({} as never, { json, status } as never);
+
+    const payload = json.mock.calls[0]?.[0];
+    expect(payload.success).toBe(true);
+    expect(payload.data.raw).toContain("本地新 Memory");
+    expect(payload.data.raw).not.toContain("云端旧 Memory");
+    expect(payload.data.lastAppliedDiaryDate).toBe("2026-04-29");
   });
 
   it("refreshes legacy short-term placeholder content before returning the memory page", async () => {
@@ -316,6 +367,7 @@ describe("flash diary routes", () => {
 
     await handleFlashDiaryMemory(cfg, {
       now: new Date(2026, 3, 26, 12, 0, 0),
+      shortTermRefreshTimeoutMs: 250,
       provider: createFakeProvider(({ system }) => {
         if (system.includes("最近 7 天短期记忆")) {
           return [
@@ -393,13 +445,131 @@ describe("flash diary routes", () => {
         now: new Date(2026, 3, 26, 12, 0, 0),
         provider: createHangingProvider(),
       })({} as never, { json, status } as never).then(() => "completed"),
-      new Promise<string>((resolve) => setTimeout(() => resolve("timed-out"), 50)),
+      new Promise<string>((resolve) => setTimeout(() => resolve("timed-out"), LEGACY_REFRESH_RACE_TIMEOUT_MS)),
     ]);
 
     expect(result).toBe("completed");
     const payload = json.mock.calls[0]?.[0];
     expect(payload.success).toBe(true);
     expect(payload.data.html).toContain("可见窗口");
+  });
+
+  it("writes uploaded editor images into the diary day asset folder and returns a preview url", async () => {
+    const cfg = createConfig();
+    writeDiary(cfg.sourceVaultRoot, "2026-04-27", "hello");
+    const json = vi.fn();
+    const statusJson = vi.fn();
+    const status = vi.fn(() => ({ json: statusJson }));
+
+    await handleFlashDiaryMediaUpload(cfg)(
+      {
+        body: {
+          path: "raw/闪念日记/2026-04-27.md",
+          fileName: "drop.png",
+          dataUrl: "data:image/png;base64,aGVsbG8=",
+        },
+      } as never,
+      { json, status } as never,
+    );
+
+    const payload = json.mock.calls[0]?.[0];
+    expect(payload.success).toBe(true);
+    expect(payload.data.mediaPath).toBe("raw/闪念日记/assets/2026-04-27/drop.png");
+    expect(payload.data.mediaUrl).toContain("/api/flash-diary/media?path=");
+    expect(
+      fs.existsSync(path.join(cfg.sourceVaultRoot, "raw", "闪念日记", "assets", "2026-04-27", "drop.png")),
+    ).toBe(true);
+    expect(status).not.toHaveBeenCalled();
+    expect(statusJson).not.toHaveBeenCalled();
+  });
+
+  it("writes uploaded editor videos into the diary day asset folder", async () => {
+    const cfg = createConfig();
+    writeDiary(cfg.sourceVaultRoot, "2026-04-27", "hello");
+    const json = vi.fn();
+    const statusJson = vi.fn();
+    const status = vi.fn(() => ({ json: statusJson }));
+
+    await handleFlashDiaryMediaUpload(cfg)(
+      {
+        body: {
+          path: "raw/闪念日记/2026-04-27.md",
+          fileName: "drop.mp4",
+          dataUrl: "data:video/mp4;base64,dmlkZW8=",
+        },
+      } as never,
+      { json, status } as never,
+    );
+
+    const payload = json.mock.calls[0]?.[0];
+    expect(payload.success).toBe(true);
+    expect(payload.data.mediaPath).toBe("raw/闪念日记/assets/2026-04-27/drop.mp4");
+    expect(payload.data.mediaUrl).toContain("/api/flash-diary/media?path=");
+    expect(
+      fs.existsSync(path.join(cfg.sourceVaultRoot, "raw", "闪念日记", "assets", "2026-04-27", "drop.mp4")),
+    ).toBe(true);
+    expect(status).not.toHaveBeenCalled();
+    expect(statusJson).not.toHaveBeenCalled();
+  });
+
+  it("runs OCR for appended diary images and stores a searchable sidecar", async () => {
+    const cfg = createConfig();
+    const fixturePath = path.join(cfg.projectRoot, "receipt.png");
+    fs.writeFileSync(fixturePath, "image-bytes", "utf8");
+    process.env.CLOUDFLARE_WORKER_URL = "https://worker.example.com/";
+    process.env.CLOUDFLARE_REMOTE_TOKEN = "token";
+    process.env.CLOUDFLARE_OCR_MODEL = "@cf/test/ocr";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      text: "发票编号 ABC123",
+    }))));
+    const json = vi.fn();
+    const statusJson = vi.fn();
+    const status = vi.fn(() => ({ json: statusJson }));
+
+    await handleFlashDiaryAppend(cfg)(
+      {
+        body: {
+          text: "拍下发票",
+          mediaPaths: [fixturePath],
+          now: "2026-04-27T08:00:00.000Z",
+        },
+      } as never,
+      { json, status } as never,
+    );
+
+    const indexPath = path.join(cfg.runtimeRoot, ".llmwiki", "source-media-index.json");
+    const index = JSON.parse(fs.readFileSync(indexPath, "utf8"));
+    const record = Object.values(index.records).find((item) =>
+      (item as { path?: string }).path === "raw/闪念日记/2026-04-27.md"
+    ) as { id: string; ocrTextPath: string } | undefined;
+    expect(json.mock.calls[0]?.[0]?.success).toBe(true);
+    expect(record?.ocrTextPath).toBe(`.llmwiki/ocr/${record?.id}.txt`);
+    expect(fs.readFileSync(path.join(cfg.runtimeRoot, ".llmwiki", "ocr", `${record?.id}.txt`), "utf8"))
+      .toContain("发票编号 ABC123");
+    expect(readWorkflowEvents(cfg.runtimeRoot)[0]).toEqual(expect.objectContaining({
+      source: "diary",
+      raw_input: "拍下发票",
+    }));
+    expect(status).not.toHaveBeenCalled();
+    expect(statusJson).not.toHaveBeenCalled();
+  });
+
+  it("serves previously uploaded diary editor images", async () => {
+    const cfg = createConfig();
+    const mediaPath = path.join(cfg.sourceVaultRoot, "raw", "闪念日记", "assets", "2026-04-27", "drop.png");
+    fs.mkdirSync(path.dirname(mediaPath), { recursive: true });
+    fs.writeFileSync(mediaPath, "image", "utf8");
+    const sendFile = vi.fn();
+    const statusSend = vi.fn();
+    const status = vi.fn(() => ({ send: statusSend }));
+
+    await handleFlashDiaryMedia(cfg)(
+      { query: { path: "raw/闪念日记/assets/2026-04-27/drop.png" } } as never,
+      { sendFile, status } as never,
+    );
+
+    expect(sendFile).toHaveBeenCalledWith(mediaPath);
+    expect(status).not.toHaveBeenCalled();
   });
 });
 

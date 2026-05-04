@@ -39,7 +39,6 @@ interface FinalCompileResult {
   internalBatchCount: number;
   batchLimit: number;
   claimsUpdated: number;
-  episodesUpdated: number;
   proceduresUpdated: number;
   wikiOutputDir: string;
   publishedAt?: string;
@@ -246,7 +245,7 @@ async function appendFinalCompileSummary(run: RunningRun): Promise<void> {
   pushSummaryLine(
     run,
     "system",
-    `claims ${result.claimsUpdated}, episodes ${result.episodesUpdated}, procedures ${result.proceduresUpdated}`,
+    `claims ${result.claimsUpdated}, procedures ${result.proceduresUpdated}`,
   );
   pushSummaryLine(
     run,

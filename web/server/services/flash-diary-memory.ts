@@ -5,8 +5,7 @@
  * above long-term memory sections, plus refresh state for daily rebuilds.
  */
 import fs from "node:fs";
-import path from "node:path";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import type { LLMProvider } from "../../../src/utils/provider.js";
 import { listFlashDiaryFiles, readFlashDiaryPage } from "./flash-diary.js";
 import { resolveAgentRuntimeProvider } from "./llm-chat.js";
@@ -32,6 +31,7 @@ import {
   resolveMemoryFilePath,
   type FlashDiaryMemoryPage,
   type FlashDiaryMemoryState,
+  writeFlashDiaryMemoryCopies,
   writeFlashDiaryMemoryState,
 } from "./flash-diary-memory-files.js";
 
@@ -142,9 +142,7 @@ export async function refreshStoredFlashDiaryShortTermPage(options: {
     preserveExistingOnError: true,
   });
   const effectiveRaw = normalizeMemoryMarkdown(baseRaw, shortTermLines);
-  if (effectiveRaw !== baseRaw) {
-    await writeMemoryFile(filePath, effectiveRaw);
-  }
+  await writeFlashDiaryMemoryCopies(options.sourceVaultRoot, options.runtimeRoot, effectiveRaw);
   await writeFlashDiaryMemoryState(options.runtimeRoot, {
     version: STATE_VERSION,
     memoryPath: MEMORY_PATH,
@@ -180,9 +178,7 @@ export async function readFlashDiaryMemoryPage(options: FlashDiaryMemoryOptions)
     })
     : readShortTermSectionLines(updatedRaw);
   const effectiveRaw = normalizeMemoryMarkdown(updatedRaw, shortTermLines);
-  if (!snapshot.exists || effectiveRaw !== snapshot.baseRaw) {
-    await writeMemoryFile(snapshot.filePath, effectiveRaw);
-  }
+  await writeFlashDiaryMemoryCopies(options.sourceVaultRoot, options.runtimeRoot, effectiveRaw);
   const lastAppliedDiaryDate = resolveLastAppliedDiaryDate(updateResult, snapshot);
   await writeFlashDiaryMemoryState(options.runtimeRoot, {
     version: STATE_VERSION,
@@ -311,12 +307,6 @@ function buildMemoryUserPrompt(currentMemory: string, diary: DiaryInput): string
     "Diary Markdown:",
     diary.raw,
   ].join("\n");
-}
-
-async function writeMemoryFile(filePath: string, raw: string): Promise<void> {
-  await mkdir(path.dirname(filePath), { recursive: true });
-  const normalizedRaw = raw.endsWith("\n") ? raw : `${raw}\n`;
-  await writeFile(filePath, normalizedRaw, "utf8");
 }
 
 function listEligibleDiaries(diaries: readonly DiaryInput[], now: Date): readonly DiaryInput[] {

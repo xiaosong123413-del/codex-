@@ -56,6 +56,81 @@ CREATE TABLE IF NOT EXISTS mobile_ai_providers (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS mobile_codex_tokens (
+  owner_uid TEXT NOT NULL,
+  account_name TEXT NOT NULL,
+  email TEXT,
+  plan_type TEXT,
+  access_token TEXT NOT NULL,
+  refresh_token TEXT,
+  account_id TEXT,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (owner_uid, account_name)
+);
+
+CREATE TABLE IF NOT EXISTS accounts (
+  id TEXT PRIMARY KEY,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS account_identities (
+  type TEXT NOT NULL,
+  identifier TEXT NOT NULL,
+  account_id TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (type, identifier)
+);
+
+CREATE INDEX IF NOT EXISTS idx_account_identities_account
+  ON account_identities(account_id);
+
+CREATE TABLE IF NOT EXISTS account_sessions (
+  token_hash TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_account_sessions_account
+  ON account_sessions(account_id);
+
+CREATE TABLE IF NOT EXISTS account_wechat_login_challenges (
+  id TEXT PRIMARY KEY,
+  poll_token_hash TEXT NOT NULL,
+  status TEXT NOT NULL,
+  account_id TEXT,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  confirmed_at TEXT,
+  consumed_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_account_wechat_login_challenges_expires
+  ON account_wechat_login_challenges(expires_at);
+
+CREATE TABLE IF NOT EXISTS account_workspaces (
+  workspace_id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  owner_user_id TEXT NOT NULL,
+  display_name TEXT NOT NULL DEFAULT '',
+  sync_backend_type TEXT NOT NULL DEFAULT 'local_directory',
+  sync_backend_config_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_account_workspaces_account
+  ON account_workspaces(account_id, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS account_ai_settings (
+  account_id TEXT PRIMARY KEY,
+  settings_json TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS mobile_chats (
   id TEXT PRIMARY KEY,
   owner_uid TEXT NOT NULL,

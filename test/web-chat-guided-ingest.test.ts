@@ -22,7 +22,7 @@ describe("chat guided ingest route", () => {
     fs.mkdirSync(path.join(sourceVaultRoot, "inbox"), { recursive: true });
     fs.mkdirSync(runtimeRoot, { recursive: true });
     fs.writeFileSync(path.join(sourceVaultRoot, "inbox", "source.md"), "# Guided Source\n\nBody", "utf8");
-    const conversation = createConversation(runtimeRoot, {
+    const conversation = createConversation(sourceVaultRoot, {
       title: "Guided",
       articleRefs: ["inbox/source.md"],
     });

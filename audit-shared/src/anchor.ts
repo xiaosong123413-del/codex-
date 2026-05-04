@@ -71,6 +71,7 @@ export function resolveAnchor(fileText: string, anchor: Anchor): ResolvedAnchor 
   return resolveContextWindowMatch(fileText, anchor);
 }
 
+// fallow-ignore-next-line complexity
 function tryLineMatch(fileText: string, anchor: Anchor): ResolvedAnchor | null {
   const [ls, le] = anchor.target_lines;
   const lines = fileText.split("\n");

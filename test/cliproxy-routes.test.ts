@@ -8,6 +8,7 @@ const hoisted = vi.hoisted(() => ({
   getCLIProxyOAuthStatus: vi.fn(),
   getCLIProxyStatus: vi.fn(),
   installCLIProxySource: vi.fn(),
+  deleteCLIProxyAccount: vi.fn(),
   startCLIProxy: vi.fn(),
   stopCLIProxy: vi.fn(),
   requestCLIProxyOAuth: vi.fn(),
@@ -15,6 +16,7 @@ const hoisted = vi.hoisted(() => ({
   saveCLIProxyOpenAICompatibility: vi.fn(),
   setCLIProxyAccountEnabled: vi.fn(),
   setCLIProxyCodexAccountEnabled: vi.fn(),
+  syncCLIProxyCodexTokenToWorker: vi.fn(),
 }));
 
 vi.mock("../web/server/services/cliproxy.js", () => hoisted);
@@ -35,12 +37,15 @@ describe("CLIProxyAPI routes", () => {
     hoisted.getCLIProxyOAuthAccounts.mockResolvedValue({ accounts: [] });
     hoisted.getCLIProxyAuthFileModels.mockResolvedValue({ models: [] });
     hoisted.getCLIProxyCodexAccounts.mockResolvedValue({ accounts: [] });
+    hoisted.deleteCLIProxyAccount.mockResolvedValue({ ok: true });
     hoisted.setCLIProxyAccountEnabled.mockResolvedValue({ ok: true });
     hoisted.setCLIProxyCodexAccountEnabled.mockResolvedValue({ ok: true });
     hoisted.saveCLIProxyOpenAICompatibility.mockResolvedValue({ ok: true });
+    hoisted.syncCLIProxyCodexTokenToWorker.mockResolvedValue({ ok: true });
 
     const getRoutes: Array<{ path: string; handler: (req: unknown, res: { json: (body: unknown) => void }) => Promise<void> | void }> = [];
     const postRoutes: Array<{ path: string; handler: (req: { body?: unknown }, res: { json: (body: unknown) => void; status: (code: number) => { json: (body: unknown) => void } }) => Promise<void> | void }> = [];
+    const deleteRoutes: Array<{ path: string; handler: (req: { body?: unknown }, res: { json: (body: unknown) => void; status: (code: number) => { json: (body: unknown) => void } }) => Promise<void> | void }> = [];
     const app = {
       get(path: string, handler: (req: unknown, res: { json: (body: unknown) => void }) => Promise<void> | void) {
         getRoutes.push({ path, handler });
@@ -48,6 +53,10 @@ describe("CLIProxyAPI routes", () => {
       },
       post(path: string, handler: (req: { body?: unknown }, res: { json: (body: unknown) => void; status: (code: number) => { json: (body: unknown) => void } }) => Promise<void> | void) {
         postRoutes.push({ path, handler });
+        return app;
+      },
+      delete(path: string, handler: (req: { body?: unknown }, res: { json: (body: unknown) => void; status: (code: number) => { json: (body: unknown) => void } }) => Promise<void> | void) {
+        deleteRoutes.push({ path, handler });
         return app;
       },
     };
@@ -67,8 +76,12 @@ describe("CLIProxyAPI routes", () => {
       "/api/cliproxy/stop",
       "/api/cliproxy/oauth",
       "/api/cliproxy/accounts/enabled",
+      "/api/cliproxy/accounts/sync-worker-token",
       "/api/cliproxy/codex/accounts/enabled",
       "/api/cliproxy/openai-compatibility",
+    ]);
+    expect(deleteRoutes.map((route) => route.path)).toEqual([
+      "/api/cliproxy/accounts",
     ]);
 
     const json = vi.fn();
@@ -120,7 +133,28 @@ describe("CLIProxyAPI routes", () => {
       enabled: false,
     });
 
-    await postRoutes[5]?.handler({ body: { name: "codex.json", enabled: false } }, { json, status: vi.fn(() => ({ json })) });
+    await deleteRoutes[0]?.handler({ body: { name: "gemini.json" } }, { json, status: vi.fn(() => ({ json })) });
+    expect(hoisted.deleteCLIProxyAccount).toHaveBeenCalledWith({
+      port: 8317,
+      managementKey: "key",
+      clientKey: "client",
+      projectRoot: "project-root",
+      name: "gemini.json",
+    });
+
+    await postRoutes[5]?.handler({ body: { name: "codex.json", ownerUid: "owner", workerUrl: "https://worker.example.com", remoteToken: "remote" } }, { json, status: vi.fn(() => ({ json })) });
+    expect(hoisted.syncCLIProxyCodexTokenToWorker).toHaveBeenCalledWith({
+      port: 8317,
+      managementKey: "key",
+      clientKey: "client",
+      projectRoot: "project-root",
+      name: "codex.json",
+      ownerUid: "owner",
+      workerUrl: "https://worker.example.com",
+      remoteToken: "remote",
+    });
+
+    await postRoutes[6]?.handler({ body: { name: "codex.json", enabled: false } }, { json, status: vi.fn(() => ({ json })) });
     expect(hoisted.setCLIProxyCodexAccountEnabled).toHaveBeenCalledWith({
       port: 8317,
       managementKey: "key",

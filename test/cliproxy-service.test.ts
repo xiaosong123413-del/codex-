@@ -11,6 +11,7 @@ import {
   installCLIProxySource,
   requestCLIProxyOAuth,
   startCLIProxy,
+  syncCLIProxyCodexTokenToWorker,
   type CLIProxyCommandRunner,
   type CLIProxyFetcher,
 } from "../web/server/services/cliproxy.js";
@@ -247,6 +248,50 @@ describe("CLIProxyAPI service", () => {
           enabled: true,
         },
       ],
+    });
+  });
+
+  it("syncs a local Codex token file to the Cloudflare Worker", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "llmwiki-cliproxy-worker-sync-"));
+    const authDir = path.join(root, ".llmwiki", "cliproxyapi", "auths");
+    fs.mkdirSync(authDir, { recursive: true });
+    fs.writeFileSync(path.join(authDir, "codex.json"), JSON.stringify({
+      type: "codex",
+      access_token: "access-token",
+      refresh_token: "refresh-token",
+      account_id: "account-id",
+      email: "me@example.com",
+      plan_type: "pro",
+    }), "utf8");
+    const fetcher = vi.fn<CLIProxyFetcher>(async (url, init) => {
+      expect(String(url)).toBe("https://remote-brain.example/mobile/codex-quota/sync-token");
+      expect(init?.headers).toEqual({
+        Authorization: "Bearer remote-token",
+        "content-type": "application/json",
+      });
+      expect(JSON.parse(String(init?.body))).toEqual({
+        ownerUid: "owner-1",
+        account: {
+          name: "codex.json",
+          email: "me@example.com",
+          planType: "pro",
+          accessToken: "access-token",
+          refreshToken: "refresh-token",
+          accountId: "account-id",
+        },
+      });
+      return jsonResponse(200, { ok: true });
+    });
+
+    await expect(syncCLIProxyCodexTokenToWorker({
+      projectRoot: root,
+      name: "codex.json",
+      ownerUid: "owner-1",
+      workerUrl: "https://remote-brain.example/",
+      remoteToken: "remote-token",
+    }, fetcher)).resolves.toEqual({
+      ok: true,
+      accountName: "codex.json",
     });
   });
 

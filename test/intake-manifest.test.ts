@@ -74,6 +74,24 @@ describe("intake manifest", () => {
     );
   });
 
+  it("writes configured source folder metadata into synchronized markdown copies", async () => {
+    tempDir = await makeTempDir("intake-configured-sync-");
+    const vault = path.join(tempDir, "vault");
+    const sourceRoot = path.join(vault, "raw", "\u4e2a\u4eba\u4fe1\u606f");
+    await mkdir(sourceRoot, { recursive: true });
+    await writeFile(path.join(sourceRoot, "about.md"), "# About Me\n", "utf8");
+
+    await syncMarkdownSources([sourceRoot], vault, []);
+    const manifest = JSON.parse(await readFile(path.join(vault, "raw_import_manifest.json"), "utf8"));
+    const imported = manifest.imports[0].imported_filename;
+    const copied = await readFile(path.join(vault, "sources_full", imported), "utf8");
+
+    expect(copied).toContain("\u4e2a\u4eba\u4fe1\u606f");
+    expect(manifest.imports[0]).toEqual(
+      expect.objectContaining({ source_kind: "source", source_channel: "\u4e2a\u4eba\u4fe1\u606f" }),
+    );
+  });
+
   it("moves only compiled clipping raw files into the cleaned folder", async () => {
     tempDir = await makeTempDir("intake-clean-");
     const vault = path.join(tempDir, "vault");

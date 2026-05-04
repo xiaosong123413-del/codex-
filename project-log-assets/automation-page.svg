@@ -25,18 +25,18 @@
 
   <text x="78" y="84" class="eyebrow">AUTOMATION WORKSPACE</text>
   <text x="78" y="124" class="h1">自动化展示页</text>
-  <text x="78" y="152" class="body">自动化页现在只显示真实来源：显式自动化、应用 workflow、源码审计后的真实 DAG。</text>
-  <text x="78" y="176" class="body">列表页和详情页都会订阅 automation workspace 变更事件，源码流程 sidecar 或相关源文件变化后自动重拉。</text>
+  <text x="78" y="152" class="body">源码真实流程现在可以直接进入“统一链路图”详情：在同一张图里区分触发、判断、输入、处理和结果。</text>
+  <text x="78" y="176" class="body">第一版先落到闪念日记页，右侧侧栏改为节点说明 + 评论，未接通关系和潜在去向只在侧栏里出现。</text>
 
   <rect x="1224" y="72" width="278" height="50" rx="16" fill="#FFFFFF" stroke="#DCE3FF"/>
-  <text x="1254" y="104" class="body">搜索自动化名称 / 流程说明</text>
+  <text x="1254" y="104" class="body">搜索 Workflow 名称 / 流程说明</text>
 
   <rect x="78" y="194" width="86" height="42" rx="16" fill="#FFFFFF" stroke="#DCE3FF"/>
   <text x="102" y="221" class="h3">运行中</text>
   <rect x="178" y="194" width="86" height="42" rx="16" fill="#FFFFFF" stroke="#DCE3FF"/>
   <text x="202" y="221" class="h3">未启动</text>
   <rect x="278" y="194" width="116" height="42" rx="16" fill="#5F69F2"/>
-  <text x="308" y="221" class="h3" fill="#FFFFFF">全部自动化</text>
+  <text x="308" y="221" class="h3" fill="#FFFFFF">全部 Workflow</text>
 
   <text x="78" y="286" class="h2">真实自动化</text>
   <text x="78" y="312" class="body">显式 automation 配置和应用 workflow 继续保留运行状态与日志入口。</text>
@@ -45,7 +45,7 @@
   <rect x="102" y="364" width="44" height="44" rx="14" fill="#EEF1FF"/>
   <rect x="120" y="378" width="8" height="16" rx="3" fill="#5F69F2"/>
   <text x="170" y="374" class="h2">每日同步</text>
-  <text x="170" y="402" class="body">显式 automation，点进详情后展示真实执行 DAG。</text>
+  <text x="170" y="402" class="body">显式 automation，点进详情后继续展示真实执行 DAG。</text>
   <rect x="170" y="416" width="86" height="28" rx="14" fill="#EEF1FF"/>
   <text x="192" y="434" class="pill" fill="#4B59C7">显式自动化</text>
   <rect x="730" y="368" width="74" height="28" rx="14" fill="#EEF5EF"/>
@@ -53,62 +53,63 @@
   <rect x="826" y="360" width="104" height="40" rx="14" fill="#FFFFFF" stroke="#DCE3FF"/>
   <text x="850" y="386" class="h3">运行日志</text>
 
-  <rect x="78" y="458" width="876" height="108" rx="22" fill="#FFFFFF" stroke="#E3E8FF"/>
-  <rect x="102" y="488" width="44" height="44" rx="14" fill="#EEF1FF"/>
-  <circle cx="124" cy="510" r="11" fill="#5F69F2"/>
-  <text x="170" y="498" class="h2">Wiki 通用助手</text>
-  <text x="170" y="526" class="body">应用 workflow 派生出的真实流程，节点里会继续显示应用和模型。</text>
-  <rect x="170" y="540" width="74" height="28" rx="14" fill="#EEF1FF"/>
-  <text x="190" y="558" class="pill" fill="#4B59C7">应用流程</text>
-  <rect x="730" y="492" width="74" height="28" rx="14" fill="#EEF5EF"/>
-  <text x="754" y="510" class="pill" fill="#23904D">运行中</text>
-  <rect x="826" y="484" width="104" height="40" rx="14" fill="#FFFFFF" stroke="#DCE3FF"/>
-  <text x="850" y="510" class="h3">运行日志</text>
-
   <text x="78" y="632" class="h2">源码真实流程</text>
-  <text x="78" y="658" class="body">只保留经过人工审计、能明确定位源码入口和分支条件的系统流程。</text>
+  <text x="78" y="658" class="body">只保留经过人工审计、能明确定位源码入口和真实上下游的数据流。</text>
 
   <rect x="78" y="680" width="876" height="108" rx="22" fill="#FFFFFF" stroke="#E3E8FF"/>
   <rect x="102" y="710" width="44" height="44" rx="14" fill="#EEF1FF"/>
   <path d="M116 720H132V744H116V720Z" fill="#5F69F2"/>
-  <text x="170" y="720" class="h2">同步入口</text>
-  <text x="170" y="748" class="body">源码真实 DAG：从点击同步按钮，到 intake 扫描、条件分叉、启动 run。</text>
-  <rect x="170" y="762" width="98" height="28" rx="14" fill="#EEF1FF"/>
-  <text x="194" y="780" class="pill" fill="#4B59C7">源码真实流程</text>
+  <text x="170" y="720" class="h2">闪念日记页</text>
+  <text x="170" y="748" class="body">统一链路图：同一张图里看到日记如何分流到 Memory、近日状态、时间线来源刷新、23:30 自动配图和 compile 候选。</text>
+  <text x="170" y="772" class="body">同组里还新增“全局知识流转总览”，把 concepts / episodes / procedures 与个人信息档案、任务池、时间表放到同一张跨页图里。</text>
+  <rect x="170" y="790" width="98" height="28" rx="14" fill="#EEF1FF"/>
+  <text x="194" y="808" class="pill" fill="#4B59C7">源码真实流程</text>
 
-  <rect x="986" y="262" width="536" height="550" rx="26" fill="#FFFFFF" stroke="#E3E8FF"/>
-  <text x="1020" y="306" class="eyebrow">DETAIL VIEW</text>
-  <text x="1020" y="344" class="h1">同步入口</text>
-  <text x="1020" y="372" class="small">源码真实流程</text>
-  <text x="1020" y="396" class="body">详情页只展示真实 DAG，不再显示 project-log 文档步骤。</text>
+  <rect x="986" y="240" width="536" height="598" rx="26" fill="#FFFFFF" stroke="#E3E8FF"/>
+  <text x="1020" y="284" class="eyebrow">DETAIL VIEW</text>
+  <text x="1020" y="322" class="h1">闪念日记页</text>
+  <text x="1020" y="350" class="small">统一链路图 + 节点说明</text>
+  <text x="1020" y="374" class="body">同一张图里直接区分触发、判断、输入、处理和结果。</text>
 
-  <line x1="1278" y1="442" x2="1278" y2="744" stroke="#CCD5FF" stroke-width="4" stroke-linecap="round"/>
-  <path d="M1278 474 L1270 458 H1286 Z" fill="#B8C3FF"/>
-  <path d="M1278 584 L1270 568 H1286 Z" fill="#B8C3FF"/>
-  <path d="M1202 654 H1102 V618" stroke="#B8C3FF" stroke-width="4" stroke-linecap="round"/>
-  <path d="M1102 626 L1094 610 H1110 Z" fill="#B8C3FF"/>
-  <path d="M1354 654 H1454 V618" stroke="#B8C3FF" stroke-width="4" stroke-linecap="round"/>
-  <path d="M1454 626 L1446 610 H1462 Z" fill="#B8C3FF"/>
+  <rect x="1016" y="404" width="308" height="386" rx="22" fill="#F8FAFF" stroke="#E1E7FF"/>
+  <text x="1040" y="438" class="small">UNIFIED GRAPH</text>
 
-  <rect x="1110" y="430" width="336" height="82" rx="22" fill="#F7F9FF" stroke="#DCE3FF"/>
-  <text x="1136" y="462" class="h3">点击同步按钮</text>
-  <text x="1136" y="490" class="body">bindRunPage() 的 startButton click handler。</text>
+  <rect x="1062" y="466" width="208" height="44" rx="18" fill="#FFFFFF" stroke="#D8DEFF"/>
+  <text x="1100" y="494" class="h3">触发：用户保存闪念日记</text>
+  <line x1="1166" y1="510" x2="1166" y2="550" stroke="#C8D1FF" stroke-width="4" stroke-linecap="round"/>
+  <path d="M1166 560 L1158 544 H1174 Z" fill="#B8C3FF"/>
 
-  <rect x="1110" y="540" width="336" height="82" rx="22" fill="#FFFFFF" stroke="#DCE3FF"/>
-  <text x="1136" y="572" class="h3">GET /api/intake/scan</text>
-  <text x="1136" y="600" class="body">confirmSyncPlan() -> loadIntakeScan()</text>
+  <rect x="1044" y="566" width="244" height="58" rx="18" fill="#FFFFFF" stroke="#D8DEFF"/>
+  <text x="1074" y="592" class="h3">结果：当日日记文件</text>
+  <text x="1074" y="614" class="body">raw/闪念日记/YYYY-MM-DD.md</text>
 
-  <rect x="1122" y="650" width="312" height="72" rx="22" fill="#FFFFFF" stroke="#DCE3FF"/>
-  <text x="1150" y="690" class="h3">scan.items 是否为空</text>
+  <line x1="1166" y1="624" x2="1166" y2="658" stroke="#C8D1FF" stroke-width="4" stroke-linecap="round"/>
+  <path d="M1166 668 L1158 652 H1174 Z" fill="#B8C3FF"/>
 
-  <rect x="1000" y="742" width="224" height="96" rx="22" fill="#FFFFFF" stroke="#DCE3FF"/>
-  <text x="1026" y="778" class="h3">未检测到新源料</text>
-  <text x="1026" y="804" class="body">直接提示并结束</text>
+  <rect x="1072" y="684" width="188" height="58" rx="24" fill="#FFFFFF" stroke="#D8DEFF"/>
+  <text x="1118" y="712" class="h3">结果：Memory 文件</text>
+  <text x="1098" y="734" class="body">wiki/journal-memory.md</text>
 
-  <rect x="1332" y="742" width="156" height="96" rx="22" fill="#FFFFFF" stroke="#DCE3FF"/>
-  <text x="1358" y="778" class="h3">继续后续判断</text>
-  <text x="1358" y="804" class="body">进入 plan / confirm 分支</text>
+  <line x1="1260" y1="710" x2="1324" y2="710" stroke="#C8D1FF" stroke-width="4" stroke-linecap="round"/>
+  <path d="M1334 710 L1318 702 V718 Z" fill="#B8C3FF"/>
 
-  <text x="1020" y="878" class="body">右侧评论按钮、分支拖动与箭头连线都只作用于这些真实 DAG 节点。</text>
-  <text x="1020" y="902" class="body">当源码流程 sidecar、被审计源码文件或 automation / agent 配置变化时，当前详情页会自动收到 SSE 刷新。</text>
+  <rect x="1338" y="404" width="160" height="386" rx="22" fill="#FFFFFF" stroke="#E1E7FF"/>
+  <text x="1362" y="438" class="small">SIDEBAR</text>
+  <text x="1362" y="474" class="h2">节点说明</text>
+
+  <rect x="1362" y="504" width="112" height="28" rx="14" fill="#EEF1FF"/>
+  <text x="1400" y="522" class="pill" fill="#4B59C7">结果</text>
+
+  <text x="1362" y="560" class="h3">Memory 文件</text>
+  <text x="1362" y="586" class="body">打开 Memory 时会先显示当前版本，刷新是否发生由判断节点决定。</text>
+
+  <text x="1362" y="640" class="small">未接通关系</text>
+  <text x="1362" y="666" class="body">Memory -&gt; 近日状态</text>
+  <text x="1362" y="690" class="body">当前真实源码里没有这条消费链。</text>
+
+  <text x="1362" y="734" class="small">潜在去向</text>
+  <text x="1362" y="760" class="body">支持项目级本机保存，</text>
+  <text x="1362" y="782" class="body">但不会混进主链路图。</text>
+
+  <text x="1020" y="876" class="body">点击图中节点，右侧切成该节点的上游、下游、最终显示位置和源码位置说明；评论区继续挂在同一个右侧抽屉下半部分。</text>
 </svg>

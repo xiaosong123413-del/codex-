@@ -11,15 +11,21 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { codeDerivedAutomationSeeds as automationWorkspaceSeeds } from "../../client/src/pages/automation/automation-flow.js";
+import { codeDerivedAutomationSeeds as flashDiaryPageSeeds } from "../../client/src/pages/flash-diary/automation-flow.js";
 import { codeDerivedAutomationSeeds as reviewBoardSeeds } from "../../client/src/pages/review/automation-flow.js";
 import { codeDerivedAutomationSeeds as syncEntrySeeds } from "../../client/src/pages/runs/automation-flow.js";
 import { codeDerivedAutomationSeeds as sourceGallerySeeds } from "../../client/src/pages/sources/automation-flow.js";
 import { codeDerivedAutomationSeeds as compileFlowSeeds } from "./compile.automation-flow.js";
+import { codeDerivedAutomationSeeds as globalKnowledgeOverviewSeeds } from "./global-knowledge-overview.automation-flow.js";
+import { informationTransferAutomationSeeds } from "./information-transfer.automation-flow.js";
 import { codeDerivedAutomationSeeds as flashDiarySeeds } from "../routes/flash-diary.automation-flow.js";
+import { codeDerivedAutomationSeeds as workflowRecorderSeeds } from "../routes/workflow-recorder.automation-flow.js";
+import { codeDerivedAutomationSeeds as workflowArtifactsSeeds } from "../routes/workflow-artifacts.automation-flow.js";
 import type { AutomationDefinition } from "./automation-config.js";
 import type {
   CodeDerivedAutomationModule,
   CodeDerivedAutomationSeed,
+  CodeDerivedAutomationSourceKind,
 } from "./code-derived-automation-types.js";
 
 const CODE_FLOW_PREFIX = "code-flow-";
@@ -30,20 +36,29 @@ const CONFIG_WATCH_PATHS = [
 ] as const;
 const FLOW_MODULE_PATHS = [
   "web/client/src/pages/automation/automation-flow.ts",
+  "web/client/src/pages/flash-diary/automation-flow.ts",
   "web/client/src/pages/review/automation-flow.ts",
   "web/client/src/pages/runs/automation-flow.ts",
   "web/client/src/pages/sources/automation-flow.ts",
   "web/server/services/compile.automation-flow.ts",
+  "web/server/services/global-knowledge-overview.automation-flow.ts",
   "web/server/routes/flash-diary.automation-flow.ts",
+  "web/server/routes/workflow-recorder.automation-flow.ts",
+  "web/server/routes/workflow-artifacts.automation-flow.ts",
 ] as const;
 const CODEBASE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+const INFORMATION_TRANSFER_MODULE_PATH = resolveCodePath("web/server/services/information-transfer.automation-flow.ts");
 const STATIC_SEEDS_BY_MODULE_PATH = new Map<string, readonly CodeDerivedAutomationSeed[]>([
   [resolveCodePath("web/client/src/pages/automation/automation-flow.ts"), automationWorkspaceSeeds],
+  [resolveCodePath("web/client/src/pages/flash-diary/automation-flow.ts"), flashDiaryPageSeeds],
   [resolveCodePath("web/client/src/pages/review/automation-flow.ts"), reviewBoardSeeds],
   [resolveCodePath("web/client/src/pages/runs/automation-flow.ts"), syncEntrySeeds],
   [resolveCodePath("web/client/src/pages/sources/automation-flow.ts"), sourceGallerySeeds],
   [resolveCodePath("web/server/services/compile.automation-flow.ts"), compileFlowSeeds],
+  [resolveCodePath("web/server/services/global-knowledge-overview.automation-flow.ts"), globalKnowledgeOverviewSeeds],
   [resolveCodePath("web/server/routes/flash-diary.automation-flow.ts"), flashDiarySeeds],
+  [resolveCodePath("web/server/routes/workflow-recorder.automation-flow.ts"), workflowRecorderSeeds],
+  [resolveCodePath("web/server/routes/workflow-artifacts.automation-flow.ts"), workflowArtifactsSeeds],
 ]);
 
 interface LoadedAutomationSeeds {
@@ -52,24 +67,36 @@ interface LoadedAutomationSeeds {
 }
 
 export interface CodeDerivedAutomationDefinition extends AutomationDefinition {
+  sourceKind?: CodeDerivedAutomationSourceKind;
   mermaid?: string;
+  sourceInsight?: CodeDerivedAutomationSeed["sourceInsight"];
 }
 
 export async function listCodeDerivedAutomations(projectRoot: string): Promise<CodeDerivedAutomationDefinition[]> {
-  const loadedModules = await loadCodeDerivedAutomationSeeds();
+  const loadedModules = await loadAllAutomationSeeds();
   return loadedModules.flatMap(({ modulePath, seeds }) => seeds.map((seed) => (
     createAutomationDefinition(projectRoot, modulePath, seed)
   )));
 }
 
 export async function listCodeDerivedAutomationWatchPaths(projectRoot: string): Promise<string[]> {
-  const loadedModules = await loadCodeDerivedAutomationSeeds();
+  const loadedModules = await loadAllAutomationSeeds();
   const paths = [
     ...CONFIG_WATCH_PATHS.map((relativePath) => path.join(projectRoot, relativePath)),
     ...loadedModules.map(({ modulePath }) => modulePath),
     ...loadedModules.flatMap(({ seeds }) => seeds.flatMap((seed) => seed.sourcePaths.map(resolveCodePath))),
   ];
   return uniqueExistingPaths(paths);
+}
+
+async function loadAllAutomationSeeds(): Promise<LoadedAutomationSeeds[]> {
+  return [
+    ...(await loadCodeDerivedAutomationSeeds()),
+    {
+      modulePath: INFORMATION_TRANSFER_MODULE_PATH,
+      seeds: informationTransferAutomationSeeds,
+    },
+  ];
 }
 
 function createAutomationDefinition(
@@ -89,7 +116,9 @@ function createAutomationDefinition(
     webhookPath: "",
     updatedAt: resolveUpdatedAt(projectRoot, modulePath, seed.sourcePaths),
     flow: seed.flow,
+    ...(seed.sourceKind ? { sourceKind: seed.sourceKind } : {}),
     ...(seed.mermaid ? { mermaid: seed.mermaid } : {}),
+    ...(seed.sourceInsight ? { sourceInsight: seed.sourceInsight } : {}),
   };
 }
 

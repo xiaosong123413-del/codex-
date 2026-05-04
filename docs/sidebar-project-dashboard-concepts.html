@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>项目侧栏信息架构示意图</title>
+  <style>
+    :root {
+      --page: #f4f6f9;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #d8e0ec;
+      --panel: #ffffff;
+      --soft: #edf3ff;
+      --blue: #1f5fbf;
+      --green: #16845d;
+      --amber: #a86400;
+      --red: #b42318;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font-family:
+        Inter,
+        "Segoe UI",
+        "Microsoft YaHei",
+        Arial,
+        sans-serif;
+    }
+
+    main {
+      display: grid;
+      gap: 20px;
+      padding: 28px;
+    }
+
+    .intro {
+      max-width: 1120px;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 24px;
+      line-height: 1.3;
+    }
+
+    .intro p {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .concepts {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      align-items: start;
+    }
+
+    .concept {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      box-shadow: 0 12px 28px rgba(20, 32, 52, 0.07);
+    }
+
+    .concept-header {
+      display: grid;
+      gap: 6px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .concept-header h2 {
+      font-size: 17px;
+      line-height: 1.3;
+    }
+
+    .concept-header p {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .mock {
+      display: grid;
+      grid-template-columns: 132px 1fr;
+      min-height: 500px;
+      background: #fbfcfe;
+    }
+
+    .side {
+      border-right: 1px solid var(--line);
+      background: #f8fafd;
+      padding: 14px 10px;
+    }
+
+    .side-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .project-chip {
+      margin: 12px 0;
+      padding: 9px;
+      border: 1px solid #cfd9ea;
+      border-radius: 8px;
+      background: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .nav-list,
+    .tree,
+    .focus-list,
+    .content-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .nav-item,
+    .tree-item,
+    .focus-item,
+    .content-card {
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .nav-item {
+      display: grid;
+      grid-template-columns: 8px 1fr;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 7px;
+      color: #344054;
+    }
+
+    .nav-item.is-active {
+      background: var(--soft);
+      color: var(--blue);
+      font-weight: 700;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: currentColor;
+    }
+
+    .meta {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .canvas {
+      padding: 14px;
+    }
+
+    .canvas h3 {
+      font-size: 15px;
+      line-height: 1.3;
+    }
+
+    .canvas-note {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .content-list {
+      margin-top: 14px;
+    }
+
+    .content-card {
+      padding: 12px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .content-card strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 13px;
+    }
+
+    .content-card span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .tree {
+      position: relative;
+      gap: 6px;
+      margin-top: 10px;
+      padding-left: 8px;
+    }
+
+    .tree::before {
+      position: absolute;
+      top: 8px;
+      bottom: 8px;
+      left: 14px;
+      width: 2px;
+      background: #c8d4e6;
+      content: "";
+    }
+
+    .tree-item {
+      position: relative;
+      padding: 7px 7px 7px 18px;
+      color: #344054;
+    }
+
+    .tree-item::before {
+      position: absolute;
+      top: 16px;
+      left: 6px;
+      width: 10px;
+      height: 2px;
+      background: #c8d4e6;
+      content: "";
+    }
+
+    .tree-item.is-active {
+      background: var(--soft);
+      color: var(--blue);
+      font-weight: 700;
+    }
+
+    .tree-child {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .map-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .map-card {
+      min-height: 72px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .map-card h4 {
+      margin: 0 0 8px;
+      font-size: 13px;
+    }
+
+    .map-card p {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .status-row {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .status {
+      padding: 9px 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .status b {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+    }
+
+    .status span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+      margin: 12px 0;
+    }
+
+    .tab {
+      padding: 8px 6px;
+      border: 1px solid #d7e0ed;
+      border-radius: 8px;
+      background: #fff;
+      color: #344054;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .tab.is-active {
+      border-color: #9db9ec;
+      background: var(--soft);
+      color: var(--blue);
+    }
+
+    .focus-title {
+      margin: 12px 0 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .focus-item {
+      padding: 9px 8px;
+      background: #fff;
+      color: #344054;
+    }
+
+    .focus-item.is-active {
+      background: #eaf2ff;
+      color: var(--blue);
+      font-weight: 700;
+    }
+
+    .lane {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .lane-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .task {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .task strong {
+      display: block;
+      font-size: 13px;
+    }
+
+    .task span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .accent-blue {
+      color: var(--blue);
+    }
+
+    .accent-green {
+      color: var(--green);
+    }
+
+    .accent-amber {
+      color: var(--amber);
+    }
+
+    .accent-red {
+      color: var(--red);
+    }
+
+    @media (max-width: 860px) {
+      .concepts {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="intro">
+      <h1>项目侧栏的三种信息架构</h1>
+      <p>目标：从多个维度看一个项目的过去、现在、未来，以及可调用资源。这里先看结构，不定最终样式。</p>
+    </section>
+
+    <section class="concepts" aria-label="三种侧栏方案">
+      <article class="concept">
+        <header class="concept-header">
+          <h2>A. 视图导航型</h2>
+          <p>左侧只负责切换维度。适合入口清楚、右侧承载大部分信息的产品。</p>
+        </header>
+        <div class="mock">
+          <aside class="side">
+            <div class="side-title">项目视图 <span>+</span></div>
+            <div class="project-chip">项目：知识库改版</div>
+            <ul class="nav-list">
+              <li class="nav-item is-active"><span class="dot"></span><span>现在<span class="meta">目标 / 任务 / 阻塞</span></span></li>
+              <li class="nav-item"><span class="dot"></span><span>过去<span class="meta">记录 / 决策 / 复盘</span></span></li>
+              <li class="nav-item"><span class="dot"></span><span>未来<span class="meta">路线图 / 假设</span></span></li>
+              <li class="nav-item"><span class="dot"></span><span>资源<span class="meta">资料 / 人 / 工具</span></span></li>
+            </ul>
+          </aside>
+          <section class="canvas">
+            <h3>现在</h3>
+            <p class="canvas-note">右侧显示当前维度的完整工作台。</p>
+            <ul class="content-list">
+              <li class="content-card"><strong>当前目标</strong><span>完成侧栏信息架构，降低项目理解成本。</span></li>
+              <li class="content-card"><strong>下一步行动</strong><span>确认入口模型，然后再定视觉密度和交互。</span></li>
+              <li class="content-card"><strong>阻塞</strong><span>“目录”和“推进器”的职责边界还没定。</span></li>
+            </ul>
+          </section>
+        </div>
+      </article>
+
+      <article class="concept">
+        <header class="concept-header">
+          <h2>B. 项目地图型</h2>
+          <p>左侧直接展开项目全貌。适合用户需要频繁在所有材料之间跳转。</p>
+        </header>
+        <div class="mock">
+          <aside class="side">
+            <div class="side-title">项目地图 <span>⚙</span></div>
+            <div class="project-chip">知识库改版</div>
+            <ul class="tree">
+              <li class="tree-item is-active">现在<span class="tree-child">目标、任务、行动、阻塞</span></li>
+              <li class="tree-item">过去<span class="tree-child">执行记录、决策、案例库</span></li>
+              <li class="tree-item">未来<span class="tree-child">路线图、机会、风险</span></li>
+              <li class="tree-item">资源<span class="tree-child">资料、工具、限制、支持方</span></li>
+              <li class="tree-item">沉淀<span class="tree-child">专题、复盘、模板</span></li>
+            </ul>
+          </aside>
+          <section class="canvas">
+            <h3>项目全貌</h3>
+            <p class="canvas-note">左侧是完整地图，右侧解释选中的节点。</p>
+            <div class="map-grid">
+              <div class="map-card"><h4 class="accent-green">过去</h4><p>执行记录、关键决策、复盘、失败原因。</p></div>
+              <div class="map-card"><h4 class="accent-blue">现在</h4><p>目标、任务、下一步、当前阻塞。</p></div>
+              <div class="map-card"><h4 class="accent-amber">未来</h4><p>路线图、机会、风险、待验证假设。</p></div>
+              <div class="map-card"><h4 class="accent-red">资源</h4><p>资料、人、工具、约束、可复用能力。</p></div>
+            </div>
+          </section>
+        </div>
+      </article>
+
+      <article class="concept">
+        <header class="concept-header">
+          <h2>C. 混合驾驶舱型</h2>
+          <p>上半切换维度，下半只列当前维度的关键条目。适合推进工作和回看沉淀并重。</p>
+        </header>
+        <div class="mock">
+          <aside class="side">
+            <div class="side-title">驾驶舱 <span>+</span></div>
+            <div class="project-chip">知识库改版</div>
+            <div class="tabs">
+              <div class="tab is-active">现在</div>
+              <div class="tab">过去</div>
+              <div class="tab">未来</div>
+              <div class="tab">资源</div>
+            </div>
+            <div class="focus-title">现在的关键条目</div>
+            <ul class="focus-list">
+              <li class="focus-item is-active">当前目标</li>
+              <li class="focus-item">下一步行动</li>
+              <li class="focus-item">进行中任务</li>
+              <li class="focus-item">阻塞与风险</li>
+            </ul>
+            <div class="focus-title">快速资源</div>
+            <ul class="focus-list">
+              <li class="focus-item">参考资料</li>
+              <li class="focus-item">可用模板</li>
+            </ul>
+          </aside>
+          <section class="canvas">
+            <h3>现在：当前目标</h3>
+            <p class="canvas-note">左侧保持轻量，但能直接进入当前维度的重点。</p>
+            <div class="status-row">
+              <div class="status"><b>过去</b><span>12 条记录</span></div>
+              <div class="status"><b>现在</b><span>3 个任务</span></div>
+              <div class="status"><b>未来</b><span>5 个计划</span></div>
+              <div class="status"><b>资源</b><span>8 个支持</span></div>
+            </div>
+            <div class="lane">
+              <div class="lane-header"><span>下一步</span><span>今天</span></div>
+              <div class="task"><strong>确认侧栏信息架构</strong><span>在 A / B / C 中选主模型，再决定具体交互。</span></div>
+              <div class="task"><strong>整理可支持资源</strong><span>把资料、模板、工具放到资源视图，不挤进目录树。</span></div>
+            </div>
+          </section>
+        </div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

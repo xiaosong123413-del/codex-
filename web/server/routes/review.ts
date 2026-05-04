@@ -72,8 +72,8 @@ export function handleDeepResearchChat(cfg: ServerConfig) {
       return;
     }
 
-    const existing = item.chatId ? getConversation(cfg.runtimeRoot, item.chatId) : null;
-    const conversation = existing ?? createConversation(cfg.runtimeRoot, {
+    const existing = item.chatId ? getConversation(cfg.sourceVaultRoot, item.chatId) : null;
+    const conversation = existing ?? createConversation(cfg.sourceVaultRoot, {
       title: `${item.title} · ${basename(item.pagePath)}`,
       webSearchEnabled: true,
       searchScope: "web",
@@ -81,7 +81,7 @@ export function handleDeepResearchChat(cfg: ServerConfig) {
     });
 
     if (!existing) {
-      addConversationMessage(cfg.runtimeRoot, conversation.id, {
+      addConversationMessage(cfg.sourceVaultRoot, conversation.id, {
         role: "user",
         content: [
           `问题类型：${item.title}`,

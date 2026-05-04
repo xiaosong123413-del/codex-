@@ -3,6 +3,17 @@ import { assignEnvValue, updateEnvFile } from "./env-file.js";
 import { readCLIProxyConfig } from "./cliproxy-config.js";
 import { readLlmApiAccount } from "./llm-accounts.js";
 import {
+  readCloudflareProviderKey,
+  readCloudflareProviderUrl,
+  resolveCloudflareLlmAccountRef,
+  testCloudflareLlmProvider,
+} from "./llm-config-cloudflare.js";
+import {
+  ACCOUNT_CODEX_OAUTH_REF,
+  accountAiOpenAiBaseUrl,
+  readAccountAiSyncConfig,
+} from "./account-ai-env.js";
+import {
   defaultBaseUrlForProvider,
   defaultModelForProvider,
   isSupportedLlmProvider,
@@ -17,9 +28,11 @@ const ANTHROPIC_BASE_URL_ENV = "ANTHROPIC_BASE_URL";
 const ANTHROPIC_KEY_ENV = "ANTHROPIC_API_KEY";
 const ANTHROPIC_AUTH_TOKEN_ENV = "ANTHROPIC_AUTH_TOKEN";
 const MINIMAX_KEY_ENV = "MINIMAX_API_KEY";
+const MINIMAX_BASE_URL_ENV = "MINIMAX_BASE_URL";
 const OLLAMA_HOST_ENV = "OLLAMA_HOST";
 const MODEL_ENV = "LLMWIKI_MODEL";
 const DEFAULT_ACCOUNT_REF_ENV = "LLMWIKI_DEFAULT_ACCOUNT_REF";
+const LLM_PROVIDER_TEST_TIMEOUT_MS = 15_000;
 
 interface LlmProviderConfig {
   accountRef?: string;
@@ -46,6 +59,13 @@ interface LlmProviderTestResult {
 
 type LlmProviderTestFetcher = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
+interface ResolvedLlmProviderTestConfig {
+  provider: string;
+  url: string;
+  key: string | null;
+  model: string;
+}
+
 export function readLlmProviderConfig(
   projectRoot: string,
   env: NodeJS.ProcessEnv = process.env,
@@ -67,7 +87,7 @@ export function saveLlmProviderConfig(
   input: LlmProviderConfigInput,
   env: NodeJS.ProcessEnv = process.env,
 ): LlmProviderConfig {
-  const resolvedAccount = resolveAccountRefConfig(projectRoot, input.accountRef);
+  const resolvedAccount = resolveAccountRefConfig(projectRoot, input.accountRef, env);
   const provider = resolvedAccount?.provider ?? normalizeSavedProvider(input.provider);
   const runtimeProvider = toRuntimeProvider(provider);
   const url = resolvedAccount?.url ?? normalizeUrl(input.url);
@@ -94,35 +114,125 @@ export async function testLlmProviderConfig(
   env: NodeJS.ProcessEnv = process.env,
   fetcher: LlmProviderTestFetcher = (request, init) => fetchWithOptionalProxy(request, init, env),
 ): Promise<LlmProviderTestResult> {
-  const provider = normalizeSavedProvider(input.provider);
-  const model = normalizeText(input.model) ?? normalizeText(env[MODEL_ENV]) ?? defaultModelForProvider(provider);
-  const url = normalizeUrl(input.url) ?? readProviderUrl(toRuntimeProvider(provider), env);
-  const key = normalizeText(input.key) ?? readProviderKey(provider, env);
-
-  if (!model && provider !== "ollama") {
-    return { ok: false, provider, endpoint: url, message: "需要填写模型名。" };
+  const config = resolveLlmProviderTestConfig(projectRoot, input, env);
+  const validation = validateLlmProviderTestConfig(config);
+  if (validation) return validation;
+  if (config.provider === "cloudflare") {
+    return testCloudflareLlmProvider(config.model, config.url);
   }
-  if (!key && provider !== "ollama") {
-    return { ok: false, provider, endpoint: url, message: "需要填写 API Key，或先保存已有密钥。" };
-  }
+  return testHttpLlmProviderConfig(config, fetcher);
+}
 
-  const request = buildTestRequest(provider, url, key, model);
-  const response = await fetcher(request.endpoint, request.init);
+function resolveLlmProviderTestConfig(
+  projectRoot: string,
+  input: LlmProviderConfigInput,
+  env: NodeJS.ProcessEnv,
+): ResolvedLlmProviderTestConfig {
+  const resolvedAccount = resolveAccountRefConfig(projectRoot, input.accountRef, env);
+  const provider = resolvedAccount?.provider ?? normalizeSavedProvider(input.provider);
+  return {
+    provider,
+    model: resolveLlmProviderTestModel(provider, input, env, resolvedAccount),
+    url: resolveLlmProviderTestUrl(provider, input, env, resolvedAccount),
+    key: resolveLlmProviderTestKey(provider, input, env, resolvedAccount),
+  };
+}
+
+function resolveLlmProviderTestModel(
+  provider: string,
+  input: LlmProviderConfigInput,
+  env: NodeJS.ProcessEnv,
+  resolvedAccount: ResolvedLlmAccountRef | null,
+): string {
+  return resolvedAccount?.model
+    ?? normalizeText(input.model)
+    ?? normalizeText(env[MODEL_ENV])
+    ?? defaultModelForProvider(provider);
+}
+
+function resolveLlmProviderTestUrl(
+  provider: string,
+  input: LlmProviderConfigInput,
+  env: NodeJS.ProcessEnv,
+  resolvedAccount: ResolvedLlmAccountRef | null,
+): string {
+  return resolvedAccount?.url
+    ?? normalizeUrl(input.url)
+    ?? readProviderUrl(toRuntimeProvider(provider), env);
+}
+
+function resolveLlmProviderTestKey(
+  provider: string,
+  input: LlmProviderConfigInput,
+  env: NodeJS.ProcessEnv,
+  resolvedAccount: ResolvedLlmAccountRef | null,
+): string | null {
+  return resolvedAccount?.key ?? normalizeText(input.key) ?? readProviderKey(provider, env);
+}
+
+function validateLlmProviderTestConfig(config: ResolvedLlmProviderTestConfig): LlmProviderTestResult | null {
+  if (!config.model && config.provider !== "ollama") {
+    return { ok: false, provider: config.provider, endpoint: config.url, message: "需要填写模型名。" };
+  }
+  if (!config.key && config.provider !== "cloudflare" && config.provider !== "ollama") {
+    return { ok: false, provider: config.provider, endpoint: config.url, message: "需要填写 API Key，或先保存已有密钥。" };
+  }
+  return null;
+}
+
+async function testHttpLlmProviderConfig(
+  config: ResolvedLlmProviderTestConfig,
+  fetcher: LlmProviderTestFetcher,
+): Promise<LlmProviderTestResult> {
+  const request = buildTestRequest(config.provider, config.url, config.key, config.model);
+  const response = await fetchProviderTestRequest(fetcher, request.endpoint, request.init);
+  if (response instanceof Error) {
+    return {
+      ok: false,
+      provider: config.provider,
+      endpoint: request.endpoint,
+      message: response.message,
+    };
+  }
   if (!response.ok) {
     const text = await response.text().catch(() => "");
     return {
       ok: false,
-      provider,
+      provider: config.provider,
       endpoint: request.endpoint,
-      message: buildProviderTestErrorMessage(provider, response.status, text, model),
+      message: buildProviderTestErrorMessage(config.provider, response.status, text, config.model),
     };
   }
   return {
     ok: true,
-    provider,
+    provider: config.provider,
     endpoint: request.endpoint,
     message: "验证成功，API 可以连通。",
   };
+}
+
+async function fetchProviderTestRequest(
+  fetcher: LlmProviderTestFetcher,
+  endpoint: string,
+  init: RequestInit,
+): Promise<Response | Error> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), LLM_PROVIDER_TEST_TIMEOUT_MS);
+  try {
+    return await fetcher(endpoint, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      return new Error("验证失败：请求超时，请检查网络、代理、Base URL 或服务商状态。");
+    }
+    return new Error(`验证失败：${readUnknownErrorMessage(error)}`);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function readUnknownErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim();
+  return String(error || "unknown error");
 }
 
 function buildProviderTestErrorMessage(provider: string, status: number, text: string, model: string): string {
@@ -180,6 +290,7 @@ function normalizeUrl(value: unknown): string | null {
 }
 
 function toRuntimeProvider(provider: string): string {
+  if (provider === "cloudflare") return provider;
   if (provider === "anthropic" || provider === "minimax" || provider === "ollama") return provider;
   return "openai";
 }
@@ -201,6 +312,7 @@ function buildProviderEnvUpdates(
     [ANTHROPIC_BASE_URL_ENV]: null,
     [ANTHROPIC_KEY_ENV]: null,
     [ANTHROPIC_AUTH_TOKEN_ENV]: null,
+    [MINIMAX_BASE_URL_ENV]: null,
     [MINIMAX_KEY_ENV]: null,
     [OLLAMA_HOST_ENV]: null,
     [MODEL_ENV]: model,
@@ -211,7 +323,7 @@ function buildProviderEnvUpdates(
     return updates;
   }
   if (runtimeProvider === "minimax") {
-    updates[OPENAI_BASE_URL_ENV] = url;
+    updates[MINIMAX_BASE_URL_ENV] = url;
     updates[MINIMAX_KEY_ENV] = key;
     return updates;
   }
@@ -219,33 +331,67 @@ function buildProviderEnvUpdates(
     updates[OLLAMA_HOST_ENV] = url;
     return updates;
   }
+  if (runtimeProvider === "cloudflare") return updates;
   updates[OPENAI_BASE_URL_ENV] = normalizeOpenAIBaseUrl(url, provider);
   updates[OPENAI_KEY_ENV] = key;
   return updates;
 }
 
+interface ResolvedLlmAccountRef {
+  accountRef: string;
+  provider: string;
+  url: string;
+  key: string;
+  model: string;
+}
+
+interface ParsedAccountRef {
+  kind: "api" | "oauth" | "cloudflare";
+  provider: string;
+  key: string;
+}
+
 function resolveAccountRefConfig(
   projectRoot: string,
   input: unknown,
-): { accountRef: string; provider: string; url: string; key: string; model: string } | null {
+  env: NodeJS.ProcessEnv = process.env,
+): ResolvedLlmAccountRef | null {
   const accountRef = normalizeText(input);
   if (!accountRef) return null;
   const route = parseAccountRef(accountRef);
-  if (!route) {
-    throw new Error("默认模型账号来源无效。");
+  if (!route) throw new Error("默认模型账号来源无效。");
+  switch (route.kind) {
+    case "api":
+      return resolveApiAccountRefConfig(projectRoot, accountRef, route.key);
+    case "cloudflare":
+      return resolveCloudflareLlmAccountRef(accountRef, env, normalizeText(env[MODEL_ENV]));
+    case "oauth":
+      return resolveOAuthAccountRefConfig(projectRoot, accountRef, route, env);
   }
-  if (route.kind === "api") {
-    const account = readLlmApiAccount(projectRoot, route.key);
-    if (!account || account.enabled === false) {
-      throw new Error("默认模型引用的 API 账号不存在，或已被停用。");
-    }
-    return {
-      accountRef,
-      provider: account.provider,
-      url: account.url,
-      key: account.key,
-      model: account.model,
-    };
+}
+
+function resolveApiAccountRefConfig(projectRoot: string, accountRef: string, key: string): ResolvedLlmAccountRef {
+  const account = readLlmApiAccount(projectRoot, key);
+  if (!account || account.enabled === false) {
+    throw new Error("默认模型引用的 API 账号不存在，或已被停用。");
+  }
+  return {
+    accountRef,
+    provider: account.provider,
+    url: account.url,
+    key: account.key,
+    model: account.model,
+  };
+}
+
+function resolveOAuthAccountRefConfig(
+  projectRoot: string,
+  accountRef: string,
+  route: ParsedAccountRef,
+  env: NodeJS.ProcessEnv,
+): ResolvedLlmAccountRef {
+  if (accountRef === ACCOUNT_CODEX_OAUTH_REF) {
+    return resolveWorkerCodexOAuthAccountRef(accountRef, env);
   }
   const config = readCLIProxyConfig(projectRoot);
   return {
@@ -257,7 +403,25 @@ function resolveAccountRefConfig(
   };
 }
 
-function parseAccountRef(value: string): { kind: "api" | "oauth"; provider: string; key: string } | null {
+function resolveWorkerCodexOAuthAccountRef(
+  accountRef: string,
+  env: NodeJS.ProcessEnv,
+): ResolvedLlmAccountRef {
+  const config = readAccountAiSyncConfig(env);
+  if (!config) throw new Error("请先登录桌面账号，才能使用 Worker Codex OAuth。");
+  return {
+    accountRef,
+    provider: "codex-cli",
+    url: accountAiOpenAiBaseUrl(config.workerUrl),
+    key: config.sessionToken,
+    model: normalizeText(env[MODEL_ENV]) ?? "gpt-5.5",
+  };
+}
+
+function parseAccountRef(value: string): ParsedAccountRef | null {
+  if (value === "cloudflare:workers-ai") {
+    return { kind: "cloudflare", provider: "cloudflare", key: "workers-ai" };
+  }
   if (value.startsWith("api:")) {
     const key = value.slice(4).trim();
     if (!key) return null;
@@ -290,9 +454,7 @@ function providerFromOAuthAccount(provider: string): string {
 }
 
 function readProviderUrl(provider: string, env: NodeJS.ProcessEnv): string {
-  if (provider === "anthropic") return normalizeText(env[ANTHROPIC_BASE_URL_ENV]) ?? "";
-  if (provider === "ollama") return normalizeText(env[OLLAMA_HOST_ENV]) ?? "";
-  return normalizeText(env[OPENAI_BASE_URL_ENV]) ?? "";
+  return providerUrlReaders[provider]?.(env) ?? openAiBaseUrl(env);
 }
 
 function readProviderKeyConfigured(provider: string, env: NodeJS.ProcessEnv): boolean {
@@ -303,6 +465,7 @@ function readProviderKey(provider: string, env: NodeJS.ProcessEnv): string | nul
   if (provider === "anthropic") {
     return normalizeText(env[ANTHROPIC_KEY_ENV]) ?? normalizeText(env[ANTHROPIC_AUTH_TOKEN_ENV]);
   }
+  if (provider === "cloudflare") return readCloudflareProviderKey(env);
   if (provider === "minimax") return normalizeText(env[MINIMAX_KEY_ENV]);
   if (provider === "ollama") return null;
   return normalizeText(env[OPENAI_KEY_ENV]);
@@ -313,32 +476,21 @@ function normalizeOpenAIBaseUrl(url: string | null, provider: string): string | 
   return normalizeOpenAICompatibleBaseUrl(url, provider);
 }
 
-function buildTestRequest(provider: string, url: string, key: string | null, model: string): { endpoint: string; init: RequestInit } {
+// fallow-ignore-next-line complexity
+function buildTestRequest(
+  provider: string,
+  url: string,
+  key: string | null,
+  model: string,
+): { endpoint: string; init: RequestInit } {
+  if (provider === "minimax") {
+    return buildMiniMaxTestRequest(url, key, model);
+  }
   if (provider === "anthropic") {
-    const endpoint = new URL("/v1/messages", url || "https://api.anthropic.com").toString();
-    return {
-      endpoint,
-      init: {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "anthropic-version": "2023-06-01",
-          "x-api-key": key ?? "",
-        },
-        body: JSON.stringify({ model, max_tokens: 1, messages: [{ role: "user", content: "ping" }] }),
-      },
-    };
+    return buildAnthropicTestRequest(url, key, model);
   }
   if (provider === "gemini") {
-    const endpoint = new URL(`/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key ?? "")}`, url || "https://generativelanguage.googleapis.com").toString();
-    return {
-      endpoint,
-      init: {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: "ping" }] }] }),
-      },
-    };
+    return buildGeminiTestRequest(url, key, model);
   }
   const endpoint = openAIChatCompletionsEndpoint(url, provider);
   return {
@@ -352,6 +504,82 @@ function buildTestRequest(provider: string, url: string, key: string | null, mod
       body: JSON.stringify({ model, max_tokens: 1, messages: [{ role: "user", content: "ping" }] }),
     },
   };
+}
+
+const providerUrlReaders: Readonly<Record<string, (env: NodeJS.ProcessEnv) => string>> = {
+  anthropic: (env) => normalizeText(env[ANTHROPIC_BASE_URL_ENV]) ?? "",
+  minimax: (env) => normalizeText(env[MINIMAX_BASE_URL_ENV]) ?? openAiBaseUrl(env),
+  cloudflare: readCloudflareProviderUrl,
+  ollama: (env) => normalizeText(env[OLLAMA_HOST_ENV]) ?? "",
+};
+
+function openAiBaseUrl(env: NodeJS.ProcessEnv): string {
+  return normalizeText(env[OPENAI_BASE_URL_ENV]) ?? "";
+}
+
+function buildMiniMaxTestRequest(
+  url: string,
+  key: string | null,
+  model: string,
+): { endpoint: string; init: RequestInit } {
+  return buildMessagesTestRequest(
+    anthropicMessagesEndpoint(url || defaultBaseUrlForProvider("minimax")),
+    { Authorization: `Bearer ${key ?? ""}` },
+    model,
+  );
+}
+
+function buildAnthropicTestRequest(
+  url: string,
+  key: string | null,
+  model: string,
+): { endpoint: string; init: RequestInit } {
+  return buildMessagesTestRequest(
+    anthropicMessagesEndpoint(url || "https://api.anthropic.com"),
+    { "anthropic-version": "2023-06-01", "x-api-key": key ?? "" },
+    model,
+  );
+}
+
+function buildMessagesTestRequest(
+  endpoint: string,
+  authHeaders: Record<string, string>,
+  model: string,
+): { endpoint: string; init: RequestInit } {
+  return {
+    endpoint,
+    init: {
+      method: "POST",
+      headers: { "content-type": "application/json", ...authHeaders },
+      body: JSON.stringify({ model, max_tokens: 1, messages: [{ role: "user", content: "ping" }] }),
+    },
+  };
+}
+
+function buildGeminiTestRequest(
+  url: string,
+  key: string | null,
+  model: string,
+): { endpoint: string; init: RequestInit } {
+  const endpoint = new URL(
+    `/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key ?? "")}`,
+    url || "https://generativelanguage.googleapis.com",
+  ).toString();
+  return {
+    endpoint,
+    init: {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: "ping" }] }] }),
+    },
+  };
+}
+
+function anthropicMessagesEndpoint(baseUrl: string): string {
+  const trimmed = baseUrl.replace(/\/+$/, "");
+  if (/\/v\d+\/messages$/i.test(trimmed)) return trimmed;
+  if (/\/v\d+$/i.test(trimmed)) return `${trimmed}/messages`;
+  return `${trimmed}/v1/messages`;
 }
 
 function openAIChatCompletionsEndpoint(url: string, provider: string): string {

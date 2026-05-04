@@ -18,6 +18,7 @@ interface MainSlotOptions {
   legacyChatNode: HTMLElement;
   legacyBrowser: HTMLElement;
   isChatBrowserCollapsed?: () => boolean;
+  onOpenKnowledgePreview?: (path: string) => void;
 }
 
 interface MainSlotHandle {
@@ -75,7 +76,7 @@ export function createMainSlot(options: MainSlotOptions): MainSlotHandle {
       }
 
       legacyChatNode.hidden = true;
-      container.replaceChildren(renderRoutePage(route));
+      container.replaceChildren(renderRoutePage(route, options));
     },
   };
 }
@@ -113,13 +114,16 @@ function showLegacyChat(container: HTMLElement, legacyChatNode: HTMLElement): vo
 }
 
 // fallow-ignore-next-line complexity
-function renderRoutePage(route: Route): HTMLElement {
+function renderRoutePage(route: Route, options: MainSlotOptions): HTMLElement {
   switch (route.name) {
     case "check":
     case "sync":
       return renderRunPage(route.name);
     case "workspace":
-      return renderWorkspacePage({ routeSection: route.params.section });
+      return renderWorkspacePage({
+        routeSection: route.params.section,
+        onOpenKnowledgePreview: options.onOpenKnowledgePreview,
+      });
     case "automation":
       return renderAutomationWorkspacePage(route.params.id);
     case "automation-log":
@@ -139,7 +143,7 @@ function renderRoutePage(route: Route): HTMLElement {
     case "project-log":
       return renderSettingsPage("project-log");
     case "settings":
-      return renderSettingsPage(route.params.section);
+      return renderSettingsPage(route.params.section, { anchor: route.anchor });
     default:
       return renderPlaceholder(route.name);
   }

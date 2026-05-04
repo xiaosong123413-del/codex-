@@ -16,7 +16,8 @@
     "OCR_MODEL": "@cf/meta/llama-3.2-11b-vision-instruct",
     "TRANSCRIBE_MODEL": "@cf/openai/whisper",
     "EMBEDDING_MODEL": "@cf/baai/bge-base-en-v1.5",
-    "PUBLIC_MEDIA_BASE_URL": "https://remote-brain.llm-wiki.cn"
+    "PUBLIC_MEDIA_BASE_URL": "https://remote-brain.llm-wiki.cn",
+    "WECHAT_MINI_PROGRAM_APP_ID": "wx3decf39169d24142"
   },
   "d1_databases": [
     {
@@ -43,5 +44,19 @@
   ],
   "ai": {
     "binding": "AI"
-  }
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "WIKI_PUBLISH_EVENTS",
+        "class_name": "WikiPublishEvents"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["WikiPublishEvents"]
+    }
+  ]
 }

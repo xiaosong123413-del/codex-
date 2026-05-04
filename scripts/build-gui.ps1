@@ -36,6 +36,11 @@ if ($LASTEXITCODE -ne 0) {
   throw "csc.exe failed with exit code $LASTEXITCODE"
 }
 
+& node (Join-Path $root "scripts\assert-public-package-clean.mjs") $outDir
+if ($LASTEXITCODE -ne 0) {
+  throw "Public package cleanliness check failed."
+}
+
 $runningDesktopExe = Get-Process | Where-Object { $_.Path -eq $desktopExe }
 if ($runningDesktopExe) {
   $runningDesktopExe | Stop-Process -Force

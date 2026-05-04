@@ -8,13 +8,29 @@ export function dedupSearchResults(results: SearchResult[]): SearchResult[] {
     const priority = layerPriority(result);
     const existing = chosen.get(key);
     if (!existing || priority < existing.priority || (priority === existing.priority && order < existing.order)) {
-      chosen.set(key, { result, priority, order });
+      chosen.set(key, { result: mergeResultSources(result, existing?.result), priority, order });
+    } else {
+      existing.result = mergeResultSources(existing.result, result);
     }
   });
 
   return [...chosen.values()]
     .sort((a, b) => a.order - b.order)
     .map((entry) => entry.result);
+}
+
+function mergeResultSources(primary: SearchResult, secondary?: SearchResult): SearchResult {
+  return {
+    ...primary,
+    retrievalSources: [...new Set([
+      ...readRetrievalSources(primary),
+      ...readRetrievalSources(secondary),
+    ])],
+  };
+}
+
+function readRetrievalSources(result: SearchResult | undefined): SearchResult["retrievalSources"] {
+  return Array.isArray(result?.retrievalSources) ? result.retrievalSources : [];
 }
 
 function dedupKey(result: SearchResult): string {
@@ -29,7 +45,6 @@ function layerPriority(result: SearchResult): number {
 
   if (normalizedPath.includes("/procedures/")) return 0;
   if (normalizedPath.includes("/concepts/")) return 1;
-  if (normalizedPath.includes("/episodes/")) return 2;
   if (normalizedPath.includes("/sources/") || normalizedPath.includes("/sources_full/")) return 3;
   if (result.layer === "source" || result.layer === "raw") return 3;
   if (result.layer === "wiki") return 2;

@@ -1,26 +1,31 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1120" height="560" viewBox="0 0 1120 560" role="img" aria-label="对话页界面">
-  <rect width="1120" height="560" rx="28" fill="#F9F8FE"/>
-  <rect x="32" y="32" width="1056" height="496" rx="24" fill="#FFFFFF" stroke="#E8E5F0"/>
-  <rect x="32" y="32" width="72" height="496" rx="24" fill="#FAFAFE"/>
-  <rect x="56" y="72" width="24" height="24" rx="7" fill="#7C5CFC"/>
-  <circle cx="68" cy="142" r="15" fill="#F3F0FF" stroke="#7C5CFC"/>
-  <circle cx="68" cy="202" r="15" fill="#F3F0FF" stroke="#7C5CFC"/>
-  <circle cx="68" cy="262" r="15" fill="#F3F0FF" stroke="#7C5CFC"/>
-  <circle cx="68" cy="468" r="15" fill="#F3F0FF" stroke="#7C5CFC"/>
-  <rect x="128" y="64" width="260" height="432" rx="20" fill="#FFFFFF" stroke="#E8E5F0"/>
-  <rect x="152" y="88" width="96" height="36" rx="12" fill="#7C5CFC"/>
-  <rect x="256" y="88" width="96" height="36" rx="12" fill="#F3F0FF"/>
-  <rect x="152" y="142" width="212" height="40" rx="14" fill="#F9F8FE" stroke="#E8E5F0"/>
-  <text x="168" y="168" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="15" fill="#999999">搜索...</text>
-  <text x="152" y="224" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="17" fill="#1A1A1A" font-weight="700">wiki / raw 文件树</text>
-  <text x="168" y="266" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="15" fill="#555555">raw 包含 inbox</text>
-  <text x="168" y="300" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="15" fill="#555555">支持多选上下文</text>
-  <rect x="414" y="64" width="250" height="432" rx="20" fill="#FFFFFF" stroke="#E8E5F0"/>
-  <rect x="438" y="88" width="180" height="42" rx="14" fill="#7C5CFC"/>
+  <rect width="1120" height="560" rx="28" fill="#F8F9FA"/>
+  <rect x="32" y="32" width="1056" height="496" rx="24" fill="#FFFFFF" stroke="#C8CCD1"/>
+  <rect x="32" y="32" width="72" height="496" rx="24" fill="#F8F9FA"/>
+  <rect x="56" y="72" width="24" height="24" rx="7" fill="#3366CC"/>
+  <circle cx="68" cy="142" r="15" fill="#F5FAFF" stroke="#3366CC"/>
+  <circle cx="68" cy="202" r="15" fill="#F5FAFF" stroke="#3366CC"/>
+  <circle cx="68" cy="262" r="15" fill="#F5FAFF" stroke="#3366CC"/>
+  <circle cx="68" cy="468" r="15" fill="#F5FAFF" stroke="#3366CC"/>
+  <rect x="128" y="64" width="260" height="432" rx="20" fill="#FFFFFF" stroke="#C8CCD1"/>
+  <rect x="152" y="88" width="96" height="36" rx="12" fill="#3366CC"/>
+  <rect x="256" y="88" width="96" height="36" rx="12" fill="#F5FAFF"/>
+  <rect x="152" y="142" width="212" height="40" rx="14" fill="#F8F9FA" stroke="#C8CCD1"/>
+  <text x="168" y="168" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="15" fill="#72777D">搜索...</text>
+  <text x="152" y="224" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="17" fill="#202122" font-weight="700">wiki / raw 文件树</text>
+  <text x="168" y="266" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="15" fill="#54595D">raw 包含 inbox</text>
+  <text x="168" y="300" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="15" fill="#54595D">支持多选上下文</text>
+  <rect x="414" y="64" width="250" height="432" rx="20" fill="#FFFFFF" stroke="#C8CCD1"/>
+  <rect x="438" y="88" width="180" height="42" rx="14" fill="#3366CC"/>
   <text x="476" y="115" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="16" fill="#FFFFFF" font-weight="700">+ 新对话</text>
-  <text x="438" y="176" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="17" fill="#555555">会话列表</text>
-  <rect x="690" y="64" width="374" height="432" rx="20" fill="#FFFFFF" stroke="#E8E5F0"/>
-  <text x="742" y="244" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="28" fill="#1A1A1A" font-weight="700">开始新对话</text>
-  <text x="742" y="282" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="16" fill="#999999">点击“+ 新对话”开始</text>
-  <rect x="724" y="434" width="292" height="42" rx="16" fill="#F9F8FE" stroke="#E8E5F0"/>
+  <text x="438" y="176" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="17" fill="#54595D">会话列表</text>
+  <rect x="690" y="64" width="374" height="432" rx="20" fill="#FFFFFF" stroke="#C8CCD1"/>
+  <text x="724" y="112" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="18" fill="#202122" font-weight="700">检索来源对话</text>
+  <rect x="724" y="152" width="160" height="42" rx="12" fill="#F8F9FA" stroke="#C8CCD1"/>
+  <text x="744" y="179" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="14" fill="#54595D">Redis 是什么？</text>
+  <rect x="724" y="218" width="292" height="88" rx="12" fill="#FFFFFF" stroke="#C8CCD1"/>
+  <text x="744" y="246" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="14" fill="#202122">Redis 是缓存系统。[1]</text>
+  <rect x="744" y="266" width="178" height="26" rx="8" fill="#F5FAFF" stroke="#A2A9B1"/>
+  <text x="756" y="284" font-family="Segoe UI, Microsoft YaHei UI, sans-serif" font-size="12" fill="#0645AD">[1] wiki/concepts/redis.md</text>
+  <rect x="724" y="434" width="292" height="42" rx="16" fill="#F8F9FA" stroke="#C8CCD1"/>
 </svg>

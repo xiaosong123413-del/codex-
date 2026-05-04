@@ -22,6 +22,7 @@ interface WriteAuditArgs {
  * Convert the active selection into an audit file on disk.
  * Returns the TFile written, or throws on error (errors are also surfaced via Notice).
  */
+// fallow-ignore-next-line complexity
 export async function writeAudit(
   app: App,
   settings: LLMWikiAuditSettings,
@@ -86,6 +87,7 @@ function firstWords(text: string, n: number): string {
   return words;
 }
 
+// fallow-ignore-next-line complexity
 function resolveTargetRelativeToWiki(vaultPath: string, wikiRoot: string): string {
   if (wikiRoot === "" || wikiRoot === ".") return vaultPath;
   const normalized = wikiRoot.replace(/\/+$/, "");

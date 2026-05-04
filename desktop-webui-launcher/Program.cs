@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
 namespace LlmWikiWebUiLauncher
@@ -11,12 +12,17 @@ namespace LlmWikiWebUiLauncher
     /// </summary>
     internal static class Program
     {
-        private static readonly string DesktopRoot = BuildProjectRoot.Value;
+        private static readonly string DesktopRoot = ResolveDesktopRoot();
 
         private static readonly string AppRoot = Path.Combine(DesktopRoot, "desktop-webui");
 
         private static readonly string ElectronExe = Path.Combine(
             AppRoot, "node_modules", "electron", "dist", "electron.exe");
+
+        private sealed class LauncherConfig
+        {
+            public string ProjectRoot { get; set; }
+        }
 
         [STAThread]
         private static void Main()
@@ -67,6 +73,36 @@ namespace LlmWikiWebUiLauncher
                 return false;
             }
             return true;
+        }
+
+        private static string ResolveDesktopRoot()
+        {
+            if (!string.IsNullOrWhiteSpace(BuildProjectRoot.Value))
+                return BuildProjectRoot.Value;
+
+            string configRoot = ReadConfiguredProjectRoot(AppDomain.CurrentDomain.BaseDirectory);
+            if (!string.IsNullOrWhiteSpace(configRoot))
+                return configRoot;
+
+            string candidate = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", ".."));
+            return Directory.Exists(Path.Combine(candidate, "desktop-webui"))
+                ? candidate
+                : AppDomain.CurrentDomain.BaseDirectory;
+        }
+
+        private static string ReadConfiguredProjectRoot(string baseDirectory)
+        {
+            string configPath = Path.Combine(baseDirectory, "launcher-config.json");
+            if (!File.Exists(configPath))
+                return null;
+
+            try
+            {
+                string json = File.ReadAllText(configPath);
+                LauncherConfig config = new JavaScriptSerializer().Deserialize<LauncherConfig>(json);
+                return Directory.Exists(config.ProjectRoot) ? config.ProjectRoot : null;
+            }
+            catch { return null; }
         }
 
         private static void LaunchInBackground(Form splash)

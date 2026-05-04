@@ -238,8 +238,9 @@ describe("createMainSlot", () => {
     expect(shell.hasAttribute("data-full-page")).toBe(true);
     expect(container.querySelector("[data-workspace-sidebar]")).toBeTruthy();
     expect(container.querySelector("[data-workspace-sidebar-toggle]")).toBeNull();
-    expect(container.querySelector(".workspace-page__sidebar-nav > :first-child")?.getAttribute("data-workspace-tab")).toBe("project-progress");
-    expect(container.querySelector("[data-workspace-tab='project-progress']")?.getAttribute("data-active")).toBe("true");
+    expect(container.querySelector(".workspace-page__sidebar-nav > :first-child")?.getAttribute("data-workspace-tab")).toBe("task-plan");
+    expect(container.querySelector("[data-workspace-tab='task-plan']")?.getAttribute("data-active")).toBe("true");
+    expect(container.querySelector("[data-workspace-tab='project-progress']")).toBeNull();
   });
 
   it("opens app settings directly when the route targets app-config", async () => {
@@ -260,6 +261,23 @@ describe("createMainSlot", () => {
     expect(shell.hasAttribute("data-browser-hidden")).toBe(true);
     expect(shell.hasAttribute("data-full-page")).toBe(true);
     expect(container.querySelector("[data-settings-panel=\"app-config\"]")?.hasAttribute("hidden")).toBe(false);
+  });
+
+  it("opens the user guide inside settings when the route targets user-guide", () => {
+    const container = document.getElementById("main-slot") as HTMLElement;
+    const legacyChatNode = document.getElementById("legacy-chat") as HTMLElement;
+    const legacyBrowser = document.getElementById("browser-slot") as HTMLElement;
+    const shell = document.getElementById("workspace-shell") as HTMLElement;
+    const slot = createMainSlot({ container, legacyChatNode, legacyBrowser });
+
+    slot.render({ name: "settings", params: { section: "user-guide" }, anchor: "settings-layout" });
+
+    expect(legacyChatNode.hidden).toBe(true);
+    expect(legacyBrowser.hidden).toBe(true);
+    expect(shell.getAttribute("data-route")).toBe("settings");
+    expect(container.querySelector("[data-settings-panel=\"user-guide\"]")?.hasAttribute("hidden")).toBe(false);
+    expect(container.querySelector('[data-settings-nav="user-guide"]')?.getAttribute("data-active")).toBe("true");
+    expect(container.querySelector(".user-guide-page h1")?.textContent).toContain("\u4f7f\u7528\u8bf4\u660e");
   });
 
   it("restores the chat node after leaving a full page", () => {

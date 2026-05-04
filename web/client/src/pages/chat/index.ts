@@ -6,8 +6,13 @@ import {
   type PanelWidthBounds,
 } from "../../shell/panel-layout.js";
 import { attachResizeHandle } from "../../shell/resize-handle.js";
+import {
+  handleKnowledgePreviewClick,
+  knowledgePreviewHref,
+  renderKnowledgePreviewDataAttributes,
+} from "../../shell/knowledge-preview-links.js";
 import { renderIcon } from "../../components/icon.js";
-import { isCompactMessage, renderMessageHtml } from "./message-markdown.js";
+import { extractThinkingBlocks, isCompactMessage, renderMessageHtml, type ThinkingBlock } from "./message-markdown.js";
 import type { ChatRuntimeSummary } from "./runtime.js";
 
 interface ConversationSummary {
@@ -22,6 +27,22 @@ interface ChatThreadMessage {
   role: "user" | "assistant" | "system";
   content: string;
   createdAt: string;
+  references?: ChatMessageReference[];
+}
+
+interface ChatMessageReference {
+  index: number;
+  kind: "wiki" | "web";
+  title: string;
+  path?: string;
+  url?: string;
+  excerpt: string;
+  images?: ChatReferenceImage[];
+}
+
+interface ChatReferenceImage {
+  alt: string;
+  url: string;
 }
 
 interface ChatThreadView {
@@ -29,6 +50,7 @@ interface ChatThreadView {
   title: string;
   messages: ChatThreadMessage[];
   articleRefs: string[];
+  maxHistoryMessages?: number;
 }
 
 export interface ChatAppOption {
@@ -51,6 +73,10 @@ interface ChatPageOptions {
   onAppChange?: (appId: string | null) => void;
   onRenameConversation?: (id: string, title: string) => void;
   onRemoveArticleRef?: (path: string) => void;
+  onRegenerate?: (conversationId: string) => void;
+  onSaveMessageToWiki?: (conversationId: string, messageId: string) => void;
+  onHistoryDepthChange?: (conversationId: string, maxHistoryMessages: number) => void;
+  onOpenReference?: (path: string) => void;
 }
 
 type ChatSearchScope = "local" | "web" | "both";
@@ -73,6 +99,7 @@ export interface ChatPageHandle {
   setSearchScope(scope: ChatSearchScope): void;
   setApps(apps: ChatAppOption[], selectedAppId: string | null): void;
   setApp(appId: string | null): void;
+  setHistoryDepth(value: number): void;
   setRuntimeSummary(summary: ChatRuntimeSummary | null): void;
 }
 
@@ -84,6 +111,14 @@ const CHAT_SIDEBAR_BOUNDS: PanelWidthBounds = {
 const CHAT_SIDEBAR_AUTO_COLLAPSE_WIDTH = 1;
 
 const CHAT_CONVERSATION_SIDEBAR_COLLAPSED_KEY = "llmWiki.chat.conversationSidebarCollapsed";
+const REFERENCE_TYPE_RULES: readonly Array<readonly [string, string]> = [
+  ["/entities/", "entity"],
+  ["/concepts/", "concept"],
+  ["/queries/", "query"],
+  ["/synthesis/", "synthesis"],
+  ["/sources/", "source"],
+  ["raw/sources/", "source"],
+];
 
 export function mountChatPage(container: HTMLElement, options: ChatPageOptions = {}): ChatPageHandle {
   container.innerHTML = `
@@ -132,6 +167,10 @@ export function mountChatPage(container: HTMLElement, options: ChatPageOptions =
             <h2 id="chat-thread-title">\u5f00\u59cb\u65b0\u5bf9\u8bdd</h2>
             <div id="chat-runtime-summary" class="chat-runtime-summary hidden"></div>
           </div>
+          <label class="chat-history-depth">
+            <span>历史</span>
+            <input data-chat-history-depth class="input" type="number" min="1" max="100" value="10" />
+          </label>
         </div>
         <div class="chat-thread__viewport">
           <div id="chat-message-list" class="chat-message-list">
@@ -182,6 +221,7 @@ export function mountChatPage(container: HTMLElement, options: ChatPageOptions =
   const composerForm = container.querySelector<HTMLFormElement>("#chat-composer-form")!;
   const threadTitle = container.querySelector<HTMLElement>("#chat-thread-title")!;
   const runtimeSummary = container.querySelector<HTMLElement>("#chat-runtime-summary")!;
+  const historyDepthInput = container.querySelector<HTMLInputElement>("[data-chat-history-depth]")!;
   const workspace = container.querySelector<HTMLElement>(".chat-workspace")!;
   const sidebar = container.querySelector<HTMLElement>(".chat-sidebar")!;
   const sendButton = container.querySelector<HTMLButtonElement>("#chat-send")!;
@@ -255,6 +295,23 @@ export function mountChatPage(container: HTMLElement, options: ChatPageOptions =
   };
 
   conversationList.addEventListener("click", handleConversationListAction);
+  container.addEventListener("click", (event) => {
+    handleChatReferenceClick(event, options.onOpenReference);
+  }, { capture: true });
+
+  messageList.addEventListener("click", (event) => {
+    const target = event.target as HTMLElement;
+    const regenerate = target.closest<HTMLButtonElement>("[data-chat-regenerate]");
+    if (regenerate?.dataset.chatRegenerate) {
+      options.onRegenerate?.(regenerate.dataset.chatRegenerate);
+      return;
+    }
+    const save = target.closest<HTMLButtonElement>("[data-chat-save-message]");
+    if (save?.dataset.chatSaveMessage && save.dataset.chatSaveConversation) {
+      options.onSaveMessageToWiki?.(save.dataset.chatSaveConversation, save.dataset.chatSaveMessage);
+      return;
+    }
+  });
 
   const bindArticleRefRemoval = (element: HTMLElement): void => {
     element.addEventListener("click", (event) => {
@@ -306,6 +363,13 @@ export function mountChatPage(container: HTMLElement, options: ChatPageOptions =
 
   appSelect.addEventListener("change", () => {
     options.onAppChange?.(appSelect.value || null);
+  });
+
+  historyDepthInput.addEventListener("change", () => {
+    if (!currentThreadId) return;
+    const value = normalizeHistoryDepth(historyDepthInput.value);
+    historyDepthInput.value = String(value);
+    options.onHistoryDepthChange?.(currentThreadId, value);
   });
 
   threadTitle.addEventListener("dblclick", () => {
@@ -375,11 +439,15 @@ export function mountChatPage(container: HTMLElement, options: ChatPageOptions =
 
       currentThreadId = view.id ?? null;
       threadTitle.textContent = view.title;
+      historyDepthInput.value = String(view.maxHistoryMessages ?? 10);
       messageList.innerHTML = view.messages.length > 0
         ? view.messages
-          .map((message) => `
+          .map((message, index) => `
             <article class="chat-message chat-message--${message.role}${isCompactMessage(message.content) ? " chat-message--compact" : ""}">
-              <div class="chat-message__body markdown-rendered">${renderMessageHtml(message.content)}</div>
+              ${renderMessageThinking(message)}
+              <div class="chat-message__body markdown-rendered">${renderMessageBodyHtml(message)}</div>
+              ${renderMessageActions(message, view.id ?? null, index === view.messages.length - 1)}
+              ${renderMessageReferences(message)}
             </article>
           `)
           .join("")
@@ -426,6 +494,9 @@ export function mountChatPage(container: HTMLElement, options: ChatPageOptions =
     },
     setApp(appId) {
       setSelectValue(appSelect, appId);
+    },
+    setHistoryDepth(value) {
+      historyDepthInput.value = String(value);
     },
     setRuntimeSummary(summary) {
       if (!summary) {
@@ -557,12 +628,299 @@ function renderArticleRefChips(paths: string[]): string {
     .map(
       (path) => `
         <span class="chip chip--removable" title="${escapeHtml(path)}">
-          <span>${escapeHtml(path)}</span>
+          <button type="button" class="chip__reference" ${renderKnowledgePreviewDataAttributes({ path })}>${escapeHtml(path)}</button>
           <button type="button" class="chip__remove" data-article-ref-remove="${escapeHtml(path)}" aria-label="\u79fb\u9664\u5df2\u9009\u9875\u9762">×</button>
         </span>
       `,
     )
     .join("");
+}
+
+function handleChatReferenceClick(
+  event: MouseEvent,
+  onOpenReference: ChatPageOptions["onOpenReference"],
+): void {
+  handleKnowledgePreviewClick(event, onOpenReference);
+}
+
+function renderMessageReferences(message: ChatThreadMessage): string {
+  const references = pickVisibleReferences(message);
+  if (!references.length) {
+    return "";
+  }
+  return `
+    <details class="chat-message-refs" aria-label="引用参考文献" open>
+      <summary>引用参考文献 (${references.length})</summary>
+      ${renderGroupedMessageReferences(references)}
+    </details>
+  `;
+}
+
+function renderMessageThinking(message: ChatThreadMessage): string {
+  if (message.role !== "assistant") {
+    return "";
+  }
+  const blocks = extractThinkingBlocks(message.content);
+  if (!blocks.length) {
+    return "";
+  }
+  return message.id === "streaming-assistant"
+    ? renderStreamingThinking(blocks)
+    : renderCollapsedThinking(blocks);
+}
+
+function renderStreamingThinking(blocks: ThinkingBlock[]): string {
+  const lines = readRollingThinkingLines(blocks);
+  if (!lines.length) {
+    return "";
+  }
+  return `
+    <div class="chat-message-thinking chat-message-thinking--streaming" aria-label="思考过程">
+      <div class="chat-message-thinking__label">Thinking</div>
+      <div class="chat-message-thinking__lines">
+        ${lines.map(renderThinkingLine).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderCollapsedThinking(blocks: ThinkingBlock[]): string {
+  return `
+    <details class="chat-message-thinking" aria-label="思考过程">
+      <summary>Thinking</summary>
+      <pre>${escapeHtml(blocks.map((block) => block.content).join("\n\n"))}</pre>
+    </details>
+  `;
+}
+
+function readRollingThinkingLines(blocks: ThinkingBlock[]): string[] {
+  return blocks
+    .map((block) => block.content)
+    .join("\n")
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim().length > 0)
+    .slice(-5);
+}
+
+function renderThinkingLine(line: string, index: number, lines: string[]): string {
+  const denominator = Math.max(lines.length - 1, 1);
+  const opacity = 0.35 + (index / denominator) * 0.65;
+  return `<span style="opacity: ${opacity.toFixed(2)}">${escapeHtml(line)}</span>`;
+}
+
+function renderMessageBodyHtml(message: ChatThreadMessage): string {
+  const bodyHtml = renderMessageHtml(message.content);
+  const references = buildInlineCitationMap(message);
+  return references.size > 0 ? linkifyInlineCitations(bodyHtml, references) : bodyHtml;
+}
+
+function buildInlineCitationMap(message: ChatThreadMessage): Map<number, string> {
+  const references = new Map<number, string>();
+  for (const reference of message.references ?? []) {
+    if (reference.kind === "wiki" && reference.path) {
+      references.set(reference.index, reference.path);
+    }
+  }
+  return references;
+}
+
+function linkifyInlineCitations(html: string, references: Map<number, string>): string {
+  let ignoredTagDepth = 0;
+  return html
+    .split(/(<[^>]+>)/g)
+    .map((part) => {
+      if (part.startsWith("<")) {
+        ignoredTagDepth = updateInlineCitationIgnoredDepth(part, ignoredTagDepth);
+        return part;
+      }
+      return ignoredTagDepth > 0 ? part : linkifyInlineCitationText(part, references);
+    })
+    .join("");
+}
+
+function updateInlineCitationIgnoredDepth(tag: string, depth: number): number {
+  if (/^<\/(?:a|code|pre)>/i.test(tag)) {
+    return Math.max(0, depth - 1);
+  }
+  if (/^<(?:a|code|pre)(?:\s|>)/i.test(tag)) {
+    return depth + 1;
+  }
+  return depth;
+}
+
+function linkifyInlineCitationText(text: string, references: Map<number, string>): string {
+  return text.replace(/\[(\d+)\]/g, (match, rawIndex: string) => {
+    const index = Number(rawIndex);
+    const path = references.get(index);
+    return path ? renderInlineCitationLink(index, path) : match;
+  });
+}
+
+function renderInlineCitationLink(index: number, path: string): string {
+  return `<a class="chat-inline-citation" href="${escapeHtml(knowledgePreviewHref(path))}" ${renderKnowledgePreviewDataAttributes({ path, index })} title="${escapeHtml(path)}">[${index}]</a>`;
+}
+
+function renderMessageActions(
+  message: ChatThreadMessage,
+  conversationId: string | null,
+  isLastMessage: boolean,
+): string {
+  if (message.role !== "assistant" || !conversationId) {
+    return "";
+  }
+  const regenerateButton = isLastMessage ? `
+    <button type="button" class="btn btn-secondary btn-inline" data-chat-regenerate="${escapeHtml(conversationId)}">
+      ${renderIcon("refresh-cw", { size: 14 })} 重新生成
+    </button>
+  ` : "";
+  return `
+    <div class="chat-message-actions">
+      <button
+        type="button"
+        class="btn btn-secondary btn-inline"
+        data-chat-save-conversation="${escapeHtml(conversationId)}"
+        data-chat-save-message="${escapeHtml(message.id)}"
+      >
+        ${renderIcon("archive", { size: 14 })} 保存至维基
+      </button>
+      ${regenerateButton}
+    </div>
+  `;
+}
+
+function pickVisibleReferences(message: ChatThreadMessage): ChatMessageReference[] {
+  if (message.role !== "assistant" || !message.references?.length) {
+    return [];
+  }
+  const citedIndexes = extractCitedIndexes(message.content);
+  if (!citedIndexes.length) {
+    return message.references;
+  }
+  const cited = new Set(citedIndexes);
+  return message.references.filter((reference) => cited.has(reference.index));
+}
+
+// fallow-ignore-next-line complexity
+function renderMessageReference(reference: ChatMessageReference): string {
+  if (reference.kind === "wiki" && reference.path) {
+    return renderWikiMessageReference(reference);
+  }
+  const location = reference.kind === "web" ? reference.url : reference.path;
+  const label = `[${reference.index}] ${reference.title}`;
+  const imageBadge = reference.images?.length
+    ? `<small class="chat-message-ref__images">${reference.images.length} images</small>`
+    : "";
+  return `
+    <span class="chat-message-ref" title="${escapeHtml(location ?? reference.excerpt)}">
+      ${renderMessageReferenceLink(reference, label)}
+      <small>${escapeHtml(location ?? "")}</small>
+      ${imageBadge}
+    </span>
+  `;
+}
+
+function renderWikiMessageReference(reference: ChatMessageReference): string {
+  const path = reference.path ?? "";
+  const label = `[${reference.index}] ${reference.title}`;
+  const imageBadge = reference.images?.length
+    ? `<small class="chat-message-ref__images">${reference.images.length} images</small>`
+    : "";
+  return `
+    <a
+      class="chat-message-ref chat-message-ref--link"
+      href="${escapeHtml(knowledgePreviewHref(path))}"
+      title="${escapeHtml(path || reference.excerpt)}"
+      ${renderKnowledgePreviewDataAttributes({ path })}
+    >
+      <span>${escapeHtml(label)}</span>
+      <small>${escapeHtml(path)}</small>
+      ${imageBadge}
+    </a>
+  `;
+}
+
+function renderMessageReferenceLink(reference: ChatMessageReference, label: string): string {
+  if (reference.kind !== "web" || !reference.url) {
+    return `<span>${escapeHtml(label)}</span>`;
+  }
+  const href = normalizeLinkTarget(reference.url);
+  return `<a href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(label)}</a>`;
+}
+
+function renderGroupedMessageReferences(references: ChatMessageReference[]): string {
+  const groups = groupReferencesByType(references);
+  return [...groups.entries()]
+    .map(([type, items]) => `
+      <div class="chat-message-refs__group" data-ref-type="${escapeHtml(type)}">
+        <strong>${renderReferenceTypeIcon(type)} ${escapeHtml(formatReferenceType(type))}</strong>
+        ${items.map(renderMessageReference).join("")}
+      </div>
+    `)
+    .join("");
+}
+
+function groupReferencesByType(references: ChatMessageReference[]): Map<string, ChatMessageReference[]> {
+  const groups = new Map<string, ChatMessageReference[]>();
+  for (const reference of references) {
+    const type = inferReferenceType(reference);
+    groups.set(type, [...(groups.get(type) ?? []), reference]);
+  }
+  return groups;
+}
+
+function inferReferenceType(reference: ChatMessageReference): string {
+  const value = reference.kind === "web" ? reference.url ?? "" : reference.path ?? "";
+  if (reference.kind === "web") return "web";
+  const rule = REFERENCE_TYPE_RULES.find(([pattern]) => value.includes(pattern));
+  if (rule) return rule[1];
+  return "wiki";
+}
+
+function renderReferenceTypeIcon(type: string): string {
+  const icon = type === "entity" ? "wikipedia-w"
+    : type === "concept" ? "book-open-text"
+      : type === "query" ? "archive"
+        : type === "synthesis" ? "list-checks"
+          : type === "web" ? "globe"
+            : "wikipedia-w";
+  return renderIcon(icon, { size: 14 });
+}
+
+function formatReferenceType(type: string): string {
+  switch (type) {
+    case "entity": return "Entities";
+    case "concept": return "Concepts";
+    case "query": return "Queries";
+    case "synthesis": return "Synthesis";
+    case "web": return "Web";
+    default: return "Sources";
+  }
+}
+
+function extractCitedIndexes(content: string): number[] {
+  const commentMatch = content.match(/<!--\s*cited:\s*([0-9,\s]+)\s*-->/i);
+  if (commentMatch?.[1]) {
+    return parseIndexList(commentMatch[1]);
+  }
+  const inlineMatches = [...content.matchAll(/\[(\d+)\]/g)];
+  return [...new Set(inlineMatches.map((match) => Number(match[1])).filter((value) => Number.isFinite(value)))];
+}
+
+function parseIndexList(value: string): number[] {
+  return value
+    .split(",")
+    .map((item) => Number(item.trim()))
+    .filter((item) => Number.isFinite(item));
+}
+
+function normalizeLinkTarget(value: string): string | null {
+  return /^(https?:\/\/|mailto:)/i.test(value.trim()) ? value.trim() : null;
+}
+
+function normalizeHistoryDepth(value: string): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(1, Math.min(100, Math.trunc(parsed))) : 10;
 }
 
 function readConversationSidebarCollapsed(): boolean {

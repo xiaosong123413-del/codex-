@@ -21,7 +21,7 @@ interface WikiPageSideImageControllerOptions {
   onUploaded: () => Promise<void>;
 }
 
-export interface WikiPageSideImageController {
+interface WikiPageSideImageController {
   setDocument(document: WikiPageSideImageDocument | null): void;
 }
 
@@ -49,6 +49,7 @@ export function createWikiPageSideImageController(
     },
   };
 
+  // fallow-ignore-next-line complexity
   function renderCurrentState(): void {
     removeExistingBox();
     const sideImagePath = readFrontmatterString(currentDocument?.frontmatter, "side_image");
@@ -66,11 +67,7 @@ export function createWikiPageSideImageController(
     elements.uploadInput.disabled = uploading;
     elements.caption.hidden = !sideImageCaption;
     elements.caption.textContent = sideImageCaption;
-    elements.hint.textContent = statusMessage || (sideImagePath
-      ? "这张图和当前 wiki 页面绑定。重新上传后会直接替换。"
-      : editable
-        ? "给这篇 wiki 页面补一张右侧配图。"
-        : "");
+    elements.hint.textContent = statusMessage;
     if (sideImagePath) {
       elements.preview.hidden = false;
       elements.placeholder.hidden = true;
@@ -128,12 +125,24 @@ export function createWikiPageSideImageController(
   }
 
   function mountBox(box: HTMLElement): void {
+    if (currentDocument?.path === "wiki/crm/人际关系总览.md") {
+      const pageInfoHeading = findHeading("页面说明");
+      if (pageInfoHeading) {
+        pageInfoHeading.insertAdjacentElement("afterend", box);
+        return;
+      }
+    }
     const firstHeading = options.refs.article.querySelector(":scope > h1");
     if (firstHeading?.parentElement === options.refs.article) {
       firstHeading.insertAdjacentElement("afterend", box);
       return;
     }
     options.refs.article.prepend(box);
+  }
+
+  function findHeading(text: string): HTMLElement | null {
+    const headings = options.refs.article.querySelectorAll<HTMLElement>(":scope > h2");
+    return Array.from(headings).find((heading) => heading.textContent?.includes(text)) ?? null;
   }
 }
 
@@ -142,10 +151,6 @@ function createSideImageElements(): SideImageElements {
   box.className = "wiki-page__side-image-box";
   box.dataset.wikiSideImageBox = "true";
   box.innerHTML = `
-    <div class="wiki-page__side-image-header">
-      <div class="wiki-page__eyebrow">IMAGE</div>
-      <h2>页面配图</h2>
-    </div>
     <img class="wiki-page__side-image-preview" data-wiki-side-image-preview alt="" hidden />
     <div class="wiki-page__side-image-placeholder" data-wiki-side-image-placeholder>
       这里可以放当前页面的右侧图片。

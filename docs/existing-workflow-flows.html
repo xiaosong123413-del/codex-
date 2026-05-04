@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>已有执行沉淀流程</title>
+  <style>
+    :root {
+      --bg: #f5f6f8;
+      --paper: #fff;
+      --ink: #1f2329;
+      --muted: #646a73;
+      --weak: #8f959e;
+      --line: #dee0e3;
+      --soft-line: #eff0f1;
+      --hover: #f7f8fa;
+      --blue: #3370ff;
+      --blue-soft: #e8f0ff;
+      --green: #2f9e61;
+      --green-soft: #eaf8ef;
+      --amber: #b7791f;
+      --amber-soft: #fff4de;
+      --red: #d83931;
+      --red-soft: #fff0ee;
+      --purple: #7a45d1;
+      --purple-soft: #f2ecff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 248px minmax(0, 1fr) 236px;
+      min-height: 100vh;
+    }
+
+    .side,
+    .right {
+      background: #fbfbfc;
+      padding: 18px 14px;
+    }
+
+    .side { border-right: 1px solid var(--soft-line); }
+    .right { border-left: 1px solid var(--soft-line); }
+
+    .side-title,
+    .right-title {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .side-title {
+      padding: 0 8px 12px;
+    }
+
+    .nav {
+      display: grid;
+      gap: 4px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .nav li {
+      padding: 8px 10px;
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .nav li.active {
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-weight: 700;
+    }
+
+    main {
+      min-width: 0;
+      background: var(--paper);
+    }
+
+    .doc {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 42px 52px 76px;
+    }
+
+    .crumb {
+      color: var(--weak);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    h1 {
+      margin: 12px 0 10px;
+      font-size: 32px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 720px;
+      margin: 0 0 24px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin: 18px 0 32px;
+    }
+
+    .summary-item {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .summary-item strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 13px;
+    }
+
+    .summary-item span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .doc-section {
+      position: relative;
+      margin-top: 34px;
+    }
+
+    .doc-section::before {
+      position: absolute;
+      top: 4px;
+      left: -24px;
+      color: #c0c4cc;
+      font-size: 18px;
+      content: "+";
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.35;
+      letter-spacing: 0;
+    }
+
+    .section-desc {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .flow {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .flow-row {
+      display: grid;
+      grid-template-columns: 128px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .lane-label {
+      padding: 10px 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .step {
+      min-height: 104px;
+      padding: 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .step strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .step p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .step.source { background: var(--blue-soft); border-color: #bfd0ff; }
+    .step.ai { background: #f8fcfa; border-color: #cbead7; }
+    .step.store { background: var(--hover); }
+    .step.warn { background: var(--red-soft); border-color: #ffd0cc; }
+
+    .arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--weak);
+      font-size: 18px;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .block {
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .block h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      line-height: 1.35;
+    }
+
+    .block p,
+    .block li {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.62;
+    }
+
+    .block p {
+      margin: 0;
+    }
+
+    .block ul {
+      display: grid;
+      gap: 5px;
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .table {
+      width: 100%;
+      margin-top: 14px;
+      border-collapse: collapse;
+      border-top: 1px solid var(--line);
+      font-size: 14px;
+    }
+
+    .table tr {
+      border-bottom: 1px solid var(--soft-line);
+    }
+
+    .table th,
+    .table td {
+      padding: 12px 10px;
+      text-align: left;
+      vertical-align: top;
+      line-height: 1.62;
+    }
+
+    .table th {
+      width: 130px;
+      color: var(--muted);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .chip {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: var(--hover);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+      white-space: nowrap;
+    }
+
+    .chip.blue { background: var(--blue-soft); color: var(--blue); }
+    .chip.green { background: var(--green-soft); color: var(--green); }
+    .chip.amber { background: var(--amber-soft); color: var(--amber); }
+    .chip.red { background: var(--red-soft); color: var(--red); }
+    .chip.purple { background: var(--purple-soft); color: var(--purple); }
+
+    .note {
+      margin-top: 12px;
+      padding: 11px 13px;
+      border-left: 3px solid var(--blue);
+      background: #f8fbff;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .outline {
+      display: grid;
+      gap: 6px;
+      margin: 10px 0 22px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .outline li {
+      padding: 5px 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .outline li.active {
+      color: var(--blue);
+      font-weight: 700;
+    }
+
+    .small {
+      padding-top: 16px;
+      border-top: 1px solid var(--soft-line);
+      color: var(--weak);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    @media (max-width: 1120px) {
+      .shell { grid-template-columns: 1fr; }
+      .side, .right { display: none; }
+      .doc { padding: 28px 22px 56px; }
+      h1 { font-size: 28px; }
+      .summary { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 760px) {
+      .flow-row { grid-template-columns: 1fr; }
+      .steps { grid-template-columns: 1fr; }
+      .arrow { justify-content: flex-start; padding-left: 10px; }
+      .board { grid-template-columns: 1fr; }
+      .table,
+      .table tbody,
+      .table tr,
+      .table th,
+      .table td {
+        display: block;
+        width: 100%;
+      }
+      .table th { padding-bottom: 2px; }
+      .table td { padding-top: 2px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="side">
+      <div class="side-title">已有流程</div>
+      <ul class="nav">
+        <li class="active">总览</li>
+        <li>执行记录器</li>
+        <li>任务卡 workflowLog</li>
+        <li>案例库 / 资源库</li>
+        <li>执行沉淀页</li>
+      </ul>
+    </aside>
+
+    <main>
+      <article class="doc">
+        <div class="crumb">基于当前项目日志与测试用例整理</div>
+        <h1>已有执行沉淀流程</h1>
+        <p class="lead">现有机制已经不是单一“目录树”。它把一次执行记录拆成机器凭证、任务卡记录、项目工作日志，以及资源库/案例库/方法库/资料验证记录这些长期沉淀。</p>
+
+        <section class="summary" aria-label="流程摘要">
+          <div class="summary-item"><strong>人工入口</strong><span>执行记录器：写刚刚做了什么、停在哪、遇到什么、参考了什么。</span></div>
+          <div class="summary-item"><strong>AI / 服务处理</strong><span>识别任务、工具、链接、问题、下一步；高置信归档，低置信进待处理。</span></div>
+          <div class="summary-item"><strong>沉淀出口</strong><span>任务卡、Workflow Event、工作日志、资源库、案例库、方法库、资料验证记录。</span></div>
+        </section>
+
+        <section class="doc-section">
+          <h2>一条执行记录的主流程</h2>
+          <p class="section-desc">这是已有“执行记录器归档流程”的核心：同一条事件会被拆成三种视图。</p>
+          <div class="flow">
+            <div class="flow-row">
+              <div class="lane-label">人工输入</div>
+              <div class="steps">
+                <div class="step source"><strong>执行记录器</strong><p>输入文本、记录类型、可选任务绑定、附件或链接。</p></div>
+                <div class="arrow">→</div>
+                <div class="step ai"><strong>识别归档</strong><p>识别任务、当前节点、问题、下一步、工具和资源线索。</p></div>
+                <div class="step store"><strong>置信判断</strong><p>高置信直接归档；低置信进入 workflow inbox 待确认。</p></div>
+              </div>
+            </div>
+            <div class="flow-row">
+              <div class="lane-label">三种视图</div>
+              <div class="steps">
+                <div class="step"><strong>Workflow Event</strong><p>机器凭证。保留事件 ID、匹配领域/项目/任务、置信度。</p></div>
+                <div class="step"><strong>任务卡 workflowLog</strong><p>绑定行动层。写入任务卡日志，并更新 lastStop。</p></div>
+                <div class="step"><strong>项目工作日志</strong><p>按时间线写入领域、项目、任务、任务 ID、行动和事件引用。</p></div>
+                <div class="step"><strong>专题沉淀候选</strong><p>抽取资源、案例、方法、验证记录，等待沉淀或展示。</p></div>
+              </div>
+            </div>
+          </div>
+          <div class="note">关键点：用户只需要写执行现场；系统已经有把同一条记录投射到任务、项目和专题沉淀的路径。</div>
+        </section>
+
+        <section class="doc-section">
+          <h2>任务卡流程</h2>
+          <p class="section-desc">任务卡是行动层和任务层的连接点。它不是完整项目文档，而是承接执行记录。</p>
+          <table class="table">
+            <tbody>
+              <tr>
+                <th>输入来源</th>
+                <td>执行记录器文本；可显式绑定 <span class="chip blue">taskId</span>，也可由系统匹配任务。</td>
+              </tr>
+              <tr>
+                <th>写入位置</th>
+                <td>任务池里的任务卡 <span class="chip green">workflowLog</span>，并同步更新 <span class="chip">lastStop</span>。</td>
+              </tr>
+              <tr>
+                <th>项目映射</th>
+                <td>项目 <span class="chip">工作日志.md</span> 会补充任务 ID 与 <span class="chip">task-pool/&lt;id&gt;</span> 引用，确保任务卡、执行记录器、工作日志指向同一任务。</td>
+              </tr>
+              <tr>
+                <th>低置信记录</th>
+                <td>无法可靠匹配任务时，不强行写任务卡，先进入待处理 inbox。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="doc-section">
+          <h2>案例库、资源库、方法库怎么来</h2>
+          <p class="section-desc">这些不是用户手动填目录，而是从执行记录与验证结果中抽取出来的长期沉淀。</p>
+          <div class="board">
+            <div class="block">
+              <h3>资源库</h3>
+              <ul>
+                <li>从记录中的工具、链接、附件中抽取。</li>
+                <li>例：记录提到“夸克浏览器”和教程链接，进入资源候选。</li>
+                <li>长期位置：<span class="chip blue">wiki/专题/资源库</span></li>
+              </ul>
+            </div>
+            <div class="block">
+              <h3>案例库</h3>
+              <ul>
+                <li>从一次完整行动、问题、解决结果中沉淀。</li>
+                <li>用于回答“这个问题以前怎么处理过”。</li>
+                <li>长期位置：<span class="chip purple">wiki/专题/案例库</span></li>
+              </ul>
+            </div>
+            <div class="block">
+              <h3>方法库</h3>
+              <ul>
+                <li>从解决记录里抽取稳定做法。</li>
+                <li>证据来源可包含 workflowLog、case、validation。</li>
+                <li>长期位置：<span class="chip amber">wiki/专题/方法库</span></li>
+              </ul>
+            </div>
+            <div class="block">
+              <h3>资料验证记录</h3>
+              <ul>
+                <li>记录资料、教程、链接是否真的有效。</li>
+                <li>和案例、方法互相支撑，避免资源库只有链接没有验证。</li>
+                <li>长期位置：<span class="chip green">wiki/专题/资料验证记录</span></li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="doc-section">
+          <h2>执行沉淀页流程</h2>
+          <p class="section-desc">这是用户查看沉淀的入口，不是填写入口。</p>
+          <div class="flow">
+            <div class="flow-row">
+              <div class="lane-label">查看路径</div>
+              <div class="steps">
+                <div class="step source"><strong>工作台按钮</strong><p>点击“执行沉淀”。</p></div>
+                <div class="arrow">→</div>
+                <div class="step"><strong>#/workflow-artifacts</strong><p>进入执行沉淀页。</p></div>
+                <div class="step"><strong>/api/workflow-artifacts</strong><p>读取快照并补齐运行时队列。</p></div>
+              </div>
+            </div>
+            <div class="flow-row">
+              <div class="lane-label">展示内容</div>
+              <div class="steps">
+                <div class="step"><strong>Workflow Event 事件池</strong><p>机器事件凭证。</p></div>
+                <div class="step"><strong>资源候选</strong><p>工具、链接、附件线索。</p></div>
+                <div class="step"><strong>验证 / 方法候选</strong><p>从解决记录中抽取。</p></div>
+                <div class="step"><strong>长期 Wiki 文件夹</strong><p>资源库、案例库、方法库、资料验证记录。</p></div>
+              </div>
+            </div>
+          </div>
+          <div class="note">当前项目日志还说明：普通 Wiki 文件树不再直接展示这些执行沉淀专题；它们改由工作日志页或执行沉淀页读取展示。</div>
+        </section>
+
+        <section class="doc-section">
+          <h2>和新想法的连接</h2>
+          <p class="section-desc">已有流程已经支持“只写行动，向上维护”的方向，但界面表达还可以更统一。</p>
+          <table class="table">
+            <tbody>
+              <tr>
+                <th>行动层</th>
+                <td>继续保留执行记录器，作为唯一高频人工入口。</td>
+              </tr>
+              <tr>
+                <th>任务层</th>
+                <td>任务卡读取 workflowLog，形成当前判断、卡点和下一步。</td>
+              </tr>
+              <tr>
+                <th>项目层</th>
+                <td>项目工作日志按时间线聚合任务卡和 Workflow Event。</td>
+              </tr>
+              <tr>
+                <th>领域层</th>
+                <td>领域从多个项目日志和专题沉淀中总结趋势，不由用户日常填写。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </article>
+    </main>
+
+    <aside class="right">
+      <div class="right-title">目录</div>
+      <ul class="outline">
+        <li class="active">主流程</li>
+        <li>任务卡流程</li>
+        <li>案例库 / 资源库</li>
+        <li>执行沉淀页</li>
+        <li>连接新模型</li>
+      </ul>
+      <div class="right-title">依据</div>
+      <p class="small">来自项目日志里的“执行记录器归档流程”“执行沉淀文件流转”，以及执行记录器和案例库相关测试。此页是流程表达稿，不改产品代码。</p>
+    </aside>
+  </div>
+</body>
+</html>

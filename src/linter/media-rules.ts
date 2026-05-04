@@ -12,7 +12,6 @@ import { readFile } from "fs/promises";
 import path from "path";
 import {
   CONCEPTS_DIR,
-  EPISODES_DIR,
   PROCEDURES_DIR,
   QUERIES_DIR,
   SOURCES_FULL_DIR,
@@ -39,7 +38,7 @@ const VIDEO_EXTENSIONS = new Set([".mp4", ".mov", ".webm", ".avi", ".mkv", ".m4v
 const ATTACHMENT_EXTENSIONS = new Set([
   ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx", ".csv", ".zip", ".rar", ".7z", ".mp3", ".wav", ".m4a",
 ]);
-const WIKI_PAGE_DIRS = [CONCEPTS_DIR, QUERIES_DIR, EPISODES_DIR, PROCEDURES_DIR];
+const WIKI_PAGE_DIRS = [CONCEPTS_DIR, QUERIES_DIR, PROCEDURES_DIR];
 const MARKDOWN_IMAGE_PATTERN = /!\[[^\]]*]\(([^)]+)\)/g;
 const MARKDOWN_LINK_PATTERN = /\[[^\]]*]\(([^)]+)\)/g;
 const OBSIDIAN_EMBED_PATTERN = /!\[\[([^\]]+)\]\]/g;

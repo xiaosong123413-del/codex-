@@ -1,0 +1,21 @@
+{
+  "source_vault_root": "/path/to/your/obsidian-vault",
+  "runtime_output_root": "/path/to/llm-wiki-compiler/.runtime/accounts/<account-uuid>/<workspace-uuid>",
+  "compiler_root": "/path/to/llm-wiki-compiler",
+  "source_folders": [
+    "/path/to/your/obsidian-vault/wiki"
+  ],
+  "compile_mode": "batch",
+  "publish_mode": "final_only",
+  "memory_model": "tiered",
+  "batch_limit": 20,
+  "batch_pattern_order": [
+    "*"
+  ],
+  "exclude_dirs": [
+    ".obsidian",
+    ".trash",
+    ".claude"
+  ],
+  "cloudflare_workspace_id": "<workspace-uuid>"
+}

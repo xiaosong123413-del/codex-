@@ -66,8 +66,8 @@ export function resolveSourceMetadata(sourceRoot, relativePath, sourcePath, cont
   const intakeRoot = getMatchedIntakeRoot(sourceRoot, sourcePath);
   const title = extractTitle(content, relativePath);
   return {
-    source_kind: intakeRoot?.kind ?? "external",
-    source_channel: intakeRoot?.channel ?? "\u5916\u90e8\u6e90",
+    source_kind: intakeRoot?.kind ?? "source",
+    source_channel: intakeRoot?.channel ?? readSourceChannel(sourceRoot),
     source_title: title,
     source_url: extractUrl(content),
     source_path: toSlash(sourcePath),
@@ -153,6 +153,10 @@ function extractUrl(content) {
 
 function cleanTitle(value) {
   return String(value).replace(/^["']|["']$/g, "").trim();
+}
+
+function readSourceChannel(sourceRoot) {
+  return path.basename(path.resolve(sourceRoot)) || "\u540c\u6b65\u6e90";
 }
 
 async function readImportManifest(vaultRoot) {

@@ -170,3 +170,29 @@ export function createBucketHarness(seed: Record<string, string> = {}): {
     } as WorkerEnv["WIKI_BUCKET"],
   };
 }
+
+export function createDurableObjectNamespaceHarness(): {
+  namespace: WorkerEnv["WIKI_PUBLISH_EVENTS"];
+  broadcasts: Array<Record<string, unknown>>;
+} {
+  const broadcasts: Array<Record<string, unknown>> = [];
+  return {
+    broadcasts,
+    namespace: {
+      idFromName(name: string) {
+        return { name };
+      },
+      get() {
+        return {
+          async fetch(input: RequestInfo | URL, init?: RequestInit) {
+            const request = new Request(input, init);
+            broadcasts.push(await request.json() as Record<string, unknown>);
+            return new Response(JSON.stringify({ ok: true, sent: 0 }), {
+              headers: { "content-type": "application/json" },
+            });
+          },
+        };
+      },
+    } as WorkerEnv["WIKI_PUBLISH_EVENTS"],
+  };
+}

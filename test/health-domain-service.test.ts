@@ -79,7 +79,7 @@ describe("health domain service", () => {
     expect(state.sleep.insights).toContain("深度睡眠占比连续 3 天低于目标");
   });
 
-  it("hides obsolete shared-uid wording from health sync errors", async () => {
+  it("keeps Xiaomi relative UID errors visible for shared-user imports", async () => {
     const projectRoot = makeTempRoot();
     await saveHealthDomainApiConnection(projectRoot, {
       tokenJson: "{\"userId\":\"health-user\"}",
@@ -96,7 +96,7 @@ describe("health domain service", () => {
 
     const state = await readHealthDomainState(projectRoot);
     expect(state.connection.lastError).toBe(
-      "当前 mi-fitness SDK 暂不支持读取当前登录账号本人的小米健康数据。",
+      "uid=3002112490 and relative_uid=3002112490 are not relatives",
     );
   });
 });

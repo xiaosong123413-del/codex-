@@ -344,11 +344,11 @@ describe("review route web search suggestions", () => {
 
     expect(response.statusCode).toBe(200);
     const chatId = response.body.data.id as string;
-    const conversation = JSON.parse(
-      fs.readFileSync(path.join(cfg.runtimeRoot, ".chat", `${chatId}.json`), "utf8"),
-    ) as { messages: Array<{ content: string }> };
-    expect(conversation.messages[0]?.content).toContain("页面：wiki/concepts/example.md");
-    expect(conversation.messages[0]?.content).toContain("触发依据");
+    const messages = JSON.parse(
+      fs.readFileSync(path.join(cfg.sourceVaultRoot, ".llm-wiki", "chats", `${chatId}.json`), "utf8"),
+    ) as Array<{ content: string }>;
+    expect(messages[0]?.content).toContain("页面：wiki/concepts/example.md");
+    expect(messages[0]?.content).toContain("触发依据");
   });
 
   it("bulk-advances pending items without auto-confirming ready drafts", async () => {
@@ -663,7 +663,13 @@ function makeOutdatedSourceConfig(
         claimText: "付费成功与桌面端识别成功并非同一件事，Google AI Developers Forum 在 2025 年 12 月已出现过付费成功但 Antigravity 仍识别为受限状态的反馈。",
         claimType: "incident",
         sourceFiles: ["source.md"],
-        episodeIds: ["episode-1"],
+        sources: [{
+          file: "source.md",
+          title: "source.md",
+          kind: "external",
+          channel: "外部源",
+          observedAt: "2025-12",
+        }],
         firstSeenAt: "2025-12",
         lastConfirmedAt: "2025-12",
         supportCount: 1,

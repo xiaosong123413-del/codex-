@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const roots: string[] = [];
 const execCalls: Array<{ file: string; args: string[] }> = [];
+const failingBrowsers = new Set<string>();
 let cookieJarContent = "";
 
 vi.mock("node:child_process", () => {
@@ -14,6 +15,10 @@ vi.mock("node:child_process", () => {
     args: string[],
   ): { stdout: string; stderr: string } => {
     execCalls.push({ file, args: [...args] });
+    const browserIndex = args.indexOf("--cookies-from-browser");
+    if (browserIndex >= 0 && failingBrowsers.has(args[browserIndex + 1] ?? "")) {
+      throw new Error(`missing ${args[browserIndex + 1]} cookies`);
+    }
     const cookieIndex = args.indexOf("--cookies");
     if (cookieIndex >= 0 && args[cookieIndex + 1]) {
       cookieJarContent = fs.readFileSync(args[cookieIndex + 1]!, "utf8");
@@ -67,6 +72,7 @@ vi.mock("../web/server/services/yt-dlp.js", () => ({
 
 afterEach(() => {
   execCalls.length = 0;
+  failingBrowsers.clear();
   cookieJarContent = "";
   while (roots.length > 0) {
     const root = roots.pop();
@@ -102,6 +108,23 @@ describe("douyin cookie strategy", () => {
     expect(cookieJarContent).toContain(".douyin.com\tTRUE\t/\tTRUE\t2147483647\tuid_tt\t1");
     expect(cookieJarContent).toContain(".douyin.com\tTRUE\t/\tTRUE\t2147483647\tpassport_csrf_token\txyz");
     expect(cookieJarContent).not.toContain("\tdouyin.com\t");
+  }, 30_000);
+
+  it("reports every failed browser cookie strategy instead of only the last one", async () => {
+    const { createDouyinCollector } = await import("../web/server/services/douyin-sync.js");
+    const root = makeRoot();
+    const outputDir = path.join(root, "raw", "剪藏", "抖音");
+    failingBrowsers.add("chrome");
+    failingBrowsers.add("edge");
+    failingBrowsers.add("firefox");
+
+    const collector = createDouyinCollector(root);
+    await expect(collector.collect({
+      url: "https://v.douyin.com/WN-2CwOCEg0/",
+      outputDir,
+      quality: "720",
+      projectRoot: root,
+    })).rejects.toThrow(/browser:chrome[\s\S]*browser:edge[\s\S]*browser:firefox/);
   });
 });
 

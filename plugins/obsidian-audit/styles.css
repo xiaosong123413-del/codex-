@@ -1,7 +1,7 @@
 /* ==========================================================================
    LLM Wiki Audit — plugin modal styling
-   Uses Obsidian CSS variables for theme integration, with Catppuccin-ish
-   accents on top so it feels premium regardless of the active theme.
+   Uses Obsidian CSS variables for theme integration, with Wikipedia-style
+   accents matching the main LLM Wiki web UI.
    ========================================================================== */
 
 .llm-wiki-audit-modal .modal-content,
@@ -10,25 +10,25 @@
 }
 
 .llm-wiki-audit-modal {
-  --audit-accent: #cba6f7;
-  --audit-accent-soft: rgba(203, 166, 247, 0.16);
-  --audit-sev-info: #89dceb;
-  --audit-sev-suggest: #cba6f7;
-  --audit-sev-warn: #fab387;
-  --audit-sev-error: #f38ba8;
+  --audit-accent: #3366cc;
+  --audit-accent-soft: rgba(51, 102, 204, 0.16);
+  --audit-sev-info: #3366cc;
+  --audit-sev-suggest: #54595d;
+  --audit-sev-warn: #ac6600;
+  --audit-sev-error: #d33;
 }
 
 .llm-wiki-audit-modal.modal-container .modal {
   border-radius: 16px;
   border: 1px solid var(--background-modifier-border);
   overflow: hidden;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 12px 36px rgba(32, 33, 34, 0.24);
 }
 
 .llm-wiki-audit-modal .modal-bg {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  background: rgba(17, 17, 27, 0.5);
+  background: rgba(32, 33, 34, 0.28);
 }
 
 .llm-wiki-audit-modal .audit-header {
@@ -175,11 +175,11 @@
 }
 .llm-wiki-audit-modal .audit-buttons button.mod-cta {
   background: var(--audit-accent);
-  color: #11111b;
+  color: #ffffff;
   border: 1px solid var(--audit-accent);
 }
 .llm-wiki-audit-modal .audit-buttons button.mod-cta:hover {
   filter: brightness(1.1);
-  box-shadow: 0 6px 20px rgba(203, 166, 247, 0.35);
+  box-shadow: 0 6px 20px rgba(51, 102, 204, 0.24);
   transform: translateY(-1px);
 }

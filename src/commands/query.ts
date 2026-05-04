@@ -20,6 +20,7 @@ import { generateIndex } from "../compiler/indexgen.js";
 import * as output from "../utils/output.js";
 import { appendMaintenanceLog } from "../utils/maintenance-log.js";
 import { QUERY_PAGE_LIMIT, INDEX_FILE, CONCEPTS_DIR, QUERIES_DIR } from "../utils/constants.js";
+import { attachGeneratedWikiSideImage, toWikiLogicalPath } from "../utils/wiki-side-image.js";
 
 /** Directories to search when loading selected pages, in priority order. */
 const PAGE_DIRS = [CONCEPTS_DIR, QUERIES_DIR];
@@ -193,6 +194,7 @@ export function summarizeAnswer(answer: string): string {
 async function saveQueryPage(root: string, question: string, answer: string): Promise<void> {
   const slug = slugify(question);
   const filePath = path.join(root, QUERIES_DIR, `${slug}.md`);
+  const isNewPage = !existsSync(filePath);
 
   const frontmatter = buildFrontmatter({
     title: question,
@@ -202,7 +204,10 @@ async function saveQueryPage(root: string, question: string, answer: string): Pr
   });
 
   const document = `${frontmatter}\n\n${answer}\n`;
-  await atomicWrite(filePath, document);
+  const finalDocument = isNewPage
+    ? (await attachGeneratedWikiSideImage(root, toWikiLogicalPath(root, filePath), document)).content
+    : document;
+  await atomicWrite(filePath, finalDocument);
 
   output.status(
     "+",

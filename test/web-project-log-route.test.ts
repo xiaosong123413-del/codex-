@@ -42,6 +42,7 @@ describe("project log routes", () => {
         html: expect.stringContaining("<h1"),
       }),
     });
+    expect(json.mock.calls[0]?.[0].data.html).not.toContain("§");
   });
 
   it("lists workspace groups with delete recommendations", () => {

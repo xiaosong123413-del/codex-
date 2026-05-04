@@ -7,6 +7,7 @@ import {
   getCLIProxyOAuthStatus,
   getCLIProxyStatus,
   installCLIProxySource,
+  deleteCLIProxyAccount,
   readCLIProxyConfig,
   requestCLIProxyOAuth,
   saveCLIProxyOpenAICompatibility,
@@ -14,6 +15,7 @@ import {
   setCLIProxyCodexAccountEnabled,
   startCLIProxy,
   stopCLIProxy,
+  syncCLIProxyCodexTokenToWorker,
 } from "../services/cliproxy.js";
 
 export function registerCLIProxyRoutes(app: Express, cfg: ServerConfig): void {
@@ -26,7 +28,9 @@ export function registerCLIProxyRoutes(app: Express, cfg: ServerConfig): void {
   app.post("/api/cliproxy/start", handleCLIProxyStart(cfg));
   app.post("/api/cliproxy/stop", handleCLIProxyStop());
   app.post("/api/cliproxy/oauth", handleCLIProxyOAuth(cfg));
+  app.delete("/api/cliproxy/accounts", handleCLIProxyAccountDelete(cfg));
   app.post("/api/cliproxy/accounts/enabled", handleCLIProxyAccountEnabled(cfg));
+  app.post("/api/cliproxy/accounts/sync-worker-token", handleCLIProxyAccountWorkerSync(cfg));
   app.post("/api/cliproxy/codex/accounts/enabled", handleCLIProxyCodexAccountEnabled(cfg));
   app.post("/api/cliproxy/openai-compatibility", handleCLIProxyOpenAICompatibility(cfg));
 }
@@ -76,6 +80,19 @@ function handleCLIProxyAccountModels(cfg: ServerConfig) {
   };
 }
 
+function handleCLIProxyAccountWorkerSync(cfg: ServerConfig) {
+  return async (req: Request, res: Response) => {
+    await respond(res, () => syncCLIProxyCodexTokenToWorker({
+      ...readCLIProxyConfig(cfg.projectRoot),
+      projectRoot: cfg.projectRoot,
+      name: readRecord(req.body).name,
+      ownerUid: readRecord(req.body).ownerUid,
+      workerUrl: readRecord(req.body).workerUrl,
+      remoteToken: readRecord(req.body).remoteToken,
+    }));
+  };
+}
+
 function handleCLIProxyInstall(cfg: ServerConfig) {
   return async (_req: Request, res: Response) => {
     await respond(res, () => installCLIProxySource(cfg.projectRoot));
@@ -113,6 +130,16 @@ function handleCLIProxyAccountEnabled(cfg: ServerConfig, work = setCLIProxyAccou
       ...readCLIProxyConfig(cfg.projectRoot),
       name: readRecord(req.body).name,
       enabled: readRecord(req.body).enabled,
+    }));
+  };
+}
+
+function handleCLIProxyAccountDelete(cfg: ServerConfig) {
+  return async (req: Request, res: Response) => {
+    await respond(res, () => deleteCLIProxyAccount({
+      ...readCLIProxyConfig(cfg.projectRoot),
+      projectRoot: cfg.projectRoot,
+      name: readRecord(req.body).name,
     }));
   };
 }

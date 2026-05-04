@@ -12,6 +12,7 @@ import {
   type PanelWidthBounds,
 } from "../../shell/panel-layout.js";
 import { attachResizeHandle } from "../../shell/resize-handle.js";
+import { bindPageSearchShortcut } from "../../search-shortcut.js";
 import { createWikiCommentSurface, type WikiCommentSurfaceController } from "../../components/wiki-comments.js";
 import {
   createWikiSelectionToolbar,
@@ -34,9 +35,11 @@ import {
   type ApiResponse,
   type FlashDiaryListPayload,
   type FlashDiaryMemoryPageResponse,
-  type FlashDiaryPageRefs,
   type FlashDiaryPageResponse,
 } from "./view-helpers.js";
+import { renderFlashDiaryPageShell } from "./page-shell.js";
+import { getFlashDiaryPageRefs as getRefs } from "./refs.js";
+import { createFlashDiaryVisualEditor } from "./visual-editor.js";
 
 type DisposableNode = HTMLElement & {
   __dispose?: () => void;
@@ -51,77 +54,22 @@ const FLASH_DIARY_LIST_BOUNDS: PanelWidthBounds = {
 export function renderFlashDiaryPage(): HTMLElement {
   const root = document.createElement("section") as DisposableNode;
   root.className = "flash-diary-page";
-  root.innerHTML = renderPageShell();
+  root.innerHTML = renderFlashDiaryPageShell();
   bindFlashDiaryPage(root);
   return root;
-}
-
-function renderPageShell(): string {
-  return `
-    <div class="flash-diary-page__workspace">
-      <aside class="flash-diary-page__list-panel">
-        <div class="flash-diary-page__panel-header">
-          <h2>以往日记</h2>
-          <button type="button" class="btn btn-secondary btn-inline" data-flash-diary-refresh>刷新</button>
-        </div>
-        <div class="flash-diary-page__list" data-flash-diary-list>
-          <div class="flash-diary-page__empty">正在读取闪念日记...</div>
-        </div>
-      </aside>
-      <div
-        class="panel-resize-handle panel-resize-handle--page"
-        data-panel-handle="flashDiary.listWidth"
-        aria-hidden="true"
-      ></div>
-      <section class="flash-diary-page__editor-panel">
-        <div class="flash-diary-page__panel-header">
-          <div>
-            <h2 data-flash-diary-current-title>未选中文档</h2>
-            <p data-flash-diary-current-meta>请从左侧选择一篇日记、十二个问题或 Memory。</p>
-          </div>
-          <div class="flash-diary-page__actions">
-            <button type="button" class="btn btn-primary btn-inline" data-flash-diary-save disabled>保存当前文档</button>
-            <button type="button" class="btn btn-secondary btn-inline" data-flash-diary-memory-refresh hidden>刷新 Memory</button>
-            <button type="button" class="btn btn-secondary btn-inline" data-flash-diary-memory-comment hidden>评论</button>
-          </div>
-        </div>
-        <textarea class="flash-diary-page__editor" data-flash-diary-editor spellcheck="false" placeholder="尚未加载日记"></textarea>
-        <div class="flash-diary-page__memory-layout" data-flash-diary-memory-layout data-wiki-comments-open="false" hidden>
-          <div class="wiki-page__selection-toolbar" data-flash-diary-selection-toolbar hidden>
-            <button type="button" class="wiki-page__tab-action" data-flash-diary-selection-comment>评论</button>
-            <button type="button" class="wiki-page__tab-action" data-flash-diary-selection-copy>复制</button>
-            <button type="button" class="wiki-page__tab-action" data-flash-diary-selection-cancel>取消</button>
-          </div>
-          <article class="flash-diary-page__memory-article markdown-rendered" data-flash-diary-memory-body>
-            <div class="flash-diary-page__empty">请选择左侧记忆卡片。</div>
-          </article>
-          <aside class="wiki-comments-panel flash-diary-page__memory-comments" data-flash-diary-memory-comments hidden>
-            <div class="wiki-comments-panel__header">
-              <div>
-                <div class="eyebrow">COMMENTS</div>
-                <h3 class="wiki-comments-panel__title">评论</h3>
-              </div>
-              <button type="button" class="btn btn-secondary btn-inline" data-flash-diary-memory-comments-close>关闭</button>
-            </div>
-            <p class="wiki-comments-panel__hint">这里保存当前 Memory 页面评论；AI 自动解决会直接写回 journal-memory.md。</p>
-            <p class="wiki-comments-panel__status" data-wiki-comments-status>选中文本后点击“评论”。</p>
-            <div data-wiki-comments-list></div>
-          </aside>
-        </div>
-      </section>
-    </div>
-  `;
 }
 
 function bindFlashDiaryPage(root: DisposableNode): void {
   const refs = getRefs(root);
   const comments = createMemoryCommentSurface(refs);
   const selectionToolbar = createMemorySelectionToolbar(refs, comments);
+  const diaryEditor = createFlashDiaryVisualEditor(refs.visualEditorHost);
   const state = createPageState();
   const workspace = root.querySelector<HTMLElement>(".flash-diary-page__workspace")!;
   const resizeHandle = root.querySelector<HTMLElement>("[data-panel-handle='flashDiary.listWidth']")!;
   let listWidth = readPanelWidth("flashDiary.listWidth", FLASH_DIARY_LIST_BOUNDS);
   applyPanelWidth(workspace, "--flash-diary-list-width", listWidth);
+  const disposeSearchShortcut = bindPageSearchShortcut(root, () => getCurrentDiaryTextSearchScope(refs));
 
   refs.refreshButton.addEventListener("click", () => {
     void loadList();
@@ -143,6 +91,12 @@ function bindFlashDiaryPage(root: DisposableNode): void {
   refs.editor.addEventListener("input", () => {
     refs.saveButton.disabled = (state.view !== "diary" && state.view !== "document") || refs.editor.value === state.savedRaw;
   });
+  diaryEditor.setOnChange(() => {
+    if (state.view !== "diary") {
+      return;
+    }
+    refs.saveButton.disabled = normalizeMarkdown(diaryEditor.getMarkdown()) === normalizeMarkdown(state.savedRaw);
+  });
 
   const disposeResize = attachResizeHandle({
     handle: resizeHandle,
@@ -163,8 +117,10 @@ function bindFlashDiaryPage(root: DisposableNode): void {
   window.addEventListener("llmwiki:flash-diary-refresh", refreshFromDesktop);
   root.__dispose = () => {
     window.removeEventListener("llmwiki:flash-diary-refresh", refreshFromDesktop);
+    disposeSearchShortcut();
     disposeResize();
     selectionToolbar.dispose();
+    diaryEditor.dispose();
   };
 
   void loadList();
@@ -219,12 +175,14 @@ function bindFlashDiaryPage(root: DisposableNode): void {
       }
       state.view = "diary";
       state.currentPath = payload.data.path;
-      state.savedRaw = payload.data.raw;
+      state.savedRaw = normalizeMarkdown(payload.data.raw);
       selectionToolbar.reset();
       applyDiaryView(refs, payload.data, state);
+      diaryEditor.load(payload.data);
       comments.clear("当前打开的是日记原文。");
       syncActiveItem(refs.list, state.currentPath);
     } catch {
+      diaryEditor.clear();
       resetView(selectionToolbar, comments, refs, state);
     }
   }
@@ -240,6 +198,7 @@ function bindFlashDiaryPage(root: DisposableNode): void {
         state.savedRaw = "";
         refs.title.textContent = "十二个问题";
         refs.meta.textContent = "文档不存在";
+        refs.visualEditorHost.hidden = true;
         refs.editor.value = "";
         refs.editor.placeholder = "十二个问题文档不存在";
         refs.editor.readOnly = true;
@@ -249,6 +208,7 @@ function bindFlashDiaryPage(root: DisposableNode): void {
         refs.saveButton.disabled = true;
         refs.memoryRefreshButton.hidden = true;
         refs.memoryCommentButton.hidden = true;
+        diaryEditor.clear();
         comments.clear("十二个问题文档不存在。");
         syncActiveItem(refs.list, TWELVE_QUESTIONS_PATH);
         return;
@@ -257,9 +217,11 @@ function bindFlashDiaryPage(root: DisposableNode): void {
       state.savedRaw = payload.data.raw;
       selectionToolbar.reset();
       applyDocumentView(refs, payload.data, state, state.twelveQuestions);
+      diaryEditor.clear();
       comments.clear("当前打开的是可编辑 Markdown 文档。");
       syncActiveItem(refs.list, state.currentPath);
     } catch {
+      diaryEditor.clear();
       resetView(selectionToolbar, comments, refs, state);
     }
   }
@@ -282,6 +244,7 @@ function bindFlashDiaryPage(root: DisposableNode): void {
       };
       selectionToolbar.reset();
       applyMemoryView(refs, payload.data);
+      diaryEditor.clear();
       syncActiveItem(refs.list, MEMORY_PATH);
       void comments.setDocument(payload.data.path, payload.data.html, {
         sourceEditable: payload.data.sourceEditable,
@@ -307,11 +270,13 @@ function bindFlashDiaryPage(root: DisposableNode): void {
       refs.title.textContent = MEMORY_TITLE;
       refs.meta.textContent = "Memory 加载失败。";
       refs.memoryBody.innerHTML = `<div class="flash-diary-page__empty">Memory 加载失败。</div>`;
+      refs.visualEditorHost.hidden = true;
       refs.editor.hidden = true;
       refs.memoryLayout.hidden = false;
       refs.saveButton.hidden = true;
       refs.memoryRefreshButton.hidden = false;
       refs.memoryCommentButton.hidden = false;
+      diaryEditor.clear();
       comments.clear("当前 Memory 还没有评论。");
     }
   }
@@ -321,12 +286,13 @@ function bindFlashDiaryPage(root: DisposableNode): void {
       return;
     }
     try {
+      const raw = state.view === "diary" ? diaryEditor.getMarkdown() : refs.editor.value;
       const response = await fetch("/api/flash-diary/page", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           path: state.currentPath,
-          raw: refs.editor.value,
+          raw,
         }),
       });
       const payload = (await response.json()) as ApiResponse<unknown>;
@@ -374,35 +340,20 @@ function createMemorySelectionToolbar(
   });
 }
 
-function getRefs(root: HTMLElement): FlashDiaryPageRefs & {
-  refreshButton: HTMLButtonElement;
-  selectionToolbar: HTMLElement;
-  selectionComment: HTMLButtonElement;
-  selectionCopy: HTMLButtonElement;
-  selectionCancel: HTMLButtonElement;
-  memoryCommentsPanel: HTMLElement;
-  memoryCommentsClose: HTMLButtonElement;
-  commentList: HTMLElement;
-  commentStatus: HTMLElement;
-} {
-  return {
-    list: root.querySelector<HTMLElement>("[data-flash-diary-list]")!,
-    title: root.querySelector<HTMLElement>("[data-flash-diary-current-title]")!,
-    meta: root.querySelector<HTMLElement>("[data-flash-diary-current-meta]")!,
-    editor: root.querySelector<HTMLTextAreaElement>("[data-flash-diary-editor]")!,
-    saveButton: root.querySelector<HTMLButtonElement>("[data-flash-diary-save]")!,
-    refreshButton: root.querySelector<HTMLButtonElement>("[data-flash-diary-refresh]")!,
-    memoryRefreshButton: root.querySelector<HTMLButtonElement>("[data-flash-diary-memory-refresh]")!,
-    memoryCommentButton: root.querySelector<HTMLButtonElement>("[data-flash-diary-memory-comment]")!,
-    memoryLayout: root.querySelector<HTMLElement>("[data-flash-diary-memory-layout]")!,
-    memoryBody: root.querySelector<HTMLElement>("[data-flash-diary-memory-body]")!,
-    selectionToolbar: root.querySelector<HTMLElement>("[data-flash-diary-selection-toolbar]")!,
-    selectionComment: root.querySelector<HTMLButtonElement>("[data-flash-diary-selection-comment]")!,
-    selectionCopy: root.querySelector<HTMLButtonElement>("[data-flash-diary-selection-copy]")!,
-    selectionCancel: root.querySelector<HTMLButtonElement>("[data-flash-diary-selection-cancel]")!,
-    memoryCommentsPanel: root.querySelector<HTMLElement>("[data-flash-diary-memory-comments]")!,
-    memoryCommentsClose: root.querySelector<HTMLButtonElement>("[data-flash-diary-memory-comments-close]")!,
-    commentList: root.querySelector<HTMLElement>("[data-wiki-comments-list]")!,
-    commentStatus: root.querySelector<HTMLElement>("[data-wiki-comments-status]")!,
-  };
+function getCurrentDiaryTextSearchScope(refs: ReturnType<typeof getRefs>): HTMLElement | null {
+  if (!refs.visualEditorHost.hidden) {
+    return refs.visualEditorHost;
+  }
+  if (!refs.editor.hidden) {
+    return refs.editor;
+  }
+  if (!refs.memoryLayout.hidden) {
+    return refs.memoryBody;
+  }
+  return null;
+}
+
+function normalizeMarkdown(value: string): string {
+  const normalized = value.replace(/\r\n/g, "\n").trimEnd();
+  return normalized ? `${normalized}\n` : "";
 }

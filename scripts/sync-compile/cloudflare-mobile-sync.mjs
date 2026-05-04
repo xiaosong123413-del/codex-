@@ -9,6 +9,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { ProxyAgent, fetch as undiciFetch } from "undici";
 import { listMarkdownFilesRecursive } from "./file-listing.mjs";
 import {
   prepareEntryMedia,
@@ -26,6 +27,18 @@ const RAW_DIR_NAME = "raw";
 const FLASH_DIR_NAME = "\u95ea\u5ff5\u65e5\u8bb0";
 const CLIPPING_DIR_NAME = "\u526a\u85cf";
 const INBOX_DIR_NAME = "inbox";
+const CHINA_TIME_ZONE = "Asia/Shanghai";
+const CHINA_DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: CHINA_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+  hourCycle: "h23",
+});
 
 export async function syncMobileEntriesFromCloudflare({ projectRoot, vaultRoot, now = new Date().toISOString() }) {
   try {
@@ -210,15 +223,39 @@ function chunkArray(items, size) {
   return chunks;
 }
 
+// fallow-ignore-next-line complexity
 function getConfiguredCloudflare(projectRoot) {
   const envFile = readDotEnvFile(path.join(projectRoot, ".env"));
-  const workerUrl = normalizeEnvValue(process.env.CLOUDFLARE_WORKER_URL ?? envFile.CLOUDFLARE_WORKER_URL);
+  const syncConfig = readSyncCompileConfig(projectRoot);
+  const workerUrl = normalizeEnvValue(process.env.CLOUDFLARE_WORKER_URL ?? envFile.CLOUDFLARE_WORKER_URL ?? syncConfig.cloudflare_worker_url);
+  const accountSessionToken = normalizeEnvValue(process.env.CLOUDFLARE_ACCOUNT_SESSION_TOKEN);
+  const workspaceId = normalizeEnvValue(process.env.CLOUDFLARE_WORKSPACE_ID ?? syncConfig.cloudflare_workspace_id);
   const remoteToken = normalizeEnvValue(process.env.CLOUDFLARE_REMOTE_TOKEN ?? envFile.CLOUDFLARE_REMOTE_TOKEN);
+  const proxyUrl = readConfiguredProxyUrl(envFile);
+  if (workerUrl && accountSessionToken && workspaceId) {
+    return {
+      workerUrl: workerUrl.replace(/\/+$/, ""),
+      accountSessionToken,
+      workspaceId,
+      proxyUrl,
+    };
+  }
   if (!workerUrl || !remoteToken) return null;
   return {
     workerUrl: workerUrl.replace(/\/+$/, ""),
     remoteToken,
+    proxyUrl,
   };
+}
+
+function readSyncCompileConfig(projectRoot) {
+  const configPath = path.join(projectRoot, "sync-compile-config.json");
+  if (!existsSync(configPath)) return {};
+  try {
+    return JSON.parse(readFileSync(configPath, "utf8").replace(/^\uFEFF/, ""));
+  } catch {
+    return {};
+  }
 }
 
 function readDotEnvFile(filePath) {
@@ -238,14 +275,18 @@ function normalizeEnvValue(value) {
 }
 
 async function postCloudflareWorker(client, endpointPath, payload) {
-  const response = await fetchWithOptionalProxy(`${client.workerUrl}/${endpointPath.replace(/^\/+/, "")}`, {
+  const resolvedPath = resolveCloudflareEndpointPath(client, endpointPath);
+  const resolvedPayload = client.accountSessionToken && client.workspaceId
+    ? { workspaceId: client.workspaceId, ...payload }
+    : payload;
+  const response = await fetchWithOptionalProxy(`${client.workerUrl}/${resolvedPath.replace(/^\/+/, "")}`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${client.remoteToken}`,
+      Authorization: `Bearer ${client.accountSessionToken ?? client.remoteToken}`,
       "content-type": "application/json",
     },
-    body: JSON.stringify(payload),
-  });
+    body: JSON.stringify(resolvedPayload),
+  }, client.proxyUrl);
   const text = await response.text();
   const parsed = text ? JSON.parse(text) : {};
   if (!response.ok || parsed.ok === false) {
@@ -254,21 +295,58 @@ async function postCloudflareWorker(client, endpointPath, payload) {
   return parsed;
 }
 
-async function fetchWithOptionalProxy(endpoint, options) {
-  const proxyUrl = process.env.HTTPS_PROXY
-    ?? process.env.https_proxy
-    ?? process.env.HTTP_PROXY
-    ?? process.env.http_proxy
-    ?? process.env.GLOBAL_AGENT_HTTPS_PROXY
-    ?? process.env.GLOBAL_AGENT_HTTP_PROXY;
+function resolveCloudflareEndpointPath(client, endpointPath) {
+  if (!client.accountSessionToken) return endpointPath;
+  if (endpointPath === "/publish") return "/user/publish";
+  if (endpointPath.startsWith("/mobile/")) return `/user${endpointPath}`;
+  return endpointPath;
+}
+
+async function fetchWithOptionalProxy(endpoint, options, configuredProxyUrl = "") {
+  const proxyUrl = normalizeEnvValue(configuredProxyUrl) || readProcessProxyUrl();
   if (!proxyUrl) {
     return fetch(endpoint, options);
   }
-  const { ProxyAgent, fetch: undiciFetch } = await import("undici");
   return undiciFetch(endpoint, {
     ...options,
     dispatcher: new ProxyAgent(proxyUrl),
   });
+}
+
+function readConfiguredProxyUrl(envFile) {
+  return firstConfiguredEnvValue(
+    process.env.GLOBAL_AGENT_HTTPS_PROXY,
+    process.env.GLOBAL_AGENT_HTTP_PROXY,
+    process.env.HTTPS_PROXY,
+    process.env.HTTP_PROXY,
+    process.env.https_proxy,
+    process.env.http_proxy,
+    envFile.GLOBAL_AGENT_HTTPS_PROXY,
+    envFile.GLOBAL_AGENT_HTTP_PROXY,
+    envFile.HTTPS_PROXY,
+    envFile.HTTP_PROXY,
+    envFile.https_proxy,
+    envFile.http_proxy,
+  );
+}
+
+function readProcessProxyUrl() {
+  return firstConfiguredEnvValue(
+    process.env.GLOBAL_AGENT_HTTPS_PROXY,
+    process.env.GLOBAL_AGENT_HTTP_PROXY,
+    process.env.HTTPS_PROXY,
+    process.env.HTTP_PROXY,
+    process.env.https_proxy,
+    process.env.http_proxy,
+  );
+}
+
+function firstConfiguredEnvValue(...values) {
+  for (const value of values) {
+    const text = normalizeEnvValue(value);
+    if (text) return text;
+  }
+  return "";
 }
 
 async function buildCloudflareWikiFiles(vaultRoot) {
@@ -475,7 +553,7 @@ async function writeFlashDiaryEntry(vaultRoot, entry, now) {
   const filePath = path.join(dir, `${date}.md`);
   await mkdir(dir, { recursive: true });
   const mediaFiles = await prepareEntryMedia(entry, dir, date);
-  const block = formatDiaryBlock(entry, now, mediaFiles);
+  const block = formatDiaryBlocks(entry, now, mediaFiles);
   const existing = existsSync(filePath) ? await readFile(filePath, "utf8") : "";
   await writeFile(filePath, insertDiaryBlock(existing, date, block), "utf8");
 }
@@ -489,25 +567,151 @@ async function writeMarkdownFile(dir, entry, now) {
 }
 
 function insertDiaryBlock(existing, date, block) {
-  if (!existing.trim()) return `# ${date} \u95ea\u5ff5\u65e5\u8bb0\n\n${block}`;
-  const heading = existing.match(/^# .+?\r?\n/);
-  if (!heading) return `# ${date} \u95ea\u5ff5\u65e5\u8bb0\n\n${block}\n${existing.trimStart()}`;
-  return `${heading[0]}\n${block}${existing.slice(heading[0].length).replace(/^\r?\n/, "")}`;
+  const newBlocks = splitDiaryBlocks(block).blocks.map((item) => item.markdown);
+  const sortedNewBlocks = sortDiaryBlocksByTime(newBlocks);
+  const normalizedExisting = normalizeDiaryHeadingBreaks(existing);
+  if (!normalizedExisting.trim()) return `# ${date} \u95ea\u5ff5\u65e5\u8bb0\n\n${sortedNewBlocks.join("\n\n")}\n`;
+  const heading = normalizedExisting.match(/^# .+?\r?\n/);
+  if (!heading) return `# ${date} \u95ea\u5ff5\u65e5\u8bb0\n\n${sortedNewBlocks.join("\n\n")}\n${normalizedExisting.trimStart()}`;
+  const body = normalizedExisting.slice(heading[0].length).replace(/^\r?\n/, "");
+  const mergedBody = newBlocks.reduceRight((current, item) => mergeDiaryBlock(current, item), body);
+  return `${heading[0]}\n${mergedBody.trimStart()}`;
 }
 
-function formatDiaryBlock(entry, now, mediaFiles = []) {
-  const createdAt = String(entry.createdAt ?? now);
-  const time = createdAt.slice(11, 16) || "00:00";
+function formatDiaryBlocks(entry, now, mediaFiles = []) {
+  const segments = splitDiaryTextSegments(entry, now);
+  return segments
+    .map((segment, index) => formatDiaryBlock(segment.time, segment.text, index === 0 ? mediaFiles : []))
+    .join("\n");
+}
+
+function formatDiaryBlock(time, text, mediaFiles = []) {
   const media = formatMedia(mediaFiles);
   return [
     `## ${time}`,
     "",
-    String(entry.text ?? "").trim(),
+    text,
     media,
     "",
   ].filter((part) => part !== "").join("\n");
 }
 
+function mergeDiaryBlock(existingBody, newBlock) {
+  const parsed = splitDiaryBlocks(existingBody);
+  const newKey = diaryBlockDedupeKey(newBlock);
+  let selectedBlock = newBlock.trim();
+  const keptBlocks = [];
+
+  for (const block of parsed.blocks) {
+    if (newKey && diaryBlockDedupeKey(block.markdown) === newKey) {
+      selectedBlock = preferRicherDiaryBlock(selectedBlock, block.markdown);
+      continue;
+    }
+    keptBlocks.push(block.markdown);
+  }
+
+  return [...sortDiaryBlocksByTime([selectedBlock, ...keptBlocks]), parsed.intro]
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .join("\n\n")
+    .concat("\n");
+}
+
+function sortDiaryBlocksByTime(blocks) {
+  return blocks
+    .map((markdown, index) => ({ markdown, index, seconds: diaryBlockTimeSeconds(markdown) }))
+    .sort((left, right) => right.seconds - left.seconds || left.index - right.index)
+    .map((item) => item.markdown);
+}
+
+function splitDiaryBlocks(markdown) {
+  const normalized = normalizeDiaryHeadingBreaks(markdown).trim();
+  const matches = [...normalized.matchAll(/^##\s+.*\d{2}:\d{2}(?::\d{2})?.*$/gm)];
+  if (matches.length === 0) return { intro: normalized, blocks: [] };
+  const intro = normalized.slice(0, Number(matches[0].index ?? 0)).trim();
+  const blocks = matches.map((match, index) => {
+    const start = Number(match.index ?? 0);
+    const end = Number(matches[index + 1]?.index ?? normalized.length);
+    return { markdown: normalized.slice(start, end).trim() };
+  });
+  return { intro, blocks };
+}
+
+function normalizeDiaryHeadingBreaks(markdown) {
+  return String(markdown).replace(/([^\r\n])(?=##\s+(?:\[§][^\r\n]*\s+)?\d{2}:\d{2})/g, "$1\n\n");
+}
+
+function diaryBlockTimeSeconds(block) {
+  const time = String(block).match(/^##\s+.*?(\d{2}:\d{2}(?::\d{2})?)/m)?.[1] ?? "00:00";
+  const [hour = "0", minute = "0", second = "0"] = time.split(":");
+  return Number(hour) * 3600 + Number(minute) * 60 + Number(second);
+}
+
+function diaryBlockDedupeKey(block) {
+  const heading = String(block).match(/^##\s+(.+)$/m);
+  const time = heading?.[1]?.match(/\d{2}:\d{2}(?::\d{2})?/)?.[0];
+  if (!time || heading.index === undefined) return "";
+  const body = String(block).slice(heading.index + heading[0].length);
+  const text = body
+    .replace(/(?:^|\r?\n)###\s*\u9644\u4ef6[\s\S]*$/m, "")
+    .replace(/!\[[^\]]*]\([^)]+\)/g, "")
+    .replace(/-\s+\[[^\]]*]\([^)]+\)/g, "")
+    .replace(/^---$/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text ? `${normalizeDiaryTime(time)}\u0001${text}` : "";
+}
+
+function preferRicherDiaryBlock(candidate, existing) {
+  return diaryBlockMediaScore(existing) > diaryBlockMediaScore(candidate)
+    ? existing.trim()
+    : candidate.trim();
+}
+
+function diaryBlockMediaScore(block) {
+  const mediaRefs = [...String(block).matchAll(/!\[[^\]]*]\(([^)]+)\)|-\s+\[[^\]]*]\(([^)]+)\)/g)]
+    .map((match) => String(match[1] ?? match[2] ?? ""));
+  const localRefs = mediaRefs.filter((item) => item && !/^https?:\/\//i.test(item)).length;
+  return mediaRefs.length * 10 + localRefs;
+}
+
+function splitDiaryTextSegments(entry, now) {
+  const text = String(entry.text ?? "").trim();
+  if (!text) return [];
+  const matches = [...text.matchAll(/##\s+(\d{2}:\d{2}(?::\d{2})?)(?=\s|$)/g)];
+  if (matches.length === 0) {
+    return [{ time: formatEntryChinaTime(entry.createdAt ?? now), text }];
+  }
+  return splitTextByDiaryHeadings(text, matches, entry, now);
+}
+
+// fallow-ignore-next-line complexity
+function splitTextByDiaryHeadings(text, matches, entry, now) {
+  const segments = [];
+  const firstText = text.slice(0, Number(matches[0].index ?? 0)).trim();
+  if (firstText) segments.push({ time: formatEntryChinaTime(entry.createdAt ?? now), text: firstText });
+  for (let index = 0; index < matches.length; index += 1) {
+    const match = matches[index];
+    const next = matches[index + 1];
+    const start = Number(match.index ?? 0) + match[0].length;
+    const end = Number(next?.index ?? text.length);
+    const body = text.slice(start, end).trim();
+    if (body) segments.push({ time: formatEmbeddedDiaryTime(entry, match[1], now), text: body });
+  }
+  return segments.length > 0 ? segments : [{ time: formatEntryChinaTime(entry.createdAt ?? now), text }];
+}
+
+function formatEntryChinaTime(value) {
+  return formatChinaDateTime(value).time;
+}
+
+function formatEmbeddedDiaryTime(entry, time, now) {
+  const normalized = normalizeDiaryTime(time);
+  if (!isUtcLikeTimestamp(entry.createdAt)) return normalized;
+  return formatChinaDateTime(`${getEntryDate(entry, now)}T${normalized}Z`).time;
+}
+
+// fallow-ignore-next-line complexity
 function formatMobileEntryMarkdown(entry, now, mediaFiles = []) {
   const title = String(entry.title ?? entry.id ?? "mobile-entry").trim();
   const lines = [
@@ -547,7 +751,25 @@ function isImagePath(value) {
 function getEntryDate(entry, now) {
   const value = entry.targetDate ?? entry.createdAt ?? now;
   const text = String(value);
-  return /^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10) : now.slice(0, 10);
+  if (entry.targetDate && /^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10);
+  if (entry.createdAt) return formatChinaDateTime(entry.createdAt, now).date;
+  return formatChinaDateTime(now).date;
+}
+
+function formatChinaDateTime(value, fallback = new Date().toISOString()) {
+  const date = new Date(value);
+  const valid = Number.isNaN(date.getTime()) ? new Date(fallback) : date;
+  const parts = Object.fromEntries(
+    CHINA_DATE_TIME_FORMATTER.formatToParts(valid).map((part) => [part.type, part.value]),
+  );
+  return {
+    date: `${parts.year}-${parts.month}-${parts.day}`,
+    time: `${parts.hour}:${parts.minute}:${parts.second}`,
+  };
+}
+
+function isUtcLikeTimestamp(value) {
+  return /(?:Z|[+-]00:?00)$/i.test(String(value ?? "").trim());
 }
 
 function escapeYaml(value) {

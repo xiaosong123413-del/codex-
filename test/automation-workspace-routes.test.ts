@@ -5,6 +5,9 @@ import type { Request, Response } from "express";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ServerConfig } from "../web/server/config.js";
 import {
+  handleAutomationPotentialDestinationCreate,
+  handleAutomationPotentialDestinationDelete,
+  handleAutomationPotentialDestinationPatch,
   handleAutomationWorkspaceCommentCreate,
   handleAutomationWorkspaceCommentDelete,
   handleAutomationWorkspaceCommentPatch,
@@ -127,9 +130,11 @@ describe("automation workspace routes", () => {
       expect.objectContaining({
         type: "trigger",
         title: "调用应用时触发",
+        standard: "标准：只有用户调用该应用或对应 workflow 时触发。",
       }),
       expect.objectContaining({
         title: "读取内容",
+        standard: "标准：输入清晰、输出可验收，不虚构缺失上下文。",
         app: expect.objectContaining({
           id: "writer-app",
           name: "Writer App",
@@ -143,12 +148,48 @@ describe("automation workspace routes", () => {
       }),
       expect.objectContaining({
         title: "整理摘要",
+        standard: "标准：输入清晰、输出可验收，不虚构缺失上下文。",
         effectiveModel: {
           provider: "openai",
           model: "gpt-5-writer",
           source: "app",
           label: "应用模型 · openai / gpt-5-writer",
         },
+      }),
+    ]));
+  });
+
+  it("exposes task-plan assistant node standards in the automation workspace", async () => {
+    const cfg = makeConfig();
+    seedAppConfig(cfg.projectRoot);
+    const detail = createResponse();
+
+    await handleAutomationWorkspaceDetail(cfg)({
+      params: { id: "app-workflow-task-plan-assistant" },
+    } as unknown as Request, detail as Response);
+
+    expect(detail.statusCode).toBe(200);
+    expect(detail.body.data.automation.name).toBe("任务计划助手");
+    expect(detail.body.data.automation.flow.nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        title: "调用应用时触发",
+        standard: "标准：只在任务计划页需要语音整理、排期生成、微调落盘或执行确认时触发。",
+      }),
+      expect.objectContaining({
+        title: "读取任务计划页状态",
+        standard: "标准：读到 voice、pool、schedule、statusSummary；任务需保持领域、项目、任务层级。",
+      }),
+      expect.objectContaining({
+        title: "读取最近语音输入、任务池和工作日志上下文",
+        standard: "标准：只把能跟踪、能验收、通常需多个行动的事项识别为任务；一步事项保留为行动或执行记录。",
+      }),
+      expect.objectContaining({
+        title: "输出严格 JSON 计划结果",
+        standard: "标准：输出必须是合法 JSON，并包含任务目标、完成标准、当前状态、下一步和可落盘字段。",
+      }),
+      expect.objectContaining({
+        title: "在人工微调后只做结构校正，不改变用户意图",
+        standard: "标准：只修正结构和字段一致性，不改变用户意图、领域、项目或任务边界。",
       }),
     ]));
   });
@@ -190,6 +231,30 @@ describe("automation workspace routes", () => {
         enabled: true,
         sourceKind: "code",
       }),
+      expect.objectContaining({
+        id: "code-flow-global-knowledge-overview",
+        name: "全局知识流转总览",
+        enabled: true,
+        sourceKind: "information",
+      }),
+      expect.objectContaining({
+        id: "code-flow-information-transfer",
+        name: "信息流转流程",
+        enabled: true,
+        sourceKind: "information",
+      }),
+      expect.objectContaining({
+        id: "code-flow-workflow-recorder",
+        name: "执行记录器归档流程",
+        enabled: true,
+        sourceKind: "code",
+      }),
+      expect.objectContaining({
+        id: "code-flow-workflow-artifacts",
+        name: "执行沉淀文件流转",
+        enabled: true,
+        sourceKind: "information",
+      }),
     ]));
     expect(list.body.data.automations.some((automation: { sourceKind: string }) => automation.sourceKind === "document")).toBe(false);
 
@@ -206,6 +271,20 @@ describe("automation workspace routes", () => {
     expect(detail.body.data.automation.name).toBe("同步入口");
     expect(detail.body.data.automation.sourceKind).toBe("code");
     expect(detail.body.data.automation.viewMode).toBe("flow");
+    expect(detail.body.data.automation.sourceInsight.page).toEqual({
+      id: "runs",
+      title: "运行页",
+      routeLabel: "#/runs",
+    });
+    expect(detail.body.data.automation.sourceInsight.graph.nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "syncTrigger", kind: "trigger" }),
+      expect.objectContaining({ id: "hasItems", kind: "decision" }),
+      expect.objectContaining({ id: "batchPlan", kind: "input" }),
+      expect.objectContaining({ id: "confirmPlan", kind: "process" }),
+      expect.objectContaining({ id: "runLog", kind: "result" }),
+    ]));
+    expect(detail.body.data.automation.sourceInsight.graph.mermaid).toContain("syncTrigger[\"A1 用户点击同步\"]");
+    expect(detail.body.data.automation.sourceInsight.graph.mermaid).toContain("hasPlan{");
     expect(detail.body.data.automation.flow.nodes).toEqual(expect.arrayContaining([
       expect.objectContaining({
         type: "trigger",
@@ -243,6 +322,19 @@ describe("automation workspace routes", () => {
     } as unknown as Request, reviewBoardDetail as Response);
     expect(reviewBoardDetail.statusCode).toBe(200);
     expect(reviewBoardDetail.body.data.automation.name).toBe("审查与运行结果");
+    expect(reviewBoardDetail.body.data.automation.sourceInsight.page).toEqual({
+      id: "review",
+      title: "审查页",
+      routeLabel: "#/review",
+    });
+    expect(reviewBoardDetail.body.data.automation.sourceInsight.graph.nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "openReview", kind: "trigger" }),
+      expect.objectContaining({ id: "reviewAction", kind: "decision" }),
+      expect.objectContaining({ id: "applyDraft", kind: "process" }),
+      expect.objectContaining({ id: "confirmResult", kind: "result" }),
+    ]));
+    expect(reviewBoardDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("singleAdvance[");
+    expect(reviewBoardDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("inboxResult[");
     expect(reviewBoardDetail.body.data.automation.mermaid).toContain("I -->|单条推进| J");
     expect(reviewBoardDetail.body.data.automation.mermaid).toContain("I -->|确认写入| W");
     expect(reviewBoardDetail.body.data.automation.mermaid).toContain("I -->|批量录入 inbox| AK");
@@ -256,6 +348,20 @@ describe("automation workspace routes", () => {
     } as unknown as Request, quickCaptureDetail as Response);
     expect(quickCaptureDetail.body.data.automation.sourceKind).toBe("code");
     expect(quickCaptureDetail.body.data.automation.viewMode).toBe("flow");
+    expect(quickCaptureDetail.body.data.automation.sourceInsight.page).toEqual({
+      id: "flash-diary-capture",
+      title: "闪念日记快速录入",
+      routeLabel: "桌面全局快捷键",
+    });
+    expect(quickCaptureDetail.body.data.automation.sourceInsight.graph.nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "hotkeyTrigger", kind: "trigger" }),
+      expect.objectContaining({ id: "fileDecision", kind: "decision" }),
+      expect.objectContaining({ id: "entryInput", kind: "input" }),
+      expect.objectContaining({ id: "prependBlock", kind: "process" }),
+      expect.objectContaining({ id: "failureFile", kind: "result" }),
+    ]));
+    expect(quickCaptureDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("hotkeyTrigger[\"A1 全局快捷键触发\"]");
+    expect(quickCaptureDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("writeDecision{");
     expect(quickCaptureDetail.body.data.automation.mermaid).toContain("A[\"全局快捷键触发<br/>globalShortcut.register()\"]");
     expect(quickCaptureDetail.body.data.automation.mermaid).toContain("G -->|否| H");
     expect(quickCaptureDetail.body.data.automation.mermaid).toContain("L -->|是| N");
@@ -280,6 +386,20 @@ describe("automation workspace routes", () => {
     } as unknown as Request, compileDetail as Response);
     expect(compileDetail.statusCode).toBe(200);
     expect(compileDetail.body.data.automation.name).toBe("编译链路");
+    expect(compileDetail.body.data.automation.sourceInsight.page).toEqual({
+      id: "compile-chain",
+      title: "编译链路",
+      routeLabel: "跨页总览",
+    });
+    expect(compileDetail.body.data.automation.sourceInsight.graph.nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "compileTrigger", kind: "trigger" }),
+      expect.objectContaining({ id: "batchDecision", kind: "decision" }),
+      expect.objectContaining({ id: "batchInput", kind: "input" }),
+      expect.objectContaining({ id: "compileProcess", kind: "process" }),
+      expect.objectContaining({ id: "publishLive", kind: "result" }),
+    ]));
+    expect(compileDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("compileTrigger[\"A1 sync compile run…\"]");
+    expect(compileDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("changeDecision{");
     expect(compileDetail.body.data.automation.mermaid).toContain("I -->|是| J");
     expect(compileDetail.body.data.automation.mermaid).toContain("P -->|否| R");
     expect(compileDetail.body.data.automation.mermaid).toContain("W --> X");
@@ -305,6 +425,20 @@ describe("automation workspace routes", () => {
     } as unknown as Request, compileOverviewDetail as Response);
     expect(compileOverviewDetail.statusCode).toBe(200);
     expect(compileOverviewDetail.body.data.automation.name).toBe("同步编译总览");
+    expect(compileOverviewDetail.body.data.automation.sourceInsight.page).toEqual({
+      id: "sync-compile-overview",
+      title: "同步编译总览",
+      routeLabel: "跨页总览",
+    });
+    expect(compileOverviewDetail.body.data.automation.sourceInsight.graph.nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "syncTrigger", kind: "trigger" }),
+      expect.objectContaining({ id: "hasItems", kind: "decision" }),
+      expect.objectContaining({ id: "batchPlan", kind: "input" }),
+      expect.objectContaining({ id: "batchCompile", kind: "process" }),
+      expect.objectContaining({ id: "publishCurrent", kind: "result" }),
+    ]));
+    expect(compileOverviewDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("syncTrigger[\"A1 用户点击同步\"]");
+    expect(compileOverviewDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("hasBatches{");
     expect(compileOverviewDetail.body.data.automation.mermaid).toContain("A[\"用户点击同步<br/>bindRunPage() startButton.click\"]");
     expect(compileOverviewDetail.body.data.automation.mermaid).toContain("E -->|没有| F");
     expect(compileOverviewDetail.body.data.automation.mermaid).toContain("E -->|有| G");
@@ -334,18 +468,291 @@ describe("automation workspace routes", () => {
       params: { id: "code-flow-automation-workspace" },
     } as unknown as Request, automationWorkspaceDetail as Response);
     expect(automationWorkspaceDetail.statusCode).toBe(200);
+    expect(automationWorkspaceDetail.body.data.automation.sourceInsight.page).toEqual({
+      id: "automation",
+      title: "Workflow 工作区",
+      routeLabel: "#/automation",
+    });
+    expect(automationWorkspaceDetail.body.data.automation.sourceInsight.graph.nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "openWorkspace", kind: "trigger" }),
+      expect.objectContaining({ id: "listAction", kind: "decision" }),
+      expect.objectContaining({ id: "readDetail", kind: "process" }),
+      expect.objectContaining({ id: "logTimeline", kind: "result" }),
+    ]));
+    expect(automationWorkspaceDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("changeEvent[");
+    expect(automationWorkspaceDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("detailRefresh[");
     expect(automationWorkspaceDetail.body.data.automation.mermaid).toContain("A[\"打开 #/automation<br/>renderAutomationWorkspacePage()\"]");
     expect(automationWorkspaceDetail.body.data.automation.mermaid).toContain("E -->|打开详情| G");
     expect(automationWorkspaceDetail.body.data.automation.mermaid).toContain("K -->|查看日志| L");
+
+    const informationTransferDetail = createResponse();
+    await handleAutomationWorkspaceDetail(cfg)({
+      params: { id: "code-flow-information-transfer" },
+    } as unknown as Request, informationTransferDetail as Response);
+    expect(informationTransferDetail.statusCode).toBe(200);
+    expect(informationTransferDetail.body.data.automation.sourceKind).toBe("information");
+    expect(informationTransferDetail.body.data.automation.sourceInsight.page).toEqual({
+      id: "information-transfer",
+      title: "信息流转流程",
+      routeLabel: "跨专题总览",
+    });
+    expect(informationTransferDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("appDefinition[");
+    expect(informationTransferDetail.body.data.automation.sourceInsight.nodeInsights.topicLinks.shownIn).toEqual([
+      "应用流程",
+      "信息流转流程",
+      "源码真实流程",
+    ]);
 
     const sourceGalleryDetail = createResponse();
     await handleAutomationWorkspaceDetail(cfg)({
       params: { id: "code-flow-source-gallery" },
     } as unknown as Request, sourceGalleryDetail as Response);
     expect(sourceGalleryDetail.statusCode).toBe(200);
+    expect(sourceGalleryDetail.body.data.automation.sourceInsight.page).toEqual({
+      id: "sources",
+      title: "源料库页",
+      routeLabel: "#/sources",
+    });
+    expect(sourceGalleryDetail.body.data.automation.sourceInsight.graph.nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "openSources", kind: "trigger" }),
+      expect.objectContaining({ id: "userAction", kind: "decision" }),
+      expect.objectContaining({ id: "compileInput", kind: "input" }),
+      expect.objectContaining({ id: "buildCompile", kind: "process" }),
+      expect.objectContaining({ id: "syncLog", kind: "result" }),
+    ]));
+    expect(sourceGalleryDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("moveInbox[");
+    expect(sourceGalleryDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("compileFile[");
     expect(sourceGalleryDetail.body.data.automation.mermaid).toContain("A[\"打开 #/sources<br/>renderSourcesPage()\"]");
     expect(sourceGalleryDetail.body.data.automation.mermaid).toContain("E -->|送入 inbox| F");
     expect(sourceGalleryDetail.body.data.automation.mermaid).toContain("K --> L");
+
+    const flashDiaryPageDetail = createResponse();
+    await handleAutomationWorkspaceDetail(cfg)({
+      params: { id: "code-flow-flash-diary-page" },
+    } as unknown as Request, flashDiaryPageDetail as Response);
+    expect(flashDiaryPageDetail.statusCode).toBe(200);
+    expect(flashDiaryPageDetail.body.data.automation.name).toBe("闪念日记页");
+    expect(flashDiaryPageDetail.body.data.automation.sourceInsight.page).toEqual({
+      id: "flash-diary",
+      title: "闪念日记页",
+      routeLabel: "#/flash-diary",
+    });
+    expect(flashDiaryPageDetail.body.data.automation.sourceInsight.graph.nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "saveTrigger", kind: "trigger" }),
+      expect.objectContaining({ id: "memoryDecision", kind: "decision" }),
+      expect.objectContaining({ id: "diaryWindow", kind: "input" }),
+      expect.objectContaining({ id: "memoryProcess", kind: "process" }),
+      expect.objectContaining({ id: "memoryView", kind: "result" }),
+      expect.objectContaining({ id: "questionsView", kind: "result" }),
+      expect.objectContaining({ id: "openDiaryCard", kind: "trigger" }),
+      expect.objectContaining({ id: "editorView", kind: "result" }),
+    ]));
+    expect(flashDiaryPageDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("saveTrigger[\"A1 用户保存闪念日记\"]");
+    expect(flashDiaryPageDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("memoryDecision{");
+    expect(flashDiaryPageDetail.body.data.automation.sourceInsight.graph.mermaid).not.toContain("memoryFile --> recentStatusView");
+    expect(flashDiaryPageDetail.body.data.automation.sourceInsight.pageHotspotView).toEqual(expect.objectContaining({
+      title: "页面热点流程",
+      description: "中间是闪念日记页缩略图；拖拽、滚轮和双指缩放都作用在整张图上，外围每个热点都接一段完整微流程。",
+      svg: expect.stringContaining("data-automation-source-node=\"saveTrigger\""),
+    }));
+    expect(flashDiaryPageDetail.body.data.automation.sourceInsight.nodeInsights.memoryFile.missingLinks).toEqual([
+      expect.objectContaining({
+        to: "结果：工作台“近日状态”",
+      }),
+    ]);
+
+    const globalOverviewDetail = createResponse();
+    await handleAutomationWorkspaceDetail(cfg)({
+      params: { id: "code-flow-global-knowledge-overview" },
+    } as unknown as Request, globalOverviewDetail as Response);
+    expect(globalOverviewDetail.statusCode).toBe(200);
+    expect(globalOverviewDetail.body.data.automation.name).toBe("全局知识流转总览");
+    expect(globalOverviewDetail.body.data.automation.sourceInsight.page).toEqual({
+      id: "global-knowledge-overview",
+      title: "全局知识流转总览",
+      routeLabel: "跨页总览",
+    });
+    expect(globalOverviewDetail.body.data.automation.sourceInsight.graph.nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "diaryTrigger", kind: "trigger" }),
+      expect.objectContaining({ id: "timelineProcess", kind: "process" }),
+      expect.objectContaining({ id: "historyFile", kind: "input" }),
+      expect.objectContaining({ id: "historyView", kind: "result" }),
+      expect.objectContaining({ id: "caseRefreshProcess", kind: "process" }),
+      expect.objectContaining({ id: "caseLibraryPages", kind: "result" }),
+      expect.objectContaining({ id: "workflowRecorderTrigger", kind: "trigger" }),
+      expect.objectContaining({ id: "aboutMeCompose", kind: "process" }),
+      expect.objectContaining({ id: "concepts", kind: "result" }),
+      expect.objectContaining({ id: "identityFile", kind: "input" }),
+      expect.objectContaining({ id: "identityCompose", kind: "process" }),
+      expect.objectContaining({ id: "identityView", kind: "result" }),
+    ]));
+    expect(globalOverviewDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("concepts[");
+    expect(globalOverviewDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("historyFile[");
+    expect(globalOverviewDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("historyView[");
+    expect(globalOverviewDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("caseRefreshProcess[");
+    expect(globalOverviewDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("caseLibraryPages[");
+    expect(globalOverviewDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("workflowRecorderTrigger[");
+    expect(globalOverviewDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("aboutMeCompose[");
+    expect(globalOverviewDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("taskPoolState[");
+    expect(globalOverviewDetail.body.data.automation.sourceInsight.graph.mermaid).toContain("identityCompose[");
+    expect(globalOverviewDetail.body.data.automation.sourceInsight.nodeInsights.chatRecords.missingLinks).toEqual([
+      expect.objectContaining({
+        to: "结果：wiki/个人信息档案/个人时间线.md",
+      }),
+    ]);
+    expect(globalOverviewDetail.body.data.automation.sourceInsight.nodeInsights.caseLibraryPages.upstream).toEqual(expect.arrayContaining([
+      "处理：扫描日记、历史回忆和时间线的问题解决信号",
+      "触发：执行记录器归档出现问题信号",
+    ]));
+  });
+
+  it("exposes the workflow recorder filing flow as a code-backed automation", async () => {
+    const cfg = makeConfig();
+    seedAppConfig(cfg.projectRoot);
+    const detail = createResponse();
+
+    await handleAutomationWorkspaceDetail(cfg)({
+      params: { id: "code-flow-workflow-recorder" },
+    } as unknown as Request, detail as Response);
+
+    expect(detail.statusCode).toBe(200);
+    expect(detail.body.data.automation.name).toBe("执行记录器归档流程");
+    expect(detail.body.data.automation.sourceKind).toBe("code");
+    expect(detail.body.data.automation.viewMode).toBe("flow");
+    expect(detail.body.data.automation.mermaid).toContain("A1 执行记录器输入");
+    expect(detail.body.data.automation.mermaid).toContain("C1 AI 解析事件");
+    expect(detail.body.data.automation.sourceInsight.appendices).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "prompt", title: "Prompt 附录" }),
+      expect.objectContaining({ id: "schema", title: "Schema 附录" }),
+      expect.objectContaining({ id: "rules", title: "规则附录" }),
+    ]));
+    expect(detail.body.data.automation.sourceInsight.nodeInsights.C1.specRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: "输出", value: "Workflow Event Candidate" }),
+      expect.objectContaining({ label: "标准", value: "不臆造任务，不直接当方法。" }),
+    ]));
+    expect(detail.body.data.automation.flow.nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: "workflow-shortcut",
+        standard: expect.stringContaining("不直接新建任务"),
+        title: "执行记录器 / 日记输入",
+      }),
+      expect.objectContaining({
+        id: "workflow-event",
+        standard: expect.stringContaining("Workflow Event"),
+        title: "Workflow Event 事件池",
+      }),
+      expect.objectContaining({
+        id: "workflow-rank",
+        standard: expect.stringContaining("备选任务未确认前不作为默认归档目标"),
+        title: "rankTaskCandidates()",
+      }),
+      expect.objectContaining({
+        id: "workflow-resource",
+        standard: expect.stringContaining("工具箱候选"),
+        title: "生成资源与工具候选",
+      }),
+      expect.objectContaining({
+        id: "workflow-case",
+        standard: expect.stringContaining("问题和解决过程"),
+        title: "生成案例库候选",
+      }),
+    ]));
+  });
+
+  it("exposes workflow artifact file and folder flow as a code-backed automation", async () => {
+    const cfg = makeConfig();
+    seedAppConfig(cfg.projectRoot);
+    const detail = createResponse();
+
+    await handleAutomationWorkspaceDetail(cfg)({
+      params: { id: "code-flow-workflow-artifacts" },
+    } as unknown as Request, detail as Response);
+
+    expect(detail.statusCode).toBe(200);
+    expect(detail.body.data.automation.name).toBe("执行沉淀文件流转");
+    expect(detail.body.data.automation.sourceKind).toBe("information");
+    expect(detail.body.data.automation.mermaid).toContain("案例库首页：刷新案例库");
+    expect(detail.body.data.automation.mermaid).toContain("写入 wiki/专题/01-案例库/<标题>案例.md");
+    expect(detail.body.data.automation.sourceInsight.graph.mermaid).toContain("A[\"输入来源\"]");
+    expect(detail.body.data.automation.sourceInsight.graph.mermaid).toContain("写入 wiki/专题/01-案例库/<标题>案例.md");
+    expect(detail.body.data.automation.sourceInsight.graph.mermaid).not.toContain("A1 输入来源");
+    expect(detail.body.data.automation.sourceInsight.page).toEqual({
+      id: "workflow-artifacts",
+      title: "执行沉淀文件流转",
+      routeLabel: "#/workflow-artifacts",
+    });
+    expect(detail.body.data.automation.flow.nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: "refresh",
+        title: "案例库首页刷新",
+      }),
+      expect.objectContaining({
+        id: "caseFile",
+        implementation: "wiki/专题/01-案例库/*案例.md",
+        title: "写入案例库文件",
+      }),
+    ]));
+  });
+
+  it("stores potential destinations under source-insight nodes without mixing them into comments", async () => {
+    const cfg = makeConfig();
+    seedAppConfig(cfg.projectRoot);
+    const created = createResponse();
+    const patched = createResponse();
+    const detail = createResponse();
+    const removed = createResponse();
+
+    await handleAutomationPotentialDestinationCreate(cfg)({
+      params: { id: "code-flow-flash-diary-page" },
+      body: {
+        nodeId: "memoryFile",
+        label: "长期人物状态摘要",
+        intendedOutcome: "把 Memory 进一步沉淀成人物状态摘要。",
+        note: "这里只是业务意图，不代表当前真实已接通。",
+      },
+    } as unknown as Request, created as Response);
+
+    expect(created.statusCode).toBe(200);
+    expect(created.body.data).toEqual(expect.objectContaining({
+      automationId: "code-flow-flash-diary-page",
+      nodeId: "memoryFile",
+      label: "长期人物状态摘要",
+      intendedOutcome: "把 Memory 进一步沉淀成人物状态摘要。",
+      note: "这里只是业务意图，不代表当前真实已接通。",
+    }));
+
+    await handleAutomationPotentialDestinationPatch(cfg)({
+      params: { id: "code-flow-flash-diary-page", potentialId: created.body.data.id },
+      body: {
+        intendedOutcome: "把短期 Memory 沉淀成稳定人物状态摘要。",
+      },
+    } as unknown as Request, patched as Response);
+
+    expect(patched.statusCode).toBe(200);
+    expect(patched.body.data.intendedOutcome).toBe("把短期 Memory 沉淀成稳定人物状态摘要。");
+
+    await handleAutomationWorkspaceDetail(cfg)({
+      params: { id: "code-flow-flash-diary-page" },
+    } as unknown as Request, detail as Response);
+
+    expect(detail.statusCode).toBe(200);
+    expect(detail.body.data.comments).toEqual([]);
+    expect(detail.body.data.automation.sourceInsight.nodeInsights.memoryFile.potentialDestinations).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: created.body.data.id,
+        automationId: "code-flow-flash-diary-page",
+        nodeId: "memoryFile",
+        label: "长期人物状态摘要",
+        intendedOutcome: "把短期 Memory 沉淀成稳定人物状态摘要。",
+      }),
+    ]));
+
+    await handleAutomationPotentialDestinationDelete(cfg)({
+      params: { id: "code-flow-flash-diary-page", potentialId: created.body.data.id },
+    } as unknown as Request, removed as Response);
+
+    expect(removed.statusCode).toBe(200);
+    expect(removed.body).toEqual({ success: true });
   });
 
   it("creates and deletes comments anchored to nodes or edges", async () => {

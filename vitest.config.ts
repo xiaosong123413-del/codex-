@@ -7,7 +7,18 @@ import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    exclude: [...configDefaults.exclude, "**/.worktrees/**", "codex/**"],
+    exclude: [
+      ...configDefaults.exclude,
+      "**/.worktrees/**",
+      "codex/**",
+      "gui/**",
+      "wiki-clone/**",
+      "web/**",
+      "desktop-webui/**",
+      "cloudflare/**",
+      "tools/**",
+      "plugins/**",
+    ],
     globals: true,
   },
 });

@@ -36,6 +36,25 @@ describe("sync compile runner helpers", () => {
     await expect(readFile(lockPath, "utf8")).rejects.toThrow();
   });
 
+  it("clears a structured stale lock when the owner process is gone", async () => {
+    tempDir = await makeTempDir("sync-runner-structured-");
+    const lockDir = path.join(tempDir, ".llmwiki");
+    const lockPath = path.join(lockDir, "lock");
+    await mkdir(lockDir, { recursive: true });
+    await writeFile(
+      lockPath,
+      JSON.stringify({
+        pid: 999999,
+        script: "D:/Desktop/llm-wiki-compiler-main/scripts/sync-compile.mjs",
+      }),
+      "utf8",
+    );
+
+    await clearStaleLockIfSafe(tempDir);
+
+    await expect(readFile(lockPath, "utf8")).rejects.toThrow();
+  });
+
   it("summarizes progress using completed, asset, and active batch counts", () => {
     const summary = summarizeBatchProgress({
       importedCount: 1174,

@@ -61,6 +61,7 @@ describe("desktop webui migration scaffold", () => {
     expect(mainSource).toContain("icon: resolveDesktopIconPath()");
     expect(mainSource).toContain("sync-compile-config.json");
     expect(mainSource).toContain("chooseTargetVault");
+    expect(mainSource).toContain("choosePersonalTimelineSourceEntry");
     expect(mainSource).toContain("whenReady()");
     expect(mainSource).toContain("requestSingleInstanceLock()");
     expect(mainSource).toContain("second-instance");
@@ -69,14 +70,28 @@ describe("desktop webui migration scaffold", () => {
     expect(mainSource).toContain("desktop:instance-redirected");
     expect(mainSource).toContain("registerConfiguredShortcuts()");
     expect(mainSource).toContain("CommandOrControl+Shift+J");
+    expect(mainSource).toContain("CommandOrControl+Shift+E");
     expect(mainSource).toContain("desktop:save-shortcut");
     expect(mainSource).toContain("desktop:flash-diary-capture");
+    expect(mainSource).toContain("buildWorkflowRecorderCaptureDataUrl");
+    expect(mainSource).toContain("desktop:open-workflow-recorder");
+    expect(mainSource).toContain("desktop:submit-workflow-recorder");
     expect(mainSource).toContain("desktop:import-xiaohongshu-cookie");
     expect(mainSource).toContain("desktop:open-xiaohongshu-login");
     expect(mainSource).toContain("desktop:import-douyin-cookie");
     expect(mainSource).toContain("desktop:open-douyin-login");
     expect(mainSource).toContain("collectDouyinDesktopCapture");
-    expect(mainSource).toContain("desktopCapture");
+    expect(mainSource).toContain("clipPageWithSmartClip");
+    expect(mainSource).toContain("stopSmartClipMcpClient");
+    expect(mainSource).toContain("desktop:open-browser-url");
+    expect(mainSource).toContain("openBrowserUrl");
+    expect(mainSource).toContain("windowsDefaultBrowserLaunchCandidate");
+    expect(mainSource).toContain("UrlAssociations\\\\${protocol}\\\\UserChoice");
+    expect(mainSource).toContain("parseWindowsBrowserArgs");
+    expect(mainSource).toContain("%[1lL]");
+    expect(mainSource).toContain("系统默认浏览器");
+    expect(mainSource).toContain("chrome.exe");
+    expect(mainSource).toContain("msedge.exe");
     expect(mainSource).toContain("desktop:fetch-xiaohongshu-favorites");
     expect(mainSource).toContain("persist:llm-wiki-xiaohongshu");
     expect(mainSource).toContain("persist:llm-wiki-douyin");
@@ -87,11 +102,95 @@ describe("desktop webui migration scaffold", () => {
     expect(mainSource).toContain("api/import/xiaohongshu/progress");
     expect(mainSource).toContain("findAvailablePort");
     expect(mainSource).toContain("await stopWebServer();");
-    expect(mainSource).toContain("waitForPortToClose(DEFAULT_WEB_PORT)");
+    expect(mainSource).toContain("const restartPort = activeWebPort;");
+    expect(mainSource).toContain("await waitForPortToClose(restartPort)");
+    expect(mainSource).toContain("liveRestart && restartPort === DEFAULT_WEB_PORT");
     expect(mainSource).toContain("async function stopWebServer(): Promise<void>");
     expect(mainSource).toContain("buildFlashDiarySubmission");
-    expect(submitSource).toContain("api/clips");
-    expect(submitSource).toContain("api/xhs-sync/extract");
+    expect(submitSource).toContain("smartclip-mcp");
+    expect(submitSource).not.toContain("api/clips");
+    expect(submitSource).not.toContain("api/xhs-sync/extract");
+  });
+
+  it("keeps quick capture clipping fields and direct media drop/paste bindings", async () => {
+    const captureSource = await readFile(path.join(desktopRoot, "src", "flash-diary-capture.ts"), "utf8");
+    const preloadSource = await readFile(path.join(desktopRoot, "src", "preload.ts"), "utf8");
+
+    expect(captureSource).toContain("id=\"clip-url\"");
+    expect(captureSource).toContain("input id=\"clip-url\"");
+    expect(captureSource).not.toContain("textarea id=\"clip-url\"");
+    expect(captureSource).toContain("id=\"clip-comment\"");
+    expect(captureSource).toContain("addEventListener(\"paste\"");
+    expect(captureSource).toContain("addEventListener(\"drop\"");
+    expect(captureSource).toContain("saveFlashDiaryMedia");
+    expect(preloadSource).toContain("saveFlashDiaryMedia");
+    expect(preloadSource).toContain("openBrowserUrl");
+  });
+
+  it("keeps the quick capture page compact without the header copy blocks", async () => {
+    const captureSource = await readFile(path.join(desktopRoot, "src", "flash-diary-capture.ts"), "utf8");
+
+    expect(captureSource).not.toContain("class=\"eyebrow\"");
+    expect(captureSource).not.toContain("<h1>");
+    expect(captureSource).not.toContain("class=\"target-copy\"");
+    expect(captureSource).not.toContain("targetCopyTitle");
+    expect(captureSource).toContain("body { margin: 0; height: 100vh; overflow: hidden;");
+    expect(captureSource).toContain("main { box-sizing: border-box; height: 100vh;");
+    expect(captureSource).toContain(".card {");
+    expect(captureSource).toContain("height: 100%; overflow: hidden;");
+    expect(captureSource).toContain("grid-template-rows:");
+    expect(captureSource).toContain(".clip-layout { display: grid; grid-template-rows: auto minmax(0, 1fr);");
+    expect(captureSource).toContain("grid-template-columns: 1fr;");
+    expect(captureSource).toContain("#clip-comment { min-height: 0;");
+  });
+
+  it("defines a standalone workflow recorder shortcut window", async () => {
+    const captureSource = await readFile(path.join(desktopRoot, "src", "workflow-recorder-capture.ts"), "utf8");
+    const mainSource = await readFile(path.join(desktopRoot, "src", "main.ts"), "utf8");
+    const preloadSource = await readFile(path.join(desktopRoot, "src", "preload.ts"), "utf8");
+
+    expect(captureSource).toContain("执行记录器");
+    expect(captureSource).toContain("一键记录刚刚做了什么");
+    expect(captureSource).toContain("typeCard(\"normal\"");
+    expect(captureSource).toContain("typeCard(\"issue\"");
+    expect(captureSource).toContain("typeCard(\"resolved\"");
+    expect(captureSource).toContain("typeCard(\"method\", \"可能的方法方案\"");
+    expect(captureSource).toContain("getWorkflowRecorderTasks");
+    expect(captureSource).toContain("searchWorkflowTasks");
+    expect(captureSource).toContain("createWorkflowTask");
+    expect(captureSource).toContain("submitWorkflowRecorder");
+    expect(captureSource).toContain("-webkit-app-region: drag");
+    expect(captureSource).toContain("绑定任务");
+    expect(captureSource).toContain("搜索任务");
+    expect(captureSource).toContain("新增任务");
+    expect(captureSource).toContain("overflow-x: auto");
+    expect(captureSource).toContain("data-task-id");
+    expect(captureSource).toContain("taskId: state.taskId");
+    expect(captureSource).not.toContain("+ 新增命名流程");
+    expect(captureSource).not.toContain("window.prompt(\"输入新流程名称\"");
+    expect(captureSource).not.toContain("data-task=\"\">不绑定");
+    expect(captureSource).not.toContain("renderToolBar");
+    expect(captureSource).not.toContain("chooseWorkflowRecorderAttachments");
+    expect(mainSource).toContain("WORKFLOW_RECORDER_WINDOW_SIZE");
+    expect(mainSource).toContain("height: 860");
+    expect(mainSource).toContain("desktop:create-workflow-recorder-task");
+    expect(preloadSource).toContain("createWorkflowRecorderTask");
+  });
+
+  it("provides a browser preview URL for designing the quick capture page", async () => {
+    const packageJson = JSON.parse(
+      await readFile(path.join(desktopRoot, "package.json"), "utf8"),
+    ) as { scripts?: Record<string, string> };
+    const previewSource = await readFile(
+      path.join(desktopRoot, "scripts", "flash-diary-capture-preview.ts"),
+      "utf8",
+    );
+
+    expect(packageJson.scripts?.["preview:flash-diary-capture"]).toContain("flash-diary-capture-preview.ts");
+    expect(previewSource).toContain("buildFlashDiaryCaptureHtml");
+    expect(previewSource).toContain("FLASH_DIARY_CAPTURE_PREVIEW_PORT");
+    expect(previewSource).toContain("target=clipping");
+    expect(previewSource).toContain("window.llmWikiDesktop");
   });
 
   it("uses a preload bridge for desktop capabilities instead of Node integration in the page", async () => {
@@ -106,9 +205,13 @@ describe("desktop webui migration scaffold", () => {
     expect(mainSource).toContain("nodeIntegration: false");
     expect(preloadSource).toContain("contextBridge.exposeInMainWorld");
     expect(preloadSource).toContain("chooseTargetVault");
+    expect(preloadSource).toContain("choosePersonalTimelineSourceEntry");
     expect(preloadSource).toContain("getDesktopConfig");
     expect(preloadSource).toContain("onInstanceRedirected");
     expect(preloadSource).toContain("onFlashDiaryCapture");
+    expect(preloadSource).toContain("openWorkflowRecorder");
+    expect(preloadSource).toContain("submitWorkflowRecorder");
+    expect(preloadSource).toContain("chooseWorkflowRecorderAttachments");
     expect(preloadSource).toContain("submitFlashDiaryEntry");
     expect(preloadSource).toContain("chooseFlashDiaryMedia");
     expect(preloadSource).toContain("importXiaohongshuCookie");

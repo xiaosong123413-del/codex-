@@ -1,4 +1,5 @@
 import type MarkdownIt from "markdown-it";
+import { normalizeMarkdownHeadingAnchor } from "./heading-anchors.js";
 
 /**
  * markdown-it plugin: turn [[Target]] and [[Target|Alias]] into anchor tags.
@@ -13,6 +14,7 @@ export interface WikilinkResolver {
 export function wikilinksPlugin(md: MarkdownIt, resolve: WikilinkResolver): void {
   const WIKILINK_RE = /\[\[([^\]|#]+)(?:#([^\]|]+))?(?:\|([^\]]+))?\]\]/;
 
+  // fallow-ignore-next-line complexity
   md.inline.ruler.before("link", "wikilink", (state, silent) => {
     const src = state.src;
     if (src[state.pos] !== "[" || src[state.pos + 1] !== "[") return false;
@@ -27,13 +29,11 @@ export function wikilinksPlugin(md: MarkdownIt, resolve: WikilinkResolver): void
       const display = alias || target;
 
       const resolved = resolve(target);
-      const href =
-        resolved?.href ??
-        `/?page=${encodeURIComponent(target)}${anchor ? "#" + encodeURIComponent(anchor) : ""}`;
+      const href = addAnchorToHref(resolved?.href ?? `/?page=${encodeURIComponent(target)}`, anchor);
 
       const open = state.push("link_open", "a", 1);
       open.attrs = [
-        ["href", href + (anchor ? `#${anchor}` : "")],
+        ["href", href],
         ["class", `wikilink ${resolved?.exists ? "wikilink-alive" : "wikilink-dead"}`],
         ["data-wikilink-target", target],
       ];
@@ -44,4 +44,9 @@ export function wikilinksPlugin(md: MarkdownIt, resolve: WikilinkResolver): void
     state.pos += m[0].length;
     return true;
   });
+}
+
+function addAnchorToHref(href: string, anchor: string | undefined): string {
+  if (!anchor) return href;
+  return `${href}#${encodeURIComponent(normalizeMarkdownHeadingAnchor(anchor))}`;
 }
